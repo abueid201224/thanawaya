@@ -244,8 +244,8 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
                 }}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-semibold cursor-pointer"
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>طباعة كبسولة A4</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>تصدير PDF / طباعة A4</span>
               </button>
             )}
 

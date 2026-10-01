@@ -55,6 +55,7 @@ import { HandwrittenEssayGraderView } from './components/HandwrittenEssayGraderV
 import { InteractiveGrapherView } from './components/InteractiveGrapherView';
 import { SubjectLibraryView } from './components/SubjectLibraryView';
 import { CodingBuddyAssistantView } from './components/CodingBuddyAssistantView';
+import { WhatsAppEducationalHubView } from './components/WhatsAppEducationalHubView';
 import { AiTutorScheduleView } from './components/AiTutorScheduleView';
 import { ProgressDisciplineView } from './components/ProgressDisciplineView';
 import { BreakMotivationModal } from './components/BreakMotivationModal';
@@ -283,6 +284,10 @@ export default function App() {
     setActiveService('tutor');
   };
 
+  const handleAddToDailySchedule = (slot: DailyScheduleSlot) => {
+    setSchedule((prev) => [slot, ...prev]);
+  };
+
   // Register PWA Service Worker
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -291,6 +296,78 @@ export default function App() {
       });
     }
   }, []);
+
+  // Global Windows Desktop Keyboard Shortcuts (Ctrl+P, Ctrl+F, Esc)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Esc: Closes any open modal dialog
+      if (e.key === 'Escape') {
+        setIsDocumentExportModalOpen(false);
+        setIsDiagnosticsModalOpen(false);
+        setActiveVideoModal(null);
+        setIsBreakModalOpen(false);
+        setIsAuthModalOpen(false);
+        setIsOfflineSyncModalOpen(false);
+        window.dispatchEvent(new CustomEvent('close-all-modals'));
+        return;
+      }
+
+      // 2. Ctrl + P: Triggers BookletPrintModal or direct PDF export for current view
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        if (activeService === 'concepts_booklet') {
+          window.dispatchEvent(new CustomEvent('open-booklet-print-modal'));
+        } else {
+          const docMapping: Record<string, string> = {
+            planner: 'doc_schedule_a4',
+            curriculum: 'doc_calc_a4',
+            skip_exam: 'doc_calc_a4',
+            monthly_exams: 'doc_exam_essentials_a4',
+            heatmap: 'doc_exam_essentials_a4',
+            essay_grader: 'doc_essay_rubric_a4',
+            grapher: 'doc_calc_a4',
+            library: 'doc_calc_a4',
+            coding_buddy: 'doc_coding_a4',
+            whatsapp_hub: 'doc_schedule_a4',
+            tutor: 'doc_exam_essentials_a4',
+            progress: 'doc_schedule_a4',
+            admin: 'doc_exam_essentials_a4'
+          };
+          setSelectedExportDocId(docMapping[activeService] || 'doc_calc_a4');
+          setIsDocumentExportModalOpen(true);
+        }
+        return;
+      }
+
+      // 3. Ctrl + F: Focuses contextual search bar across subject libraries
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>(
+          '#contextual-search-input, [data-search-input="true"]'
+        );
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        } else {
+          setActiveService('library');
+          setTimeout(() => {
+            const input = document.querySelector<HTMLInputElement>(
+              '#contextual-search-input, [data-search-input="true"]'
+            );
+            if (input) {
+              input.focus();
+              input.select();
+            }
+          }, 150);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeService]);
 
   const pendingScoutCount = scoutedResources.filter((r) => r.status === 'pending').length;
 
@@ -407,6 +484,17 @@ export default function App() {
           {activeService === 'coding_buddy' && (
             <CodingBuddyAssistantView
               onNavigateToService={(service) => setActiveService(service)}
+            />
+          )}
+
+          {/* SERVICE 5.8: WHATSAPP EDUCATIONAL HUB & DOWNLOADED MEDIA LIBRARY */}
+          {activeService === 'whatsapp_hub' && (
+            <WhatsAppEducationalHubView
+              onAddToDailySchedule={handleAddToDailySchedule}
+              onOpenDocumentExport={(code) => {
+                setSelectedExportDocId(code ? `doc_${code.toLowerCase().slice(0, 4)}_a4` : 'doc_schedule_a4');
+                setIsDocumentExportModalOpen(true);
+              }}
             />
           )}
 

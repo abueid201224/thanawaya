@@ -11,7 +11,8 @@ import {
   Lock,
   ChevronDown,
   Activity,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
 
@@ -65,10 +66,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenDocumentExport}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-            title="مركز تصدير المستندات والطباعة A4"
+            title="تصدير إلى PDF ثم إتاحة الطباعة المعيارية A4 لكافة المواد (Ctrl+P)"
           >
-            <Printer className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden md:inline">تصدير A4</span>
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>تصدير PDF / A4</span>
           </button>
         )}
 

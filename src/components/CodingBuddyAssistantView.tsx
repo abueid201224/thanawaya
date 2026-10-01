@@ -39,6 +39,8 @@ import {
   CuratedResource
 } from '../data/codingBuddyData';
 import { ActiveNavService } from './SidebarNav';
+import { documentExportService } from '../services/documentExportService';
+import { PRESET_EXPORTABLE_DOCUMENTS } from '../data/exportableDocumentsData';
 
 interface CodingBuddyAssistantViewProps {
   onNavigateToService?: (service: ActiveNavService) => void;
@@ -1025,17 +1027,24 @@ print(line)`,
             </button>
           )}
 
-          {/* Tool 4: Print Cheat Sheet */}
+          {/* Tool 4: Export to PDF & Print Cheat Sheet */}
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const doc = PRESET_EXPORTABLE_DOCUMENTS.find((d) => d.id === 'doc_coding_a4');
+              if (doc) {
+                documentExportService.printCleanDocument(doc);
+              } else {
+                window.print();
+              }
+            }}
             className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-right space-y-1 transition-all cursor-pointer group"
           >
             <div className="font-bold text-amber-400 flex items-center justify-between">
-              <span>طباعة كبسولة التريكات (A4)</span>
+              <span>تصدير إلى PDF / طباعة كبسولة التريكات (A4)</span>
               <Printer className="w-3.5 h-3.5" />
             </div>
             <p className="text-[11px] text-slate-400">
-              اطبع ملخص المقتطفات والتريكات البرمجية للمراجعة السريعة دون اتصال.
+              تصدير وحفظ أو طباعة كبسولة المقتطفات والتريكات البرمجية بنظام A4 القياسي.
             </p>
           </button>
         </div>

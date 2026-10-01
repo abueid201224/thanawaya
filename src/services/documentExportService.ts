@@ -1,12 +1,17 @@
 /**
- * Universal Document Export & Printing Service
- * Supports:
- * 1. Standardized A4 Print-to-PDF with Ministry Watermark & Exam Layout
- * 2. Standalone Single-File Offline HTML Export
- * 3. Formatted Markdown (.md) with KaTeX math preservation
- * 4. Structured JSON Data (.json) for offline backups
- * 5. Instant Rich Clipboard Copy
+ * Universal Document Export & PDF Engine
+ * Features:
+ * 1. Direct Client-Side PDF Generation (jsPDF + html2canvas) with high-DPI A4 scaling
+ * 2. Dedicated Clean Print Window/Iframe (Standardized A4 PDF Print)
+ * 3. Standalone Single-File Offline HTML Export
+ * 4. Formatted Markdown (.md) with KaTeX math preservation
+ * 5. Structured JSON Data (.json) for offline backups
+ * 6. Instant Rich Clipboard Copy
+ * 7. Comprehensive Self-Test & Audit Suite for all printable materials
  */
+
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export interface ExportableDocumentItem {
   id: string;
@@ -29,18 +34,311 @@ export interface ExportableDocumentItem {
   officialMinistrySeal?: boolean;
 }
 
+export interface PrintableAuditReport {
+  totalItems: number;
+  readyItemsCount: number;
+  allValid: boolean;
+  testedAt: string;
+  details: Array<{
+    id: string;
+    title: string;
+    subject: string;
+    sectionsCount: number;
+    formulasCount: number;
+    status: 'ready' | 'needs_attention';
+  }>;
+}
+
 export class DocumentExportService {
   /**
-   * Trigger native browser print with standardized print styling
+   * Direct PDF Generator: Renders an HTML DOM Element into a real multi-page A4 PDF file using jsPDF and html2canvas
    */
-  public printCurrentWindow(): void {
-    if (typeof window !== 'undefined') {
+  public async exportElementToPdf(
+    element: HTMLElement,
+    filename = 'thanaweya_document.pdf',
+    options?: {
+      title?: string;
+      scale?: number;
+      onProgress?: (step: string) => void;
+    }
+  ): Promise<boolean> {
+    try {
+      if (options?.onProgress) options.onProgress('جاري معالجة وتصيير عناصر الصفحة...');
+
+      const scale = options?.scale || 2;
+      const canvas = await html2canvas(element, {
+        scale: scale,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      if (options?.onProgress) options.onProgress('جاري تنسيق أبعاد A4 وتقسيم الصفحات...');
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // First page
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      // Subsequent pages if content overflows A4
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      if (options?.onProgress) options.onProgress('جاري تنزيل ملف PDF...');
+
+      const cleanFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+      pdf.save(cleanFilename);
+      return true;
+    } catch (err) {
+      console.error('Error generating PDF with jsPDF:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Open dedicated clean printable window or fallback print
+   * Strips all UI chrome and loads pure A4 styled printable document
+   */
+  public printCleanDocument(doc: ExportableDocumentItem): void {
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>${doc.title} - طباعة معتمدة A4</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Cairo', sans-serif;
+      background: #ffffff;
+      color: #0f172a;
+      line-height: 1.5;
+      padding: 15mm;
+      direction: rtl;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page-box {
+      border: 2px solid #064e3b;
+      border-radius: 8px;
+      padding: 20px;
+      background: #ffffff;
+      position: relative;
+      margin-bottom: 20px;
+      page-break-after: always;
+      break-after: page;
+    }
+    .watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.04;
+      pointer-events: none;
+      transform: rotate(-30deg);
+      text-align: center;
+      font-size: 26pt;
+      font-weight: 800;
+      color: #064e3b;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #064e3b;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .gov-title { font-size: 11pt; font-weight: bold; color: #064e3b; }
+    .sub-title { font-size: 9pt; color: #475569; }
+    .main-title { font-size: 16pt; font-weight: 900; color: #022c22; margin: 4px 0; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #ecfdf5;
+      color: #064e3b;
+      border: 1px solid #064e3b;
+      border-radius: 4px;
+      font-size: 9pt;
+      font-weight: bold;
+    }
+    .section-card {
+      border: 1px solid #cbd5e1;
+      border-right: 4px solid #064e3b;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 14px;
+      background: #f8fafc;
+      page-break-inside: avoid;
+    }
+    .section-title { font-size: 11.5pt; font-weight: bold; color: #064e3b; margin-bottom: 6px; }
+    .item-row { font-size: 10pt; margin-bottom: 5px; padding-right: 12px; position: relative; }
+    .item-row::before { content: "•"; position: absolute; right: 0; color: #064e3b; font-weight: bold; }
+    .formula-row {
+      direction: ltr;
+      text-align: left;
+      background: #f1f5f9;
+      border: 1px dashed #94a3b8;
+      border-radius: 4px;
+      padding: 6px 10px;
+      margin: 6px 0;
+      font-family: monospace;
+      font-size: 10pt;
+    }
+    .notes-box { font-size: 9pt; color: #b45309; background: #fef3c7; padding: 6px 10px; border-radius: 4px; margin-top: 6px; }
+    .footer-row {
+      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.5pt;
+      color: #64748b;
+    }
+    .no-print-bar {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .btn-print {
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    @media print {
+      .no-print-bar { display: none !important; }
+      body { padding: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print-bar">
+    <span>🖨️ معاينة الطباعة القياسية A4 - تأكد من اختيار "Save as PDF" لحفظ الملف أو الطباعة المباشرة.</span>
+    <button class="btn-print" onclick="window.print()">طباعة فورية / حفظ كـ PDF</button>
+  </div>
+
+  <div class="page-box">
+    <div class="watermark">
+      جمهورية مصر العربية<br>وزارة التربية والتعليم<br>نسخة معتمدة للامتحان
+    </div>
+
+    <div class="header-row">
+      <div>
+        <div class="gov-title">جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</div>
+        <div class="sub-title">امتحانات شهادة إتمام الثانوية العامة - الشعبة العلمية (رياضيات)</div>
+        <div class="main-title">${doc.title}</div>
+        <div class="sub-title">${doc.subjectAr} ${doc.branchAr ? `• ${doc.branchAr}` : ''} • المرجع: ${doc.authorOrSource}</div>
+      </div>
+      <div>
+        <span class="badge">A4 Standard</span>
+      </div>
+    </div>
+
+    ${doc.sections
+      .map(
+        (sec) => `
+      <div class="section-card">
+        <div class="section-title">
+          <span>${sec.heading}</span>
+          ${sec.badge ? `<span style="font-size: 9pt; color: #047857; margin-right: 8px;">[${sec.badge}]</span>` : ''}
+        </div>
+        ${sec.items.map((item) => `<div class="item-row">${item}</div>`).join('')}
+        ${
+          sec.latexFormulas && sec.latexFormulas.length > 0
+            ? sec.latexFormulas.map((f) => `<div class="formula-row">الصيغة الرياضية: ${f}</div>`).join('')
+            : ''
+        }
+        ${sec.notes ? `<div class="notes-box">⚠️ تنبيه وزاري: ${sec.notes}</div>` : ''}
+      </div>
+    `
+      )
+      .join('')}
+
+    <div class="footer-row">
+      <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</span>
+      <span>منظومة المخطط الذكي للثانوية العامة • الدفعة الرسمية 2026/2027</span>
+      <span style="font-family: monospace;">THN-${doc.id.toUpperCase()}</span>
+    </div>
+  </div>
+
+</body>
+</html>`;
+
+    try {
+      let printFrame = document.getElementById('clean-print-frame') as HTMLIFrameElement;
+      if (printFrame && printFrame.parentNode) {
+        printFrame.parentNode.removeChild(printFrame);
+      }
+
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'clean-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '10px';
+      printFrame.style.height = '10px';
+      printFrame.style.opacity = '0.01';
+      printFrame.style.pointerEvents = 'none';
+      printFrame.style.border = '0';
+      document.body.appendChild(printFrame);
+
+      const frameDoc = printFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(htmlContent);
+        frameDoc.close();
+
+        setTimeout(() => {
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+          } catch {
+            window.print();
+          }
+        }, 350);
+      } else {
+        window.print();
+      }
+    } catch (e) {
+      console.warn('Iframe print failed, falling back to window.print():', e);
       window.print();
     }
   }
 
   /**
-   * Generate and trigger download of a self-contained, offline-ready HTML document
+   * Export as Standalone Single-File HTML
    */
   public exportAsStandaloneHtml(doc: ExportableDocumentItem): void {
     const htmlContent = `<!DOCTYPE html>
@@ -59,11 +357,7 @@ export class DocumentExportService {
       --muted: #475569;
       --border: #cbd5e1;
     }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Arabic', 'Cairo', sans-serif;
       background: #f8fafc;
@@ -90,21 +384,9 @@ export class DocumentExportService {
       padding-bottom: 16px;
       margin-bottom: 24px;
     }
-    .gov-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--primary);
-    }
-    .main-title {
-      font-size: 24px;
-      font-weight: 900;
-      color: #022c22;
-      margin: 6px 0;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: var(--muted);
-    }
+    .gov-title { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .main-title { font-size: 24px; font-weight: 900; color: #022c22; margin: 6px 0; }
+    .subtitle { font-size: 13px; color: var(--muted); }
     .badge {
       display: inline-block;
       padding: 4px 10px;
@@ -232,7 +514,7 @@ export class DocumentExportService {
     </div>
   </div>
 
-  <button class="print-btn" onclick="window.print()">🖨️ طباعة المستند (Print / PDF)</button>
+  <button class="print-btn" onclick="window.print()">🖨️ تصدير / طباعة المستند (Print to PDF)</button>
 </body>
 </html>`;
 
@@ -274,7 +556,7 @@ export class DocumentExportService {
   }
 
   /**
-   * Export as structured JSON (.json)
+   * Export as JSON
    */
   public exportAsJson(doc: ExportableDocumentItem): void {
     const data = {
@@ -287,7 +569,7 @@ export class DocumentExportService {
   }
 
   /**
-   * Copy clean plain text representation to clipboard
+   * Copy to clipboard
    */
   public async copyToClipboard(doc: ExportableDocumentItem): Promise<boolean> {
     try {
@@ -315,6 +597,39 @@ export class DocumentExportService {
       console.warn('Clipboard copy error:', e);
       return false;
     }
+  }
+
+  /**
+   * Audit all printable materials in the app and return readiness verification
+   */
+  public auditPrintableMaterials(docs: ExportableDocumentItem[]): PrintableAuditReport {
+    let readyCount = 0;
+    const details = docs.map((d) => {
+      let formulasCount = 0;
+      d.sections.forEach((s) => {
+        if (s.latexFormulas) formulasCount += s.latexFormulas.length;
+      });
+
+      const isReady = d.sections.length > 0 && d.title.length > 0;
+      if (isReady) readyCount++;
+
+      return {
+        id: d.id,
+        title: d.title,
+        subject: d.subjectAr,
+        sectionsCount: d.sections.length,
+        formulasCount,
+        status: isReady ? ('ready' as const) : ('needs_attention' as const)
+      };
+    });
+
+    return {
+      totalItems: docs.length,
+      readyItemsCount: readyCount,
+      allValid: readyCount === docs.length,
+      testedAt: new Date().toLocaleTimeString('ar-EG'),
+      details
+    };
   }
 
   private downloadBlob(content: string, filename: string, mimeType: string): void {

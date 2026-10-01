@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { MultimediaLibraryItem, MediaFileType } from '../types';
 import { resilientAudio } from '../services/resilientAudioService';
+import { documentExportService } from '../services/documentExportService';
 
 interface SubjectLibraryViewProps {
   items: MultimediaLibraryItem[];
@@ -55,6 +56,21 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
 
   // Printable Modal preview
   const [printableModalItem, setPrintableModalItem] = useState<MultimediaLibraryItem | null>(null);
+  const printableSheetRef = React.useRef<HTMLDivElement>(null);
+  const [isExportingSheetPdf, setIsExportingSheetPdf] = useState(false);
+
+  const handleExportSheetToPdf = async () => {
+    if (!printableSheetRef.current || !printableModalItem) return;
+    setIsExportingSheetPdf(true);
+    resilientAudio.playClickSound();
+    await documentExportService.exportElementToPdf(
+      printableSheetRef.current,
+      `${printableModalItem.id}_${printableModalItem.title.replace(/\s+/g, '_')}.pdf`,
+      { title: printableModalItem.title, scale: 2 }
+    );
+    setIsExportingSheetPdf(false);
+    resilientAudio.playSuccessChime();
+  };
 
   const subjectsList = [
     { code: 'ALL', name: 'جميع المواد' },
@@ -115,9 +131,10 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                 <button
                   onClick={() => onOpenDocumentExport(selectedSubject === 'ALL' ? undefined : selectedSubject)}
                   className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                  title="مركز تصدير المستندات والكبسولات A4 (Ctrl+P)"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>مركز تصدير المستندات A4</span>
+                  <span>مركز تصدير المستندات A4 (Ctrl+P)</span>
                 </button>
               )}
 
@@ -125,6 +142,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                 <button
                   onClick={onOpenDiagnostics}
                   className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all cursor-pointer"
+                  title="فحص وتشخيص تشغيل الصوت والفيديو والطباعة 🛠️"
                 >
                   <Activity className="w-3.5 h-3.5 text-cyan-400" />
                   <span>فحص وتشخيص تشغيل الوسائط 🛠️</span>
@@ -161,10 +179,13 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
             <input
+              id="contextual-search-input"
+              data-search-input="true"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث في الدروس والمذكرات والقوانين..."
+              placeholder="ابحث في الدروس والمذكرات والقوانين... (Ctrl+F)"
+              title="بحث سريع في مصادر ومذكرات المكتبة (Ctrl+F)"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -335,8 +356,8 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                       onClick={() => setPrintableModalItem(item)}
                       className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/20"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>معاينة وطباعة</span>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>تصدير PDF / معاينة</span>
                     </button>
                   )}
 
@@ -385,12 +406,24 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handlePrint}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                  disabled={isExportingSheetPdf}
+                  onClick={handleExportSheetToPdf}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                  title="تصدير وتنزيل ملف PDF حقيقي للورقة"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>طباعة فورية للورقة (Print / PDF)</span>
+                  <Download className="w-4 h-4" />
+                  <span>{isExportingSheetPdf ? 'جاري تصدير PDF...' : 'تصدير إلى PDF فوري 📥'}</span>
                 </button>
+
+                <button
+                  onClick={handlePrint}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="إتاحة الطباعة المعيارية A4"
+                >
+                  <Printer className="w-4 h-4 text-blue-400" />
+                  <span>إتاحة الطباعة A4 🖨️</span>
+                </button>
+
                 <button
                   onClick={() => setPrintableModalItem(null)}
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
@@ -401,7 +434,10 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
             </div>
 
             {/* Modal Printable Sheet Body (Stylized as High-Yield A4) */}
-            <div className="flex-1 p-6 lg:p-8 overflow-y-auto bg-slate-950 text-slate-100 space-y-6 printable-content">
+            <div
+              ref={printableSheetRef}
+              className="flex-1 p-6 lg:p-8 overflow-y-auto bg-slate-950 text-slate-100 space-y-6 printable-content"
+            >
               {/* Header Box on Sheet */}
               <div className="border-2 border-slate-700 rounded-2xl p-5 bg-slate-900/80 text-center space-y-2">
                 <div className="text-xs font-bold text-blue-400">

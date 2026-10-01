@@ -6,6 +6,7 @@ import {
   FileCheck2,
   Printer,
   MessageSquare,
+  MessageCircle,
   Award,
   ShieldCheck,
   ChevronRight,
@@ -20,7 +21,8 @@ import {
   Layers,
   Brain,
   Terminal,
-  Code2
+  Code2,
+  Download
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { offlineStorage } from '../services/offlineStorage';
@@ -36,6 +38,7 @@ export type ActiveNavService =
   | 'grapher'
   | 'library'
   | 'coding_buddy'
+  | 'whatsapp_hub'
   | 'tutor'
   | 'progress'
   | 'admin';
@@ -158,6 +161,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       highlight: true,
       badgeColor: 'bg-violet-500/20 text-violet-300 border border-violet-500/30',
       desc: 'أسرار بايثون وألغاز كود خفيفة وماتريال شاملة'
+    },
+    {
+      id: 'whatsapp_hub' as ActiveNavService,
+      label: 'منصات الواتساب ومكتبة الحصص',
+      icon: MessageCircle,
+      badge: 'جديد 📲',
+      highlight: true,
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+      desc: 'ربط أرقام المدرسين، مسارات التنزيل، والجدولة الشهرية'
     },
     {
       id: 'tutor' as ActiveNavService,
@@ -290,10 +302,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
               <button
                 onClick={onOpenDocumentExport}
                 className="p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-all cursor-pointer"
-                title="طباعة وتصدير المستندات والكبسولات A4"
+                title="تصدير إلى PDF ثم إتاحة الطباعة المعيارية A4 لكافة المواد (Ctrl+P)"
               >
-                <Printer className="w-3.5 h-3.5 text-emerald-400" />
-                <span>تصدير A4</span>
+                <Download className="w-3.5 h-3.5 text-emerald-400" />
+                <span>تصدير PDF / A4</span>
               </button>
             )}
           </div>

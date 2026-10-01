@@ -662,11 +662,11 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
             {/* Print / Export */}
             <button
               onClick={() => (onOpenPrintModal ? onOpenPrintModal(currentPage) : window.print())}
-              title="أداة طباعة وتصدير الكتيب كملف PDF معتمد (A4)"
+              title="تصدير الصفحة أو الكتيب إلى PDF ثم إتاحة الطباعة المعيارية A4"
               className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span className="text-[11px] font-bold hidden sm:inline">طباعة PDF</span>
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span className="text-[11px] font-bold hidden sm:inline">تصدير PDF / طباعة</span>
             </button>
           </div>
         </div>

@@ -13,7 +13,7 @@
 
 @page {
   size: A4 portrait;
-  margin: 10mm 12mm 12mm 12mm;
+  margin: 10mm 12mm;
 }
 
 @media screen {
@@ -23,6 +23,12 @@
 }
 
 @media print {
+  /* 0. Universal Print Color Preservation */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   /* 1. Global Reset & Print Canvas */
   html, body {
     background: #ffffff !important;
@@ -381,8 +387,23 @@
     color: #334155 !important;
   }
 
-  /* 13. Page-break utilities */
-  .avoid-page-break {
+  /* 13. Page-break utilities & Math Boundary Protectors */
+  .avoid-page-break,
+  .katex,
+  .katex-display,
+  .katex-html,
+  .print-formula-box,
+  .print-rule-box,
+  .print-exam-alert,
+  .print-sticky-card,
+  .print-sticky-notes-container,
+  .print-section-item,
+  .print-highlights-container,
+  .rule-card,
+  .sticky-note,
+  .math-block,
+  .math-card,
+  [data-printable-card] {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }

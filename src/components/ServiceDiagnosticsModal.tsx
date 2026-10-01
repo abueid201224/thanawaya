@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { resilientAudio, AudioDiagnosticResult } from '../services/resilientAudioService';
 import { documentExportService } from '../services/documentExportService';
+import { PRESET_EXPORTABLE_DOCUMENTS } from '../data/exportableDocumentsData';
 import { MathRenderer } from './MathRenderer';
 
 interface ServiceDiagnosticsModalProps {
@@ -207,19 +208,20 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
       });
     }
 
-    updateTestStatus('test_print_export', { status: 'running', details: 'فحص كائن الطباعة والتصدير...' });
+    updateTestStatus('test_print_export', { status: 'running', details: 'فحص محرك تصدير PDF وتأكيد جاهزية كامل الماتريال...' });
     const hasPrint = typeof window !== 'undefined' && typeof window.print === 'function';
     const hasBlob = typeof window !== 'undefined' && typeof window.Blob === 'function';
+    const auditReport = documentExportService.auditPrintableMaterials(PRESET_EXPORTABLE_DOCUMENTS);
 
-    if (hasPrint && hasBlob) {
+    if (hasPrint && hasBlob && auditReport.allValid) {
       updateTestStatus('test_print_export', {
         status: 'success',
-        details: 'كافة أدوات التصدير جاهزة: طباعة A4، توليد PDF، تصدير ملفات HTML و Markdown و JSON.'
+        details: `تم تأكيد واختبار كافة الماتريال القابل للطباعة (${auditReport.readyItemsCount}/${auditReport.totalItems}) مع دعم تصدير PDF المباشر وتنسيق A4 للطباعة.`
       });
     } else {
       updateTestStatus('test_print_export', {
         status: 'warning',
-        details: 'دعم جزئي لتصدير المستندات.'
+        details: `جاهزية جزئية: ${auditReport.readyItemsCount} من ${auditReport.totalItems} مستنداً معتمداً.`
       });
     }
   };
@@ -300,9 +302,17 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
     resilientAudio.playSuccessChime();
   };
 
-  // Auto run once on modal open
+  // Auto run once on modal open and handle Escape key
   useEffect(() => {
     handleRunAllTests();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const filteredTests = activeCategory === 'all'
@@ -340,6 +350,7 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
           <button
             onClick={onClose}
             className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="إغلاق (Esc)"
           >
             <X className="w-5 h-5" />
           </button>

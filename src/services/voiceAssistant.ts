@@ -3,6 +3,8 @@
  * Supports Speech-to-Text (Arabic Egypt ar-EG) and Text-to-Speech narration
  */
 
+import { parseLatexToArabicSpeech } from './resilientAudioService';
+
 export interface VoiceRecognitionOptions {
   onResult: (transcript: string) => void;
   onError?: (error: string) => void;
@@ -88,13 +90,7 @@ export class VoiceAssistantService {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
-        // Remove LaTeX formatting symbols for smoother speech
-        const cleanText = text
-          .replace(/\$+/g, '')
-          .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 مقسوم على $2')
-          .replace(/\\int/g, 'تكامل')
-          .replace(/\\lim/g, 'نهاية')
-          .replace(/\\sqrt\{([^}]+)\}/g, 'الجذر التربيعي لـ $1');
+        const cleanText = parseLatexToArabicSpeech(text);
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'ar-EG';

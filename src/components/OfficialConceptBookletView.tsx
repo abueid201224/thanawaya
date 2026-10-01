@@ -23,6 +23,7 @@ import { BookletPrintModal } from './BookletPrintModal';
 import { BookletStandardPrintDocument, PrintSettings } from './BookletStandardPrintDocument';
 import { INITIAL_BOOKLET_ANNOTATIONS } from '../data/conceptBookletPages';
 import { HighlightAnnotation, StickyNoteAnnotation } from '../types/bookletAnnotations';
+import { documentExportService } from '../services/documentExportService';
 
 interface ConceptEntry {
   id: string;
@@ -77,6 +78,23 @@ export const OfficialConceptBookletView: React.FC = () => {
     return INITIAL_BOOKLET_ANNOTATIONS;
   };
 
+  // Keyboard navigation & global shortcuts listener
+  React.useEffect(() => {
+    const handleOpenPrint = () => {
+      handleOpenPrintModal('all');
+    };
+    const handleClose = () => {
+      setIsPrintModalOpen(false);
+    };
+
+    window.addEventListener('open-booklet-print-modal', handleOpenPrint);
+    window.addEventListener('close-all-modals', handleClose);
+    return () => {
+      window.removeEventListener('open-booklet-print-modal', handleOpenPrint);
+      window.removeEventListener('close-all-modals', handleClose);
+    };
+  }, []);
+
   const handleOpenPrintModal = (targetScope: PrintSettings['scope'] = 'all', pageNum: number = 4) => {
     setActivePageForPrint(pageNum);
     setPrintSettings((prev) => ({
@@ -87,12 +105,37 @@ export const OfficialConceptBookletView: React.FC = () => {
     setIsPrintModalOpen(true);
   };
 
-  const handleConfirmPrint = (newSettings: PrintSettings) => {
+  const handleConfirmPrint = (newSettings: PrintSettings, mode?: 'pdf_download' | 'print') => {
     setPrintSettings(newSettings);
     setIsPrintModalOpen(false);
-    setTimeout(() => {
-      window.print();
-    }, 150);
+
+    if (mode === 'pdf_download') {
+      setTimeout(async () => {
+        const container = document.querySelector('.booklet-print-container') as HTMLElement;
+        if (container) {
+          // Temporarily style container for canvas capture
+          const prevDisplay = container.style.display;
+          const prevVis = container.style.visibility;
+          container.style.display = 'block';
+          container.style.visibility = 'visible';
+
+          await documentExportService.exportElementToPdf(
+            container,
+            `official_concept_booklet_page_${newSettings.currentPageNumber}.pdf`,
+            { title: 'كتيب المفاهيم الرسمي A4', scale: 2 }
+          );
+
+          container.style.display = prevDisplay;
+          container.style.visibility = prevVis;
+        } else {
+          window.print();
+        }
+      }, 200);
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    }
   };
 
   const concepts: ConceptEntry[] = [
@@ -257,19 +300,19 @@ export const OfficialConceptBookletView: React.FC = () => {
               <button
                 onClick={() => handleOpenPrintModal('all')}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
-                title="أداة تصدير وطباعة الكتيب بتنسيق A4 المعتمد"
+                title="تصدير الكتيب بالكامل إلى PDF أو الطباعة المعيارية A4 (Ctrl+P)"
               >
-                <Printer className="w-4 h-4" />
-                <span>أداة تصدير وطباعة الكتيب (A4 PDF)</span>
+                <Download className="w-4 h-4" />
+                <span>تصدير إلى PDF ثم إتاحة الطباعة (Ctrl+P)</span>
               </button>
 
               <button
                 onClick={() => handleOpenPrintModal('current', 4)}
                 className="bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-800"
-                title="طباعة الصفحة الحالية فقط"
+                title="تصدير الصفحة الحالية إلى PDF أو طباعتها"
               >
                 <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                <span>طباعة الصفحة الحالية</span>
+                <span>تصدير / طباعة الصفحة الحالية</span>
               </button>
             </div>
           </div>
@@ -355,10 +398,13 @@ export const OfficialConceptBookletView: React.FC = () => {
               <div className="relative min-w-[240px]">
                 <Search className="w-4 h-4 text-slate-500 absolute right-3 top-2.5" />
                 <input
+                  id="contextual-search-input"
+                  data-search-input="true"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ابحث عن قانون، دالة، أو متطابقة..."
+                  placeholder="ابحث عن قانون، دالة، أو متطابقة... (Ctrl+F)"
+                  title="البحث السريع في القوانين والمفاهيم (Ctrl+F)"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>

@@ -21,7 +21,7 @@ interface BookletPrintModalProps {
   onClose: () => void;
   currentPageNumber: number;
   currentPageTitle?: string;
-  onConfirmPrint: (settings: PrintSettings) => void;
+  onConfirmPrint: (settings: PrintSettings, mode?: 'pdf_download' | 'print') => void;
 }
 
 export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
@@ -40,20 +40,42 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
   const [schoolName, setSchoolName] = useState<string>('');
   const [includeOfficialSeal, setIncludeOfficialSeal] = useState<boolean>(true);
 
+  // Keyboard navigation: Esc to close, Ctrl+Enter to trigger export
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        onConfirmPrint(getSettings(), 'pdf_download');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
+  const getSettings = (): PrintSettings => ({
+    scope,
+    currentPageNumber,
+    includeHighlights,
+    includeStickyNotes,
+    includeStudentInfo,
+    studentName: studentName.trim() || undefined,
+    seatingNumber: seatingNumber.trim() || undefined,
+    schoolName: schoolName.trim() || undefined,
+    includeOfficialSeal
+  });
+
+  const handleStartPdfExport = () => {
+    onConfirmPrint(getSettings(), 'pdf_download');
+  };
+
   const handleStartPrint = () => {
-    onConfirmPrint({
-      scope,
-      currentPageNumber,
-      includeHighlights,
-      includeStickyNotes,
-      includeStudentInfo,
-      studentName: studentName.trim() || undefined,
-      seatingNumber: seatingNumber.trim() || undefined,
-      schoolName: schoolName.trim() || undefined,
-      includeOfficialSeal
-    });
+    onConfirmPrint(getSettings(), 'print');
   };
 
   return (
@@ -81,6 +103,7 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
           <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            title="إغلاق النافذة (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
@@ -284,7 +307,7 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-5 border-t border-slate-800 flex items-center justify-between bg-slate-950">
+        <div className="p-5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-950">
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition-colors cursor-pointer text-xs font-medium"
@@ -292,13 +315,25 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
             إلغاء
           </button>
 
-          <button
-            onClick={handleStartPrint}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
-          >
-            <Printer className="w-4 h-4" />
-            <span>بدء الطباعة / حفظ كملف PDF 🖨️</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleStartPdfExport}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
+              title="تصدير وتنزيل ملف PDF حقيقي للكتيب (Ctrl+P)"
+            >
+              <Download className="w-4 h-4" />
+              <span>تصدير إلى PDF فوري (Ctrl+P) 📥</span>
+            </button>
+
+            <button
+              onClick={handleStartPrint}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              title="إتاحة الطباعة المعيارية A4 مع خيار الحفظ كـ PDF"
+            >
+              <Printer className="w-4 h-4 text-blue-400" />
+              <span>إتاحة الطباعة المعيارية 🖨️</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
