@@ -9,7 +9,9 @@ import {
   Calendar,
   CheckCircle2,
   Lock,
-  ChevronDown
+  ChevronDown,
+  Activity,
+  Printer
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
 
@@ -18,13 +20,17 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onSwitchRole: (newRole: UserRole) => void;
   activeTab: string;
+  onOpenDiagnostics?: () => void;
+  onOpenDocumentExport?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   onOpenAuth,
   onSwitchRole,
-  activeTab
+  activeTab,
+  onOpenDiagnostics,
+  onOpenDocumentExport
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
@@ -52,18 +58,42 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Metrics, Role Switcher & Profile */}
+      {/* Metrics, Diagnostics, Role Switcher & Profile */}
       <div className="flex items-center flex-wrap gap-2.5">
+        {/* Document Export Button */}
+        {onOpenDocumentExport && (
+          <button
+            onClick={onOpenDocumentExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+            title="مركز تصدير المستندات والطباعة A4"
+          >
+            <Printer className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden md:inline">تصدير A4</span>
+          </button>
+        )}
+
+        {/* Live Diagnostics & Health Test Button */}
+        {onOpenDiagnostics && (
+          <button
+            onClick={onOpenDiagnostics}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+            title="فحص وتشخيص تشغيل الصوت والفيديو والويب والطباعة داخل التطبيق"
+          >
+            <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>فحص الخدمات 🛠️</span>
+          </button>
+        )}
+
         {/* Streak Badge */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/25 text-orange-400 text-xs font-bold shadow-inner">
           <Flame className="w-4 h-4 text-orange-500 fill-orange-500 animate-bounce" />
-          <span>ستريك الالتزام: {user.dailyStreak} يوماً 🔥</span>
+          <span>ستريك: {user.dailyStreak} يوماً 🔥</span>
         </div>
 
         {/* Discipline Score */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-bold">
           <Award className="w-4 h-4 text-emerald-400" />
-          <span>معدل الانضباط: {user.disciplineScore}%</span>
+          <span>انضباط: {user.disciplineScore}%</span>
         </div>
 
         {/* RBAC Role Selector */}
@@ -78,25 +108,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="انقر للتبديل بين وضع الطالب وصلاحيات المشرف العام (RBAC)"
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>الصلاحية: {user.role === 'admin' ? 'مشرف تربوي (Admin)' : 'طالب (Student)'}</span>
-            <span className="text-[10px] text-slate-400 font-normal">(تبديل)</span>
+            <span>{user.role === 'admin' ? 'مشرف (Admin)' : 'طالب (Student)'}</span>
           </button>
         </div>
 
         {/* User Profile Button */}
         <button
           onClick={onOpenAuth}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-medium transition-all cursor-pointer"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-medium transition-all cursor-pointer"
         >
           <div className="w-6 h-6 rounded-full bg-blue-600/30 text-blue-300 flex items-center justify-center font-bold text-[11px] border border-blue-500/40">
             {user.name.charAt(0)}
           </div>
           <div className="text-right hidden sm:block">
             <div className="font-semibold text-white leading-tight">{user.name}</div>
-            <div className="text-[10px] text-slate-400 font-mono">جلوس: {user.seatingNumber}</div>
           </div>
         </button>
       </div>
     </header>
   );
 };
+

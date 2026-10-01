@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Video,
@@ -15,25 +15,43 @@ import {
   CheckCircle2,
   Filter,
   Eye,
-  X
+  X,
+  Volume2,
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import { MultimediaLibraryItem, MediaFileType } from '../types';
+import { resilientAudio } from '../services/resilientAudioService';
 
 interface SubjectLibraryViewProps {
   items: MultimediaLibraryItem[];
   onOpenVideo: (item: MultimediaLibraryItem) => void;
+  onOpenDiagnostics?: () => void;
+  onOpenDocumentExport?: (subjectCode?: string) => void;
 }
 
 export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
   items,
-  onOpenVideo
+  onOpenVideo,
+  onOpenDiagnostics,
+  onOpenDocumentExport
 }) => {
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
   const [selectedFileType, setSelectedFileType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Active audio player
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  // Active audio narrator state
+  const [narratingItemId, setNarratingItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = resilientAudio.subscribeSpeakingState((isSpeaking) => {
+      if (!isSpeaking) setNarratingItemId(null);
+    });
+    return () => {
+      unsub();
+      resilientAudio.stop();
+    };
+  }, []);
 
   // Printable Modal preview
   const [printableModalItem, setPrintableModalItem] = useState<MultimediaLibraryItem | null>(null);
@@ -62,6 +80,23 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
     window.print();
   };
 
+  const handleToggleNarrator = (item: MultimediaLibraryItem) => {
+    if (narratingItemId === item.id) {
+      resilientAudio.stop();
+      setNarratingItemId(null);
+    } else {
+      resilientAudio.stop();
+      setNarratingItemId(item.id);
+      const textToRead = `${item.title} . مادة ${item.subjectNameAr} . ${item.description} . ${
+        item.printableCheatSheet ? item.printableCheatSheet.join(' . ') : ''
+      }`;
+      resilientAudio.speak(textToRead, {
+        onEnd: () => setNarratingItemId(null),
+        onError: () => setNarratingItemId(null)
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -75,9 +110,27 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
               فيديوهات، تسجيلات صوتية، وملخصات جاهزة للطباعة
             </h2>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              مصادر تعليمية موثوقة من وزارة التربية والتعليم، بنك المعرفة EKB، ومنصة نجوى. تتضمن مذكرات A4 قابلة للطباعة المباشرة مع كبسولات القوانين الذهبية.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {onOpenDocumentExport && (
+                <button
+                  onClick={() => onOpenDocumentExport(selectedSubject === 'ALL' ? undefined : selectedSubject)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>مركز تصدير المستندات A4</span>
+                </button>
+              )}
+
+              {onOpenDiagnostics && (
+                <button
+                  onClick={onOpenDiagnostics}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>فحص وتشخيص تشغيل الوسائط 🛠️</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 min-w-[260px] text-xs space-y-2">
@@ -260,38 +313,56 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                   <span>معتمد وزارياً</span>
                 </div>
 
-                {isDoc && (
+                <div className="flex items-center gap-2">
+                  {/* Resilient Audio Narrator button for any card */}
                   <button
-                    onClick={() => setPrintableModalItem(item)}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/20"
+                    onClick={() => handleToggleNarrator(item)}
+                    className={`p-1.5 rounded-xl border text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                      narratingItemId === item.id
+                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 animate-pulse'
+                        : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+                    }`}
+                    title={narratingItemId === item.id ? 'إيقاف النطق' : 'استماع صوتي للملخص'}
                   >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>معاينة وطباعة</span>
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px]">
+                      {narratingItemId === item.id ? 'إيقاف' : 'استماع'}
+                    </span>
                   </button>
-                )}
 
-                {isVideo && (
-                  <button
-                    onClick={() => onOpenVideo(item)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>تشغيل الفيديو</span>
-                  </button>
-                )}
+                  {isDoc && (
+                    <button
+                      onClick={() => setPrintableModalItem(item)}
+                      className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/20"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>معاينة وطباعة</span>
+                    </button>
+                  )}
 
-                {isAudio && (
-                  <a
-                    href={item.url}
-                    download
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>تحميل MP3</span>
-                  </a>
-                )}
+                  {isVideo && (
+                    <button
+                      onClick={() => onOpenVideo(item)}
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>تشغيل الوسائط</span>
+                    </button>
+                  )}
+
+                  {isAudio && (
+                    <a
+                      href={item.url}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs font-medium"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>تحميل MP3</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           );

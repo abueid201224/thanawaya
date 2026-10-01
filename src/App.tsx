@@ -61,6 +61,9 @@ import { BreakMotivationModal } from './components/BreakMotivationModal';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
 import { OfflineSyncModal } from './components/OfflineSyncModal';
+import { ResilientMediaModal } from './components/ResilientMediaModal';
+import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
+import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
 
 export default function App() {
   // Navigation: Active Service Only (No clutter)
@@ -81,10 +84,13 @@ export default function App() {
   // Skip assessment target
   const [targetSkipUnit, setTargetSkipUnit] = useState<CurriculumUnit | null>(null);
 
-  // Modals
+  // Modals & Diagnostic/Export Suites
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
+  const [isDiagnosticsModalOpen, setIsDiagnosticsModalOpen] = useState(false);
+  const [isDocumentExportModalOpen, setIsDocumentExportModalOpen] = useState(false);
+  const [selectedExportDocId, setSelectedExportDocId] = useState<string | undefined>(undefined);
   const [activeVideoModal, setActiveVideoModal] = useState<MultimediaLibraryItem | null>(null);
 
   // Handlers
@@ -296,6 +302,11 @@ export default function App() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSwitchRole={handleSwitchRole}
         activeTab={activeService}
+        onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
+        onOpenDocumentExport={() => {
+          setSelectedExportDocId(undefined);
+          setIsDocumentExportModalOpen(true);
+        }}
       />
 
       {/* Main Workspace: Sidebar + Single Active Service Canvas */}
@@ -309,6 +320,11 @@ export default function App() {
           userRole={user.role}
           pendingScoutCount={pendingScoutCount}
           onOpenOfflineSync={() => setIsOfflineSyncModalOpen(true)}
+          onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
+          onOpenDocumentExport={() => {
+            setSelectedExportDocId(undefined);
+            setIsDocumentExportModalOpen(true);
+          }}
         />
 
         {/* Focused Main Stage: ONLY THE ACTIVE SERVICE IS DISPLAYED */}
@@ -379,6 +395,11 @@ export default function App() {
             <SubjectLibraryView
               items={libraryItems}
               onOpenVideo={(item) => setActiveVideoModal(item)}
+              onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
+              onOpenDocumentExport={(code) => {
+                setSelectedExportDocId(code ? `doc_${code.toLowerCase().slice(0, 4)}_a4` : undefined);
+                setIsDocumentExportModalOpen(true);
+              }}
             />
           )}
 
@@ -420,37 +441,29 @@ export default function App() {
         </main>
       </div>
 
-      {/* Video Modal */}
-      {activeVideoModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl space-y-3">
-            <div className="p-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-blue-400 font-bold font-mono">
-                  {activeVideoModal.sourceName}
-                </span>
-                <h3 className="text-sm font-bold text-white mt-0.5">
-                  {activeVideoModal.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setActiveVideoModal(null)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Resilient Media Modal with Multi-tier Fallbacks (Direct Video, YouTube Embed, Audio & Interactive Capsules) */}
+      <ResilientMediaModal
+        item={activeVideoModal}
+        onClose={() => setActiveVideoModal(null)}
+        onOpenDocumentExport={(code) => {
+          setSelectedExportDocId(code ? `doc_${code.toLowerCase().slice(0, 4)}_a4` : undefined);
+          setIsDocumentExportModalOpen(true);
+        }}
+      />
 
-            <div className="aspect-video w-full bg-black">
-              <video src={activeVideoModal.url} controls autoPlay className="w-full h-full object-contain" />
-            </div>
+      {/* Universal Document Export & Standardized A4 Print Suite */}
+      <UniversalDocumentExportModal
+        isOpen={isDocumentExportModalOpen}
+        onClose={() => setIsDocumentExportModalOpen(false)}
+        defaultDocumentId={selectedExportDocId}
+      />
 
-            <div className="p-4 text-xs text-slate-300">
-              {activeVideoModal.description}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Services Health & Live Diagnostics Test Suite */}
+      <ServiceDiagnosticsModal
+        isOpen={isDiagnosticsModalOpen}
+        onClose={() => setIsDiagnosticsModalOpen(false)}
+        onOpenDocumentExport={() => setIsDocumentExportModalOpen(true)}
+      />
 
       {/* Break Motivation Modal */}
       <BreakMotivationModal

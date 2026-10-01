@@ -48,6 +48,8 @@ interface SidebarNavProps {
   userRole: UserRole;
   pendingScoutCount: number;
   onOpenOfflineSync: () => void;
+  onOpenDiagnostics?: () => void;
+  onOpenDocumentExport?: () => void;
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({
@@ -57,7 +59,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   onToggleCollapse,
   userRole,
   pendingScoutCount,
-  onOpenOfflineSync
+  onOpenOfflineSync,
+  onOpenDiagnostics,
+  onOpenDocumentExport
 }) => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
@@ -270,6 +274,30 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       {/* Footer / Fast Track Banner & Offline PWA Sync Status */}
       {!isCollapsed && (
         <div className="p-3 m-3 space-y-2">
+          {/* Quick Tools: Diagnostics & Export */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {onOpenDiagnostics && (
+              <button
+                onClick={onOpenDiagnostics}
+                className="p-2 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-all cursor-pointer"
+                title="فحص واختبار الصوت والفيديو والويب"
+              >
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <span>فحص الخدمات</span>
+              </button>
+            )}
+            {onOpenDocumentExport && (
+              <button
+                onClick={onOpenDocumentExport}
+                className="p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-all cursor-pointer"
+                title="طباعة وتصدير المستندات والكبسولات A4"
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                <span>تصدير A4</span>
+              </button>
+            )}
+          </div>
+
           {/* Offline / Online Sync Indicator */}
           <button
             onClick={onOpenOfflineSync}
