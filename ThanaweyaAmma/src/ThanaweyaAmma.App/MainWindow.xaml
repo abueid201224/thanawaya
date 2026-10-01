@@ -1,0 +1,208 @@
+<Window x:Class="ThanaweyaAmma.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:ThanaweyaAmma.App.Controls"
+        mc:Ignorable="d"
+        Title="منظومة المعلم الذكي للثانوية العامة - علمي رياضة 2026/2027" 
+        Height="780" Width="1280"
+        MinHeight="650" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        Background="#0B0F19"
+        FlowDirection="RightToLeft">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- Modern Sidebar -->
+            <ColumnDefinition Width="260"/>
+            <!-- Main Content Canvas -->
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- SIDEBAR -->
+        <Border Grid.Column="0" Background="#111827" BorderBrush="#1F2937" BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- Brand & Student Profile -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Navigation Menu -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Subjects Quick Selector -->
+                    <RowDefinition Height="*"/>
+                    <!-- System & Security Info -->
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Profile Header -->
+                <Border Grid.Row="0" Padding="18,20" Background="#161F30" BorderBrush="#1F2937" BorderThickness="0,0,0,1">
+                    <StackPanel Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Width="38" Height="38" CornerRadius="10" Background="#2563EB">
+                                <TextBlock Text="📐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="ثانوية عامة | علمي رياضة" Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                <TextBlock Text="دفعة 2026 / 2027" Foreground="#60A5FA" FontSize="11" FontWeight="Medium"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Academic Progress bar -->
+                        <Border Background="#1F2937" CornerRadius="8" Padding="10,8" Margin="0,10,0,0">
+                            <StackPanel Spacing="4">
+                                <Grid>
+                                    <TextBlock Text="مسار إنجاز المنهج" Foreground="#9CA3AF" FontSize="10"/>
+                                    <TextBlock Text="38% مكتمل" Foreground="#10B981" FontSize="10" FontWeight="Bold" HorizontalAlignment="Left"/>
+                                </Grid>
+                                <ProgressBar Height="5" Value="38" Maximum="100" Foreground="#10B981" Background="#374151" BorderThickness="0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Navigation Tabs -->
+                <StackPanel Grid.Row="1" Margin="10,14" Spacing="4">
+                    <Button Content="📊 لوحة المتابعة والجدول الزمني" 
+                            Command="{Binding NavigateCommand}" CommandParameter="Dashboard"
+                            Background="#1F2937" Foreground="White" FontWeight="SemiBold" 
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+
+                    <Button Content="💬 محادثة المعلم الذكي التخصصي" 
+                            Command="{Binding NavigateCommand}" CommandParameter="Chat"
+                            Background="Transparent" Foreground="#D1D5DB" 
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+
+                    <Button Content="🎥 مشغل وسائط المنهج المعتمد" 
+                            Command="{Binding NavigateCommand}" CommandParameter="VideoPlayer"
+                            Background="Transparent" Foreground="#D1D5DB" 
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+
+                    <Button Content="📝 بنك الامتحانات والتصحيح المقالي" 
+                            Command="{Binding NavigateCommand}" CommandParameter="Quiz"
+                            Background="Transparent" Foreground="#D1D5DB" 
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+
+                    <Button Content="🤖 كشاف المشرف الذكي (moe.gov.eg)" 
+                            Command="{Binding NavigateCommand}" CommandParameter="AdminCoPilot"
+                            Background="Transparent" Foreground="#D1D5DB" 
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                </StackPanel>
+
+                <!-- Subjects List in Sidebar -->
+                <Border Grid.Row="2" Margin="12,4" Background="#0F172A" CornerRadius="8" Padding="8" BorderBrush="#1E293B" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="مواد شعبة الرياضيات المقررة:" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="4,2,4,8"/>
+                        <ListBox Grid.Row="1" ItemsSource="{Binding Subjects}" SelectedItem="{Binding SelectedSubject}"
+                                 Background="Transparent" BorderThickness="0" Foreground="White">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                                        <Border Width="8" Height="8" CornerRadius="4" Background="#3B82F6" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding NameAr}" FontSize="12" Foreground="#F1F5F9"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Bottom DPAPI Security Status -->
+                <Border Grid.Row="3" Padding="14,10" Background="#0D131F" BorderBrush="#1F2937" BorderThickness="0,1,0,0">
+                    <StackPanel Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🛡" FontSize="12"/>
+                            <TextBlock Text="أمان المفاتيح: DPAPI مشفر محلياً" Foreground="#10B981" FontSize="10" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <TextBlock Text="Groq (Failover → Gemini 1.5 Flash)" Foreground="#64748B" FontSize="9"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- MAIN CONTENT AREA -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <!-- Bottom Global Status Bar -->
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Interactive Views Switched By MainViewModel.ActiveView -->
+            <!-- 1. DASHBOARD VIEW -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20">
+                <StackPanel Spacing="20">
+                    <!-- Hero Header Card -->
+                    <Border CornerRadius="14" Background="#161F30" BorderBrush="#2563EB" BorderThickness="1" Padding="20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="مرحباً بك في منصتك المتكاملة للثانوية العامة 2026/2027" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                <TextBlock Text="تابع خطتك الممتدة من 1 أكتوبر 2026 حتى امتحانات يوليو 2027 مع التوجيه الذكي ونواتج التعلم." Foreground="#94A3B8" FontSize="13"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="بدء المذاكرة والتوجيه 🚀" 
+                                    Command="{Binding NavigateCommand}" CommandParameter="Chat"
+                                    Background="#2563EB" Foreground="White" FontWeight="Bold" 
+                                    BorderThickness="0" Padding="16,8" Cursor="Hand"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Milestones Timeline Box -->
+                    <Border CornerRadius="12" Background="#111827" BorderBrush="#1F2937" BorderThickness="1" Padding="16">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="📅 مسار الخطة الزمنية لشعبة علمي رياضة (أكتوبر 2026 - يوليو 2027)" Foreground="#F3F4F6" FontSize="15" FontWeight="Bold"/>
+                            <ItemsControl ItemsSource="{Binding Milestones}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,4" Padding="12" Background="#1A2234" CornerRadius="8" BorderBrush="#2D3748" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Background="#2563EB" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding TargetMonth}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                                                    <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+                                                    <TextBlock Text="{Binding Description}" Foreground="#94A3B8" FontSize="11" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding MilestoneType}" Foreground="#FBBF24" FontSize="11" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Status Bar -->
+            <Border Grid.Row="1" Background="#0E1422" BorderBrush="#1F2937" BorderThickness="0,1,0,0" Padding="14,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding StatusMessage, FallbackValue='المنظومة جاهزة لاستقبال استفساراتك.'}" 
+                               Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="قاعدة البيانات: متصلة بـ Supabase pgvector" Foreground="#10B981" FontSize="11"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

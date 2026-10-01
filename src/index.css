@@ -1,0 +1,390 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply antialiased selection:bg-blue-600 selection:text-white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', 'Cairo', sans-serif;
+  }
+}
+
+/* ==========================================================================
+   STANDARDIZED A4 PDF PRINT STYLESHEET OVERRIDES (كتيب المفاهيم الرسمي)
+   ========================================================================== */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm 12mm 12mm;
+}
+
+@media screen {
+  .booklet-print-container {
+    display: none !important;
+  }
+}
+
+@media print {
+  /* 1. Global Reset & Print Canvas */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10.5pt !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. Hide all non-printable application chrome */
+  nav, aside, header, footer, button, input, select, textarea,
+  .no-print, .selection-popup-menu, .annotations-drawer,
+  .floating-toolbar, .app-sidebar, .app-navbar, .modal-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 3. Printable Booklet Container */
+  .booklet-print-container {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    direction: rtl !important;
+    text-align: right !important;
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;
+  }
+
+  /* 4. Individual Standardized A4 Page */
+  .booklet-print-page {
+    display: block !important;
+    width: 100% !important;
+    min-height: 265mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 2px solid #065f46 !important; /* Ministry Emerald */
+    border-radius: 8px !important;
+    padding: 12mm 12mm 14mm 12mm !important;
+    margin-bottom: 15mm !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .booklet-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 5. Watermark Background */
+  .print-watermark {
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    pointer-events: none !important;
+    opacity: 0.045 !important;
+    transform: rotate(-30deg) !important;
+    z-index: 0 !important;
+    text-align: center !important;
+    font-size: 26pt !important;
+    font-weight: 800 !important;
+    color: #064e3b !important;
+    line-height: 1.6 !important;
+  }
+
+  .watermark-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4mm !important;
+  }
+
+  /* 6. Ministry Header */
+  .print-header-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    border-bottom: 2px solid #064e3b !important;
+    padding-bottom: 4mm !important;
+    margin-bottom: 4mm !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  .print-gov-title {
+    font-size: 9.5pt !important;
+    font-weight: bold !important;
+    color: #064e3b !important;
+  }
+
+  .print-sub-gov-title {
+    font-size: 8pt !important;
+    color: #64748b !important;
+    margin-top: 1mm !important;
+  }
+
+  .print-main-title {
+    font-size: 13pt !important;
+    font-weight: 900 !important;
+    color: #022c22 !important;
+    margin: 1.5mm 0 1mm 0 !important;
+  }
+
+  .print-branch-title {
+    font-size: 8.5pt !important;
+    font-weight: bold !important;
+    color: #047857 !important;
+  }
+
+  .print-page-badge {
+    border: 1.5px solid #064e3b !important;
+    background: #f0fdf4 !important;
+    border-radius: 6px !important;
+    padding: 1.5mm 3.5mm !important;
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .badge-label {
+    font-size: 6.5pt !important;
+    color: #064e3b !important;
+    font-weight: bold !important;
+  }
+
+  .badge-num {
+    font-size: 13pt !important;
+    font-weight: 900 !important;
+    color: #064e3b !important;
+    font-family: monospace !important;
+  }
+
+  .print-code-tag {
+    font-size: 7.5pt !important;
+    color: #64748b !important;
+    text-align: center !important;
+    font-family: monospace !important;
+    margin-top: 1mm !important;
+  }
+
+  /* 7. Student Seating Info Bar */
+  .print-student-info-bar {
+    display: grid !important;
+    grid-template-columns: 2fr 1fr 2fr 1fr !important;
+    gap: 3mm !important;
+    background: #f8fafc !important;
+    border: 1px dashed #94a3b8 !important;
+    border-radius: 4px !important;
+    padding: 2mm 3mm !important;
+    font-size: 8pt !important;
+    margin-bottom: 4mm !important;
+    color: #1e293b !important;
+  }
+
+  /* 8. Sections & Layout Blocks */
+  .print-section-item {
+    margin-bottom: 4.5mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-section-heading {
+    font-size: 10.5pt !important;
+    font-weight: bold !important;
+    color: #0f172a !important;
+    border-right: 3.5px solid #059669 !important;
+    padding-right: 2.5mm !important;
+    margin-bottom: 2mm !important;
+  }
+
+  /* 9. KaTeX Formula Boxes */
+  .print-formula-box {
+    background-color: #f0fdf4 !important;
+    border: 1.5px solid #10b981 !important;
+    border-radius: 6px !important;
+    padding: 2.5mm 3mm !important;
+    margin: 2.5mm 0 !important;
+    text-align: center !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-math-latex, .katex, .katex * {
+    color: #064e3b !important;
+    font-size: 1.05em !important;
+  }
+
+  .print-section-desc {
+    font-size: 8.5pt !important;
+    color: #334155 !important;
+    line-height: 1.45 !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  .print-bullet-list {
+    font-size: 8pt !important;
+    color: #1e293b !important;
+    padding-right: 4mm !important;
+    margin: 1.5mm 0 !important;
+    line-height: 1.4 !important;
+    list-style-type: square !important;
+  }
+
+  .print-rule-box {
+    background-color: #fffbeb !important;
+    border: 1px solid #fcd34d !important;
+    border-right: 3.5px solid #d97706 !important;
+    border-radius: 6px !important;
+    padding: 2mm 3mm !important;
+    margin: 2.5mm 0 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-rule-title {
+    font-size: 8pt !important;
+    font-weight: bold !important;
+    color: #92400e !important;
+  }
+
+  .print-rule-formula {
+    text-align: center !important;
+    margin: 1.5mm 0 !important;
+  }
+
+  .print-rule-notes {
+    font-size: 7.5pt !important;
+    color: #78350f !important;
+  }
+
+  .print-exam-alert {
+    background-color: #fff1f2 !important;
+    border: 1px solid #fecdd3 !important;
+    border-right: 3.5px solid #e11d48 !important;
+    border-radius: 6px !important;
+    padding: 2mm 3mm !important;
+    font-size: 8pt !important;
+    color: #9f1239 !important;
+    margin: 2mm 0 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .alert-badge {
+    font-weight: bold !important;
+    margin-left: 2mm !important;
+  }
+
+  /* 10. Printed Sticky Notes Callouts */
+  .print-sticky-notes-container {
+    margin-top: 3.5mm !important;
+    padding-top: 2.5mm !important;
+    border-top: 1px dashed #cbd5e1 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-sticky-notes-header {
+    font-size: 8pt !important;
+    font-weight: bold !important;
+    color: #b45309 !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .print-sticky-notes-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 2.5mm !important;
+  }
+
+  .print-sticky-card {
+    background-color: #fefce8 !important;
+    border: 1px solid #fde047 !important;
+    border-right: 3px solid #eab308 !important;
+    border-radius: 4px !important;
+    padding: 2mm 3mm !important;
+    font-size: 7.5pt !important;
+    color: #713f12 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .note-card-tag {
+    font-weight: bold !important;
+    color: #854d0e !important;
+    margin-bottom: 1mm !important;
+  }
+
+  .note-card-content {
+    line-height: 1.35 !important;
+  }
+
+  /* 11. Printed Highlights */
+  .print-highlights-container {
+    margin-top: 3mm !important;
+    font-size: 8pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-highlights-header {
+    font-weight: bold !important;
+    color: #047857 !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  .print-highlights-list {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 2mm !important;
+  }
+
+  .print-hl-pill {
+    padding: 1mm 2.5mm !important;
+    border-radius: 4px !important;
+    font-size: 7.5pt !important;
+    font-family: monospace !important;
+  }
+
+  .hl-yellow { background-color: #fef08a !important; border: 1px solid #fde047 !important; color: #713f12 !important; }
+  .hl-emerald { background-color: #a7f3d0 !important; border: 1px solid #6ee7b7 !important; color: #064e3b !important; }
+  .hl-cyan { background-color: #bae6fd !important; border: 1px solid #7dd3fc !important; color: #075985 !important; }
+  .hl-pink { background-color: #fbcfe8 !important; border: 1px solid #f472b6 !important; color: #831843 !important; }
+  .hl-amber { background-color: #fed7aa !important; border: 1px solid #fb923c !important; color: #7c2d12 !important; }
+
+  /* 12. Standardized A4 Footer */
+  .print-page-footer {
+    position: absolute !important;
+    bottom: 4mm !important;
+    left: 12mm !important;
+    right: 12mm !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px solid #cbd5e1 !important;
+    padding-top: 1.5mm !important;
+    font-size: 7pt !important;
+    color: #64748b !important;
+  }
+
+  .barcode-sim {
+    font-family: monospace !important;
+    letter-spacing: 2px !important;
+    font-weight: bold !important;
+    color: #334155 !important;
+  }
+
+  /* 13. Page-break utilities */
+  .avoid-page-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+

@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Math Copilot - ثانوية عامة علمي رياضة",
+  "short_name": "MathCopilot",
+  "description": "منظومة المخطط الذكي للثانوية العامة علمي رياضة - المدرس والمساعد الذكي والامتحانات والمكتبة الرقمية",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
