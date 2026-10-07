@@ -65,6 +65,7 @@ import { OfflineSyncModal } from './components/OfflineSyncModal';
 import { ResilientMediaModal } from './components/ResilientMediaModal';
 import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
 import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
+import { nativeDesktop } from './services/nativeDesktopBridge';
 
 export default function App() {
   // Navigation: Active Service Only (No clutter)
@@ -299,80 +300,101 @@ export default function App() {
 
   // Global Windows Desktop Keyboard Shortcuts (Ctrl+P, Ctrl+F, Esc)
   React.useEffect(() => {
+    const triggerEscape = () => {
+      setIsDocumentExportModalOpen(false);
+      setIsDiagnosticsModalOpen(false);
+      setActiveVideoModal(null);
+      setIsBreakModalOpen(false);
+      setIsAuthModalOpen(false);
+      setIsOfflineSyncModalOpen(false);
+      window.dispatchEvent(new CustomEvent('close-all-modals'));
+    };
+
+    const triggerPrint = () => {
+      if (activeService === 'concepts_booklet') {
+        window.dispatchEvent(new CustomEvent('open-booklet-print-modal'));
+      } else {
+        const docMapping: Record<string, string> = {
+          planner: 'doc_schedule_a4',
+          curriculum: 'doc_calc_a4',
+          skip_exam: 'doc_calc_a4',
+          monthly_exams: 'doc_exam_essentials_a4',
+          heatmap: 'doc_exam_essentials_a4',
+          essay_grader: 'doc_essay_rubric_a4',
+          grapher: 'doc_calc_a4',
+          library: 'doc_calc_a4',
+          coding_buddy: 'doc_coding_a4',
+          whatsapp_hub: 'doc_schedule_a4',
+          tutor: 'doc_exam_essentials_a4',
+          progress: 'doc_schedule_a4',
+          admin: 'doc_exam_essentials_a4'
+        };
+        setSelectedExportDocId(docMapping[activeService] || 'doc_calc_a4');
+        setIsDocumentExportModalOpen(true);
+      }
+    };
+
+    const triggerSearch = () => {
+      const searchInput = document.querySelector<HTMLInputElement>(
+        '#contextual-search-input, [data-search-input="true"]'
+      );
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      } else {
+        setActiveService('library');
+        setTimeout(() => {
+          const input = document.querySelector<HTMLInputElement>(
+            '#contextual-search-input, [data-search-input="true"]'
+          );
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 150);
+      }
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // 1. Esc: Closes any open modal dialog
       if (e.key === 'Escape') {
-        setIsDocumentExportModalOpen(false);
-        setIsDiagnosticsModalOpen(false);
-        setActiveVideoModal(null);
-        setIsBreakModalOpen(false);
-        setIsAuthModalOpen(false);
-        setIsOfflineSyncModalOpen(false);
-        window.dispatchEvent(new CustomEvent('close-all-modals'));
+        triggerEscape();
         return;
       }
 
       // 2. Ctrl + P: Triggers BookletPrintModal or direct PDF export for current view
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
-        if (activeService === 'concepts_booklet') {
-          window.dispatchEvent(new CustomEvent('open-booklet-print-modal'));
-        } else {
-          const docMapping: Record<string, string> = {
-            planner: 'doc_schedule_a4',
-            curriculum: 'doc_calc_a4',
-            skip_exam: 'doc_calc_a4',
-            monthly_exams: 'doc_exam_essentials_a4',
-            heatmap: 'doc_exam_essentials_a4',
-            essay_grader: 'doc_essay_rubric_a4',
-            grapher: 'doc_calc_a4',
-            library: 'doc_calc_a4',
-            coding_buddy: 'doc_coding_a4',
-            whatsapp_hub: 'doc_schedule_a4',
-            tutor: 'doc_exam_essentials_a4',
-            progress: 'doc_schedule_a4',
-            admin: 'doc_exam_essentials_a4'
-          };
-          setSelectedExportDocId(docMapping[activeService] || 'doc_calc_a4');
-          setIsDocumentExportModalOpen(true);
-        }
+        triggerPrint();
         return;
       }
 
       // 3. Ctrl + F: Focuses contextual search bar across subject libraries
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        const searchInput = document.querySelector<HTMLInputElement>(
-          '#contextual-search-input, [data-search-input="true"]'
-        );
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.select();
-        } else {
-          setActiveService('library');
-          setTimeout(() => {
-            const input = document.querySelector<HTMLInputElement>(
-              '#contextual-search-input, [data-search-input="true"]'
-            );
-            if (input) {
-              input.focus();
-              input.select();
-            }
-          }, 150);
-        }
+        triggerSearch();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
+
+    // Bind native desktop IPC events when running inside Electron
+    const unsubPrint = nativeDesktop.onShortcut('print', triggerPrint);
+    const unsubSearch = nativeDesktop.onShortcut('search', triggerSearch);
+    const unsubEscape = nativeDesktop.onShortcut('escape', triggerEscape);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      unsubPrint();
+      unsubSearch();
+      unsubEscape();
     };
   }, [activeService]);
 
   const pendingScoutCount = scoutedResources.filter((r) => r.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans" dir="rtl">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans" dir="rtl">
       {/* Top Navbar */}
       <Navbar
         user={user}

@@ -1,0 +1,45 @@
+appId: "com.thanaweya.mathcopilot"
+productName: "Thanaweya Amma Math Copilot"
+copyright: "Copyright © 2026-2027 Thanaweya Amma Educational Systems"
+
+directories:
+  output: "release"
+  buildResources: "build"
+
+files:
+  - "dist/**/*"
+  - "dist-electron/**/*"
+  - "package.json"
+
+extraMetadata:
+  main: "dist-electron/main.cjs"
+
+win:
+  target:
+    - target: "nsis"
+      arch:
+        - "x64"
+    - target: "portable"
+      arch:
+        - "x64"
+  icon: "build/icon.svg"
+  artifactName: "${productName}-Setup-${version}.${ext}"
+  legalTrademarks: "Thanaweya Amma Math Copilot"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "Thanaweya Amma Math Copilot"
+  uninstallDisplayName: "Thanaweya Amma Math Copilot (إلغاء التثبيت)"
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  perMachine: false
+
+portable:
+  artifactName: "${productName}-Portable-${version}.${ext}"
+
+compression: "maximum"
+asar: true

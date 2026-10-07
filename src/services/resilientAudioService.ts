@@ -151,7 +151,17 @@ export class ResilientAudioService {
   private listeners: Set<(isSpeaking: boolean) => void> = new Set();
 
   constructor() {
-    // Lazy initialized
+    // Warm up speech synthesis voices on Windows clients
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      } catch (e) {
+        console.warn('SpeechSynthesis voice init warning:', e);
+      }
+    }
   }
 
   private getAudioContext(): AudioContext | null {
@@ -198,8 +208,10 @@ export class ResilientAudioService {
     }
   ): boolean {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      // Offline / fallback tone synthesis
+      this.playAttentionChime().catch(() => {});
       if (options?.onError) {
-        options.onError(new Error('SpeechSynthesis is not supported in this environment'));
+        options.onError(new Error('SpeechSynthesis is not supported in this environment - Fallback tones active'));
       }
       return false;
     }

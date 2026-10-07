@@ -88,3 +88,59 @@ export interface MonthlyPacingTimeline {
     }>;
   }>;
 }
+
+/**
+ * WhatsApp Web Message Metadata extracted by the automated polling engine
+ */
+export interface WhatsAppMessageMetadata {
+  id: string;
+  senderPhone: string;
+  senderName: string;
+  chatGroupName: string;
+  timestamp: string;
+  rawMessageText: string;
+  detectedUrl: string;
+  detectedUrlType: 'pdf_direct' | 'google_drive' | 'youtube' | 'vimeo' | 'telegram_doc' | 'onedrive' | 'media_cdn';
+  mimeType: string;
+  fileSizeBytes: number;
+  fileSizeHuman: string;
+  extractedTitle: string;
+  confidenceScore: number; // 0 to 1
+  matchedTeacherId: string;
+  matchedTeacherName: string;
+  matchedSubjectCode: SubjectCodeType;
+  matchedSubjectNameAr: string;
+  detectedFileType: DownloadedFileType;
+  suggestedFileName: string;
+  suggestedLocalPath: string;
+  curriculumUnitName?: string;
+  targetMonthKey: string;
+  targetMonthName: string;
+}
+
+/**
+ * Queue Item for detected educational materials awaiting import
+ */
+export interface QueuedImportItem {
+  id: string;
+  message: WhatsAppMessageMetadata;
+  status: 'pending' | 'imported' | 'dismissed';
+  detectedAt: string;
+  importedAt?: string;
+  autoImported: boolean;
+  importedMaterialId?: string;
+}
+
+/**
+ * Automated WhatsApp Polling Settings
+ */
+export interface WhatsAppPollingConfig {
+  isEnabled: boolean;
+  intervalSeconds: number; // e.g. 30, 60, 180
+  autoImportWithoutPrompt: boolean;
+  notifyOnDetection: boolean;
+  filterOnlyKnownTeachers: boolean;
+  lastPolledAt?: string;
+  totalPolledCount: number;
+  totalDetectedCount: number;
+}

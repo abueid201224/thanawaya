@@ -326,6 +326,12 @@ export class DocumentExportService {
             printFrame.contentWindow?.print();
           } catch {
             window.print();
+          } finally {
+            setTimeout(() => {
+              if (printFrame && printFrame.parentNode) {
+                printFrame.parentNode.removeChild(printFrame);
+              }
+            }, 2500);
           }
         }, 350);
       } else {

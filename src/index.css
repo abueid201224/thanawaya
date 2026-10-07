@@ -2,8 +2,21 @@
 
 @layer base {
   body {
-    @apply antialiased selection:bg-blue-600 selection:text-white;
+    @apply antialiased selection:bg-blue-600 selection:text-white bg-slate-50 text-slate-900;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', 'Cairo', sans-serif;
+  }
+
+  /* Native Windows Light Theme KaTeX and math formula surfaces */
+  .katex {
+    color: #0f172a !important;
+  }
+  .katex-display {
+    padding: 0.5rem 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 }
 
@@ -392,6 +405,8 @@
   .katex,
   .katex-display,
   .katex-html,
+  .concept-card,
+  .formula-box,
   .print-formula-box,
   .print-rule-box,
   .print-exam-alert,
