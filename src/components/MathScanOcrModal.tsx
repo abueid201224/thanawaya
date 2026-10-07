@@ -187,6 +187,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
   // OCR Processing State
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [ocrProgressStep, setOcrProgressStep] = useState<string>('');
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [revealedStepIndex, setRevealedStepIndex] = useState(0);
 
@@ -303,8 +304,9 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
   // Select Preset Exam Problem
   const handleSelectPreset = (preset: ExamPreset) => {
     setCapturedImage(preset.imageUrl);
+    setOcrError(null);
     setIsProcessingOcr(true);
-    setOcrProgressStep('جاري قراءة الرموز والمعادلات الرياضية...');
+    setOcrProgressStep('جاري قراءة الرموز والمعادلات الرياضية من النموذج الوزاري...');
 
     setTimeout(() => {
       setExtractedLatex(preset.latex);
@@ -315,12 +317,13 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
       setFinalVerification(preset.finalAnswerVerification);
       setRevealedStepIndex(0);
       setIsProcessingOcr(false);
-    }, 900);
+    }, 700);
   };
 
-  // Real or Intelligent Fallback OCR Analysis Pipeline
+  // Real OCR Analysis Pipeline (Strict Honest Error Handling)
   const runOcrAnalysis = async (imageSrc: string) => {
     setIsProcessingOcr(true);
+    setOcrError(null);
     setOcrProgressStep('1/3 مسح تراكيب الصورة واكتشاف الأنماط الرياضية...');
 
     try {
@@ -358,29 +361,24 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
           setIsProcessingOcr(false);
         }, 500);
         return;
+      } else {
+        const errorJson = await response.json().catch(() => ({}));
+        const message = errorJson.error || `فشل خادم المعالجة بالرمز (${response.status})`;
+        setOcrError(message);
+        setIsProcessingOcr(false);
+        return;
       }
-    } catch (err) {
-      console.warn('Backend OCR call failed, falling back to local math engine:', err);
-    }
-
-    // Local High-Fidelity Math Fallback if Server API is unavailable
-    setTimeout(() => {
-      setOcrProgressStep('3/3 اعتماد الصيغة القياسية...');
-      const fallbackPreset = PRESET_EXAM_PROBLEMS[0];
-      setExtractedLatex(fallbackPreset.latex);
-      setPlainText(fallbackPreset.plainText);
-      setIdentifiedTopic(fallbackPreset.branch);
-      setConfidence(98.2);
-      setScaffoldingSteps(fallbackPreset.scaffoldingSteps);
-      setFinalVerification(fallbackPreset.finalAnswerVerification);
-      setRevealedStepIndex(0);
+    } catch (err: any) {
+      console.warn('Backend OCR call failed:', err);
+      setOcrError('تعذر الاتصال بخادم الذكاء الاصطناعي (127.0.0.1). يرجى التأكد من تشغيل التطبيق أو مراجعة إعدادات المفتاح.');
       setIsProcessingOcr(false);
-    }, 1200);
+    }
   };
 
   // Retake / Reset Image
   const handleRetake = () => {
     setCapturedImage(null);
+    setOcrError(null);
     if (activeMode === 'camera') {
       startCamera();
     }
@@ -691,11 +689,18 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                     </div>
                   )}
 
-                  {/* Success Confidence Badge */}
-                  {!isProcessingOcr && (
+                  {/* Status Badge */}
+                  {!isProcessingOcr && !ocrError && (
                     <div className="absolute top-3 right-3 bg-slate-950/90 border border-emerald-500/40 rounded-xl px-3 py-1 text-[11px] text-emerald-400 flex items-center gap-1.5 shadow-lg backdrop-blur-md">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       <span>تم الاستخراج بنجاح (دقة {confidence}%)</span>
+                    </div>
+                  )}
+
+                  {!isProcessingOcr && ocrError && (
+                    <div className="absolute top-3 right-3 bg-slate-950/95 border border-rose-500/60 rounded-xl px-3 py-1 text-[11px] text-rose-300 flex items-center gap-1.5 shadow-lg backdrop-blur-md">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                      <span>تعذر استخراج المعادلة</span>
                     </div>
                   )}
                 </div>
@@ -703,7 +708,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                 {/* Retake & Info bar */}
                 <div className="flex items-center justify-between text-xs px-1">
                   <span className="text-slate-400">
-                    التصنيف: <strong className="text-white">{identifiedTopic}</strong>
+                    التصنيف: <strong className="text-white">{ocrError ? 'غير محدد' : identifiedTopic}</strong>
                   </span>
                   <button
                     onClick={handleRetake}
@@ -714,30 +719,58 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                   </button>
                 </div>
 
-                {/* Extracted KaTeX Box */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-800/40 space-y-2 shadow-lg">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>الصيغة الرياضية المستخرجة (KaTeX):</span>
-                    </span>
-                    <button
-                      onClick={handleCopyLatex}
-                      className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer font-medium"
-                    >
-                      {copySuccess ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copySuccess ? 'تم النسخ' : 'نسخ كود LaTeX'}</span>
-                    </button>
+                {/* Extracted KaTeX Box or Error State */}
+                {ocrError ? (
+                  <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3 shadow-lg">
+                    <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>تنبيه من محرك الذكاء الاصطناعي:</span>
+                    </div>
+                    <p className="text-xs text-rose-200 leading-relaxed font-sans">
+                      {ocrError}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        onClick={() => runOcrAnalysis(capturedImage!)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>إعادة المحاولة</span>
+                      </button>
+                      <button
+                        onClick={handleRetake}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Camera className="w-3 h-3" />
+                        <span>التقاط صورة أخرى</span>
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-800/40 space-y-2 shadow-lg">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>الصيغة الرياضية المستخرجة (KaTeX):</span>
+                      </span>
+                      <button
+                        onClick={handleCopyLatex}
+                        className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer font-medium"
+                      >
+                        {copySuccess ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{copySuccess ? 'تم النسخ' : 'نسخ كود LaTeX'}</span>
+                      </button>
+                    </div>
 
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center overflow-x-auto min-h-[55px] flex items-center justify-center">
-                    <MathRenderer latex={extractedLatex} block={true} className="text-lg text-cyan-300 font-bold" />
+                    <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center overflow-x-auto min-h-[55px] flex items-center justify-center">
+                      <MathRenderer latex={extractedLatex} block={true} className="text-lg text-cyan-300 font-bold" />
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      📝 <strong>الوصف باللغة العربية:</strong> {plainText}
+                    </p>
                   </div>
-
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    📝 <strong>الوصف باللغة العربية:</strong> {plainText}
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* Right Column: Pedagogical Scaffolding Steps */}
@@ -844,9 +877,9 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
             {/* BUTTON 1: Insert Formula directly into the Chat Input Box */}
             <button
               onClick={handleInsertIntoChatInput}
-              disabled={isProcessingOcr}
+              disabled={isProcessingOcr || Boolean(ocrError)}
               title="إدراج المعادلة في حقل الكتابة لمراجعتها وإضافة أسئلتك قبل الإرسال"
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
               <span>إدراج في مربع الشات</span>
@@ -855,9 +888,9 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
             {/* BUTTON 2: Insert & Send Directly for Immediate AI Scaffolding */}
             <button
               onClick={handleSendDirectlyToChat}
-              disabled={isProcessingOcr}
+              disabled={isProcessingOcr || Boolean(ocrError)}
               title="إرسال المسألة ومناقشتها فوراً مع المعلم الذكي"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-600/30 active:scale-95 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-600/30 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
               <span>إدراج وإرسال للمناقشة</span>

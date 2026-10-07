@@ -65,6 +65,7 @@ import { OfflineSyncModal } from './components/OfflineSyncModal';
 import { ResilientMediaModal } from './components/ResilientMediaModal';
 import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
 import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
+import { SecureApiKeyModal } from './components/SecureApiKeyModal';
 import { nativeDesktop } from './services/nativeDesktopBridge';
 
 export default function App() {
@@ -91,6 +92,7 @@ export default function App() {
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
   const [isDiagnosticsModalOpen, setIsDiagnosticsModalOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isDocumentExportModalOpen, setIsDocumentExportModalOpen] = useState(false);
   const [selectedExportDocId, setSelectedExportDocId] = useState<string | undefined>(undefined);
   const [activeVideoModal, setActiveVideoModal] = useState<MultimediaLibraryItem | null>(null);
@@ -303,6 +305,7 @@ export default function App() {
     const triggerEscape = () => {
       setIsDocumentExportModalOpen(false);
       setIsDiagnosticsModalOpen(false);
+      setIsApiKeyModalOpen(false);
       setActiveVideoModal(null);
       setIsBreakModalOpen(false);
       setIsAuthModalOpen(false);
@@ -402,6 +405,7 @@ export default function App() {
         onSwitchRole={handleSwitchRole}
         activeTab={activeService}
         onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
+        onOpenApiKeySettings={() => setIsApiKeyModalOpen(true)}
         onOpenDocumentExport={() => {
           setSelectedExportDocId(undefined);
           setIsDocumentExportModalOpen(true);
@@ -573,6 +577,12 @@ export default function App() {
         isOpen={isDiagnosticsModalOpen}
         onClose={() => setIsDiagnosticsModalOpen(false)}
         onOpenDocumentExport={() => setIsDocumentExportModalOpen(true)}
+      />
+
+      {/* Secure Gemini API Key Settings Modal (Windows DPAPI) */}
+      <SecureApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
       />
 
       {/* Break Motivation Modal */}

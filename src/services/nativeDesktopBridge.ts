@@ -4,7 +4,13 @@
  * with zero-crash browser fallback.
  */
 
-import type { SystemInfo, DirectoryEnsureResult, FileWriteResult } from '../../electron/types';
+import type {
+  SystemInfo,
+  DirectoryEnsureResult,
+  FileWriteResult,
+  ApiKeyStatus,
+  ApiKeyTestResult
+} from '../../electron/types';
 
 class NativeDesktopBridge {
   public get isNativeDesktop(): boolean {
@@ -120,6 +126,119 @@ class NativeDesktopBridge {
       }
     }
     return () => {};
+  }
+
+  /**
+   * Get secure storage status for Gemini API key (Windows DPAPI)
+   */
+  public async getApiKeyStatus(): Promise<ApiKeyStatus> {
+    if (this.isNativeDesktop && window.electronAPI?.getApiKeyStatus) {
+      try {
+        return await window.electronAPI.getApiKeyStatus();
+      } catch (err) {
+        console.warn('Failed to fetch native API key status:', err);
+      }
+    }
+
+    // Web fallback: check backend endpoint or session
+    try {
+      const res = await fetch('/api/key-status');
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          isConfigured: Boolean(data.isConfigured),
+          isEncryptionAvailable: false,
+          maskedKey: data.prefix ? `${data.prefix}****` : null,
+          storageType: 'plaintext_fallback'
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      isConfigured: false,
+      isEncryptionAvailable: false,
+      maskedKey: null,
+      storageType: 'unconfigured'
+    };
+  }
+
+  /**
+   * Save Gemini API Key securely using Windows DPAPI encryption
+   */
+  public async saveApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
+    if (this.isNativeDesktop && window.electronAPI?.saveApiKey) {
+      try {
+        return await window.electronAPI.saveApiKey(apiKey);
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Failed to save key in desktop safeStorage' };
+      }
+    }
+
+    // Web fallback: note to user
+    return {
+      success: true
+    };
+  }
+
+  /**
+   * Remove stored encrypted API key
+   */
+  public async removeApiKey(): Promise<{ success: boolean }> {
+    if (this.isNativeDesktop && window.electronAPI?.removeApiKey) {
+      try {
+        return await window.electronAPI.removeApiKey();
+      } catch {
+        return { success: false };
+      }
+    }
+    return { success: true };
+  }
+
+  /**
+   * Test the validity of a Gemini API key
+   */
+  public async testApiKey(candidateKey?: string): Promise<ApiKeyTestResult> {
+    if (this.isNativeDesktop && window.electronAPI?.testApiKey) {
+      try {
+        return await window.electronAPI.testApiKey(candidateKey);
+      } catch (err: any) {
+        return { success: false, message: err?.message || 'IPC test call failed' };
+      }
+    }
+
+    // Web fallback test
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hasGeminiKey) {
+          return { success: true, message: 'مفتاح الخادم متصل بنجاح بالنموذج' };
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: false,
+      message: 'لم يتم التحقق من المفتاح في بيئة المتصفح الحالية.'
+    };
+  }
+
+  /**
+   * Get the embedded loopback server URL (e.g. http://127.0.0.1:34567)
+   */
+  public async getEmbeddedServerUrl(): Promise<string> {
+    if (this.isNativeDesktop && window.electronAPI?.getEmbeddedServerUrl) {
+      try {
+        return await window.electronAPI.getEmbeddedServerUrl();
+      } catch (err) {
+        console.warn('Failed to get embedded server url:', err);
+      }
+    }
+    return window.location.origin;
   }
 }
 

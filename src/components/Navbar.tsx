@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Activity,
   Printer,
-  Download
+  Download,
+  KeyRound
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
 
@@ -23,6 +24,7 @@ interface NavbarProps {
   activeTab: string;
   onOpenDiagnostics?: () => void;
   onOpenDocumentExport?: () => void;
+  onOpenApiKeySettings?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,7 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchRole,
   activeTab,
   onOpenDiagnostics,
-  onOpenDocumentExport
+  onOpenDocumentExport,
+  onOpenApiKeySettings
 }) => {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4 shadow-xs">
@@ -82,6 +85,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Activity className="w-3.5 h-3.5 text-cyan-600" />
             <span>فحص الخدمات 🛠️</span>
+          </button>
+        )}
+
+        {/* Secure Gemini API Key Settings Button */}
+        {onOpenApiKeySettings && (
+          <button
+            onClick={onOpenApiKeySettings}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            title="إدارة وتشفير مفتاح الذكاء الاصطناعي (Gemini API) بحماية Windows DPAPI"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+            <span>أمان المفتاح 🔑</span>
           </button>
         )}
 

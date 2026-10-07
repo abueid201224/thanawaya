@@ -53,6 +53,21 @@ var api = {
     return () => {
       import_electron.ipcRenderer.removeListener(channel, listener);
     };
+  },
+  getApiKeyStatus: () => {
+    return import_electron.ipcRenderer.invoke("secrets:get-api-key-status");
+  },
+  saveApiKey: (apiKey) => {
+    return import_electron.ipcRenderer.invoke("secrets:save-api-key", apiKey);
+  },
+  removeApiKey: () => {
+    return import_electron.ipcRenderer.invoke("secrets:remove-api-key");
+  },
+  testApiKey: (apiKey) => {
+    return import_electron.ipcRenderer.invoke("secrets:test-api-key", apiKey);
+  },
+  getEmbeddedServerUrl: () => {
+    return import_electron.ipcRenderer.invoke("app:get-embedded-server-url");
   }
 };
 import_electron.contextBridge.exposeInMainWorld("electronAPI", api);

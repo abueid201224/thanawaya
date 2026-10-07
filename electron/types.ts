@@ -53,6 +53,19 @@ export interface DesktopPrintOptions {
   color?: boolean;
 }
 
+export interface ApiKeyStatus {
+  isConfigured: boolean;
+  isEncryptionAvailable: boolean;
+  maskedKey: string | null;
+  storageType: 'dpapi' | 'plaintext_fallback' | 'unconfigured';
+}
+
+export interface ApiKeyTestResult {
+  success: boolean;
+  message: string;
+  latencyMs?: number;
+}
+
 export interface ElectronAPIContract {
   getSystemInfo: () => Promise<SystemInfo>;
   ensureDirectory: (dirPath: string) => Promise<DirectoryEnsureResult>;
@@ -68,5 +81,10 @@ export interface ElectronAPIContract {
   maximizeWindow: () => void;
   closeWindow: () => void;
   onShortcut?: (shortcut: 'print' | 'search' | 'escape', callback: () => void) => () => void;
+  getApiKeyStatus: () => Promise<ApiKeyStatus>;
+  saveApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
+  removeApiKey: () => Promise<{ success: boolean }>;
+  testApiKey: (apiKey?: string) => Promise<ApiKeyTestResult>;
+  getEmbeddedServerUrl: () => Promise<string>;
   isElectron: boolean;
 }

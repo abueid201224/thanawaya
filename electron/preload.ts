@@ -85,6 +85,26 @@ const api: ElectronAPIContract = {
     return () => {
       ipcRenderer.removeListener(channel, listener);
     };
+  },
+
+  getApiKeyStatus: () => {
+    return ipcRenderer.invoke('secrets:get-api-key-status');
+  },
+
+  saveApiKey: (apiKey: string) => {
+    return ipcRenderer.invoke('secrets:save-api-key', apiKey);
+  },
+
+  removeApiKey: () => {
+    return ipcRenderer.invoke('secrets:remove-api-key');
+  },
+
+  testApiKey: (apiKey?: string) => {
+    return ipcRenderer.invoke('secrets:test-api-key', apiKey);
+  },
+
+  getEmbeddedServerUrl: () => {
+    return ipcRenderer.invoke('app:get-embedded-server-url');
   }
 };
 
