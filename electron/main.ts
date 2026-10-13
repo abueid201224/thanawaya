@@ -561,8 +561,9 @@ function setupIpcHandlers(): void {
         }
       });
 
+      const testModel = process.env.GEMINI_MODEL || (embeddedServer ? embeddedServer.getModel() : 'gemini-flash-latest');
       const response: any = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: testModel,
         contents: 'Say OK',
         config: {
           maxOutputTokens: 5,
@@ -584,9 +585,10 @@ function setupIpcHandlers(): void {
         message: 'لم يرجع النموذج أي رد، يرجى مراجعة صلاحيات المفتاح.'
       };
     } catch (err: any) {
+      console.error('[API Key Test Error]:', err);
       return {
         success: false,
-        message: `فشل التحقق من المفتاح: ${err?.message || 'خطأ في الاتصال بالنموذج'}`
+        message: 'فشل التحقق من المفتاح. يرجى مراجعة صحة المفتاح أو الاتصال بالإنترنت.'
       };
     }
   });

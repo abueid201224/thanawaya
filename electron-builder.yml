@@ -9,8 +9,10 @@ directories:
 files:
   - "dist/**/*"
   - "dist-electron/**/*"
-  - "server/**/*"
   - "package.json"
+  - "!**/*.map"
+  - "!node_modules"
+  - "!node_modules/**/*"
 
 extraMetadata:
   main: "dist-electron/main.cjs"

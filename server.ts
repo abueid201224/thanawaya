@@ -4,7 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createExpressApp } from './server/app';
+import { createExpressApp } from './server/app.ts';
 
 dotenv.config();
 

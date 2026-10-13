@@ -1,6 +1,6 @@
 {
   "name": "Thanaweya Amma Math Copilot - ثانوية عامة علمي رياضة",
-  "description": "Enterprise-grade .NET 8 WPF Desktop Application & Architectural Suite for Egyptian High School Students (Thanaweya Amma - Math Section) with AI Tutors, RAG, Supabase, and Media Hub.",
+  "description": "تطبيق تعليمي متكامل لطلاب الثانوية العامة (شعبة علمي رياضة) يشتمل على مساعد ذكي للرياضيات والبرمجة، مسح ضوئي للمعادلات الرياضية، كتيب المفاهيم، ومتابعة دراسية دقيقة.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

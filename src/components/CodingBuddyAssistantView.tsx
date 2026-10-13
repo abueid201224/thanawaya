@@ -27,7 +27,8 @@ import {
   Gamepad2,
   Globe,
   Share2,
-  Printer
+  Printer,
+  AlertTriangle
 } from 'lucide-react';
 import {
   CODING_TRICKS,
@@ -78,6 +79,7 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiResponse, setAiResponse] = useState<any>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Materials Filter & Search
   const [materialsSearch, setMaterialsSearch] = useState<string>('');
@@ -158,51 +160,33 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
     setSandboxOutput('');
   };
 
-  // Ask AI Coding Buddy
+  // Ask AI Coding Buddy (Strict Honest Error Handling)
   const handleAskAiBuddy = async (customPrompt?: string) => {
     const question = customPrompt || aiPrompt;
     if (!question.trim()) return;
 
     setIsAiLoading(true);
     setAiResponse(null);
+    setAiError(null);
 
     try {
       const res = await fetch('/api/coding-buddy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userPrompt: question, language: 'python', mode: 'trick' })
+        body: JSON.stringify({ userPrompt: question, language: 'python' })
       });
 
-      if (!res.ok) throw new Error('Failed to fetch from assistant');
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        setAiError(errorJson.error || 'تعذر الاتصال بالمساعد البرمجي حالياً. يرجى التحقق من مفتاح الذكاء الاصطناعي في الإعدادات.');
+        return;
+      }
       const data = await res.json();
       setAiResponse(data);
       setXp((prev) => prev + 10); // Reward for asking
     } catch (err) {
-      console.warn('AI buddy fetch error:', err);
-      // Gentle offline fallback
-      setAiResponse({
-        title: 'تريكة سحرية في تكرار النصوص والتحكم ⚡',
-        funExplanation: 'عايز تعمل خط فاصل فخم في الكونسول أو تكرر كلمة في ثانية؟ بايثون عندها أسهل تريكة في العالم!',
-        analogy: 'تخيلها زي آلة الطباعة السريعة: بدل ما تدوس على الحرف ٥٠ مرة، اضرب الحرف في ٥٠ وخلاص!',
-        codeSnippet: `# طباعة خط فاصل فخم بضرب الرموز:
-line = "=" * 35
-title = "🚀 نادي المبرمجين الأذكياء 🚀"
-
-print(line)
-print(title.center(35))
-print(line)`,
-        codeLanguage: 'python',
-        outputSimulation: `===================================
-   🚀 نادي المبرمجين الأذكياء 🚀   
-===================================`,
-        goldenTrick: 'دالة .center(35) بتوسط الكلام في نص السطر أوتوماتيكياً!',
-        mathConnection: 'مرتبطة بمفهوم التماثل والمسافات الهندسية.',
-        recommendedResource: {
-          title: 'شرح نصوص بايثون - موقع هرمش (Harmash)',
-          url: 'https://harmash.com',
-          type: 'عربي مجاني'
-        }
-      });
+      console.error('AI buddy fetch error:', err);
+      setAiError('تعذر الاتصال بخادم الذكاء الاصطناعي المحلي (127.0.0.1). يرجى التأكد من تشغيل التطبيق وإعداد المفتاح.');
     } finally {
       setIsAiLoading(false);
     }
@@ -766,6 +750,14 @@ print(line)`,
               <span>{isAiLoading ? 'جارٍ التفكير...' : 'اسأل الكوتش'}</span>
             </button>
           </div>
+
+          {/* AI Error Alert */}
+          {aiError && (
+            <div className="p-4 bg-rose-950/40 border border-rose-600/50 rounded-2xl text-rose-200 text-xs flex items-center gap-2.5 animate-in fade-in duration-200 shadow-lg">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="leading-relaxed">{aiError}</span>
+            </div>
+          )}
 
           {/* AI Response Card */}
           {aiResponse && (

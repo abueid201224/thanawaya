@@ -363,7 +363,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         return;
       } else {
         const errorJson = await response.json().catch(() => ({}));
-        const message = errorJson.error || `فشل خادم المعالجة بالرمز (${response.status})`;
+        const message = errorJson.error || 'تعذر معالجة الصورة الرياضية. يرجى التأكد من وضوح المسألة ومراجعة إعدادات المفتاح.';
         setOcrError(message);
         setIsProcessingOcr(false);
         return;

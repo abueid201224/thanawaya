@@ -10,6 +10,7 @@ export interface AppServerOptions {
   initialApiKey?: string;
   preferredPort?: number;
   host?: string;
+  loopbackOnly?: boolean;
 }
 
 export interface RunningEmbeddedServer {
@@ -20,6 +21,8 @@ export interface RunningEmbeddedServer {
   url: string;
   setApiKey: (key: string) => void;
   getApiKeyStatus: () => { isConfigured: boolean };
+  getModel: (overrideModel?: string) => string;
+  setModel: (model: string) => void;
   close: () => Promise<void>;
 }
 
@@ -58,6 +61,7 @@ export async function findAvailablePort(startPort: number = 34567, host: string 
 export function createExpressApp(options: {
   staticDir?: string;
   initialApiKey?: string;
+  loopbackOnly?: boolean;
 }) {
   const app = express();
   let currentApiKey = options.initialApiKey || process.env.GEMINI_API_KEY || '';
@@ -75,6 +79,17 @@ export function createExpressApp(options: {
     });
   }
 
+  let userConfiguredModel: string = '';
+
+  function getModel(overrideModel?: string): string {
+    const candidate = overrideModel?.trim() || userConfiguredModel.trim() || (process.env.GEMINI_MODEL || '').trim();
+    return candidate || 'gemini-flash-latest';
+  }
+
+  function setModel(modelName: string) {
+    userConfiguredModel = (modelName || '').trim();
+  }
+
   function setApiKey(newKey: string) {
     currentApiKey = (newKey || '').trim();
     aiClient = currentApiKey ? createAiInstance(currentApiKey) : null;
@@ -86,17 +101,19 @@ export function createExpressApp(options: {
     };
   }
 
-  // Security Headers for loopback protection
+  // Security Headers: enforce loopback restriction when embedded on desktop
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // Only accept connections from loopback 127.0.0.1 or localhost
-    const remote = req.socket.remoteAddress || '';
-    if (remote !== '127.0.0.1' && remote !== '::1' && remote !== '::ffff:127.0.0.1') {
-      res.status(403).json({ error: 'Access denied: loopback interface only' });
-      return;
+    if (options.loopbackOnly) {
+      // Only accept connections from loopback 127.0.0.1 or localhost
+      const remote = req.socket.remoteAddress || '';
+      if (remote !== '127.0.0.1' && remote !== '::1' && remote !== '::ffff:127.0.0.1') {
+        res.status(403).json({ error: 'Access denied: loopback interface only' });
+        return;
+      }
+      res.setHeader('X-Frame-Options', 'DENY');
     }
 
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
     next();
   });
@@ -170,8 +187,9 @@ export function createExpressApp(options: {
   "finalAnswerVerification": "الناتج النهائي للتحقق فقط بصيغة LaTeX"
 }`;
 
+      const targetModel = getModel(req.body.model);
       const response: any = await aiClient.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: targetModel,
         contents: {
           parts: [
             imagePart,
@@ -196,9 +214,9 @@ export function createExpressApp(options: {
       const parsed = JSON.parse(responseText);
       return res.json(parsed);
     } catch (err: any) {
-      console.error('OCR Math error:', err);
+      console.error('[OCR Error Log]:', err);
       return res.status(500).json({
-        error: `فشلت معالجة الصورة الرياضية: ${err?.message || 'خطأ غير معروف في خادم الذكاء الاصطناعي'}`,
+        error: 'تعذر التعرف على المسألة الرياضية من الصورة حالياً. يرجى التأكد من وضوح المعادلة والإضاءة ومراجعة اتصال الخدمة.',
         code: 'OCR_PROCESSING_FAILED'
       });
     }
@@ -207,7 +225,7 @@ export function createExpressApp(options: {
   // 4. AI Coding Coach Endpoint
   app.post('/api/coding-buddy', async (req: Request, res: Response) => {
     try {
-      const { userPrompt, language = 'python' } = req.body;
+      const { userPrompt, language = 'python', model } = req.body;
       if (!userPrompt) {
         return res.status(400).json({ error: 'userPrompt is required', code: 'PROMPT_REQUIRED' });
       }
@@ -237,8 +255,9 @@ export function createExpressApp(options: {
   }
 }`;
 
+      const targetModel = getModel(model);
       const response: any = await aiClient.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: targetModel,
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -251,15 +270,36 @@ export function createExpressApp(options: {
       const parsed = JSON.parse(responseText);
       return res.json(parsed);
     } catch (err: any) {
-      console.error('Coding buddy error:', err);
+      console.error('[Coding Coach Error Log]:', err);
       return res.status(500).json({
-        error: `فشل مساعد البرمجة: ${err?.message || 'تعذر الاتصال بالنموذج'}`,
+        error: 'حدث تعثر أثناء إعداد الشرح البرمجي. يرجى التحقق من اتصال الإنترنت ومفتاح الخدمة والمحاولة لاحقاً.',
         code: 'CODING_BUDDY_FAILED'
       });
     }
   });
 
-  // 5. Static file serving (Production dist directory)
+  // 5. Model Configuration Endpoint
+  app.get('/api/model-config', (_req: Request, res: Response) => {
+    res.json({
+      currentModel: getModel(),
+      defaultModel: 'gemini-flash-latest',
+      userConfiguredModel: userConfiguredModel || null,
+      envModel: process.env.GEMINI_MODEL || null
+    });
+  });
+
+  app.post('/api/model-config', (req: Request, res: Response) => {
+    const { model } = req.body;
+    if (typeof model === 'string') {
+      setModel(model);
+    }
+    res.json({
+      success: true,
+      currentModel: getModel()
+    });
+  });
+
+  // 6. Static file serving (Production dist directory)
   if (options.staticDir && fs.existsSync(options.staticDir)) {
     app.use(express.static(options.staticDir));
 
@@ -277,7 +317,9 @@ export function createExpressApp(options: {
   return {
     app,
     setApiKey,
-    getApiKeyStatus
+    getApiKeyStatus,
+    getModel,
+    setModel
   };
 }
 
@@ -290,9 +332,10 @@ export async function startEmbeddedServer(options: AppServerOptions = {}): Promi
   const preferredPort = options.preferredPort || 34567;
   const boundPort = await findAvailablePort(preferredPort, host);
 
-  const { app, setApiKey, getApiKeyStatus } = createExpressApp({
+  const { app, setApiKey, getApiKeyStatus, getModel, setModel } = createExpressApp({
     staticDir: options.staticDir,
-    initialApiKey: options.initialApiKey
+    initialApiKey: options.initialApiKey,
+    loopbackOnly: options.loopbackOnly ?? true
   });
 
   const server = await new Promise<any>((resolve, reject) => {
@@ -314,6 +357,8 @@ export async function startEmbeddedServer(options: AppServerOptions = {}): Promi
     url,
     setApiKey,
     getApiKeyStatus,
+    getModel,
+    setModel,
     close: async () => {
       return new Promise<void>((resolve, reject) => {
         server.close((err: any) => {
