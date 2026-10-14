@@ -1,0 +1,11 @@
+.dockerignore
+.gcloudignore
+.git
+.gitignore
+node_modules/
+release/
+build/
+dist-electron/
+.DS_Store
+*.log
+ThanaweyaAmma/
