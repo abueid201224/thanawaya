@@ -11,9 +11,9 @@ import {
 
 export const initialUser: UserProfile = {
   id: 'usr_ahmed_2027',
-  name: 'أحمد محمود القاضي',
+  name: 'أحمد محمود القاضي (المشرف العام)',
   email: 'ahmed.hamada.gana.2012@gmail.com',
-  role: 'student',
+  role: 'admin',
   seatingNumber: '٤٨١٩٢٠',
   school: 'مدرسة المتفوقين الثانوية - القاهرة',
   governorate: 'القاهرة',

@@ -56,8 +56,14 @@ export interface DesktopPrintOptions {
 export interface ApiKeyStatus {
   isConfigured: boolean;
   isEncryptionAvailable: boolean;
-  maskedKey: string | null;
-  storageType: 'dpapi' | 'plaintext_fallback' | 'unconfigured';
+  storageType: 'dpapi' | 'unconfigured';
+}
+
+export interface ModelConfig {
+  currentModel: string;
+  defaultModel: string;
+  userConfiguredModel: string | null;
+  envModel: string | null;
 }
 
 export interface ApiKeyTestResult {
@@ -80,11 +86,13 @@ export interface ElectronAPIContract {
   minimizeWindow: () => void;
   maximizeWindow: () => void;
   closeWindow: () => void;
-  onShortcut?: (shortcut: 'print' | 'search' | 'escape', callback: () => void) => () => void;
+  onShortcut?: (shortcut: 'print' | 'search' | 'escape' | 'settings', callback: () => void) => () => void;
   getApiKeyStatus: () => Promise<ApiKeyStatus>;
   saveApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
   removeApiKey: () => Promise<{ success: boolean }>;
   testApiKey: (apiKey?: string) => Promise<ApiKeyTestResult>;
+  getModelConfig: () => Promise<ModelConfig>;
+  saveModelConfig: (model: string) => Promise<{ success: boolean; currentModel: string; error?: string }>;
   getEmbeddedServerUrl: () => Promise<string>;
   isElectron: boolean;
 }

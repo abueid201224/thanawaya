@@ -9,7 +9,8 @@ import type {
   DirectoryEnsureResult,
   FileWriteResult,
   ApiKeyStatus,
-  ApiKeyTestResult
+  ApiKeyTestResult,
+  ModelConfig
 } from '../../electron/types';
 
 class NativeDesktopBridge {
@@ -117,7 +118,7 @@ class NativeDesktopBridge {
   /**
    * Listen to native desktop shortcut events forwarded by Electron Main process
    */
-  public onShortcut(shortcut: 'print' | 'search' | 'escape', callback: () => void): () => void {
+  public onShortcut(shortcut: 'print' | 'search' | 'escape' | 'settings', callback: () => void): () => void {
     if (this.isNativeDesktop && window.electronAPI?.onShortcut) {
       try {
         return window.electronAPI.onShortcut(shortcut, callback);
@@ -148,8 +149,7 @@ class NativeDesktopBridge {
         return {
           isConfigured: Boolean(data.isConfigured),
           isEncryptionAvailable: false,
-          maskedKey: data.prefix ? `${data.prefix}****` : null,
-          storageType: 'plaintext_fallback'
+          storageType: 'unconfigured'
         };
       }
     } catch {
@@ -159,9 +159,67 @@ class NativeDesktopBridge {
     return {
       isConfigured: false,
       isEncryptionAvailable: false,
-      maskedKey: null,
       storageType: 'unconfigured'
     };
+  }
+
+  /**
+   * Get effective model configuration and priority chain
+   */
+  public async getModelConfig(): Promise<ModelConfig> {
+    if (this.isNativeDesktop && window.electronAPI?.getModelConfig) {
+      try {
+        return await window.electronAPI.getModelConfig();
+      } catch (err) {
+        console.warn('Failed to fetch native model config:', err);
+      }
+    }
+
+    // Web fallback: call backend API
+    try {
+      const res = await fetch('/api/model-config');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      currentModel: 'gemini-flash-latest',
+      defaultModel: 'gemini-flash-latest',
+      userConfiguredModel: null,
+      envModel: null
+    };
+  }
+
+  /**
+   * Save user configured model
+   */
+  public async saveModelConfig(model: string): Promise<{ success: boolean; currentModel: string; error?: string }> {
+    if (this.isNativeDesktop && window.electronAPI?.saveModelConfig) {
+      try {
+        return await window.electronAPI.saveModelConfig(model);
+      } catch (err: any) {
+        return { success: false, currentModel: 'gemini-flash-latest', error: err?.message };
+      }
+    }
+
+    // Web fallback: call backend API
+    try {
+      const res = await fetch('/api/model-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, currentModel: data.currentModel };
+      }
+      return { success: false, currentModel: data.currentModel || 'gemini-flash-latest', error: data.error };
+    } catch (err: any) {
+      return { success: false, currentModel: 'gemini-flash-latest', error: err?.message };
+    }
   }
 
   /**

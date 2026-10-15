@@ -6,7 +6,8 @@ import {
   dialog,
   nativeTheme,
   globalShortcut,
-  safeStorage
+  safeStorage,
+  session
 } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -37,19 +38,94 @@ let boundServerUrl: string = '';
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
 
+/**
+ * Appends diagnostic messages to main.log inside userData directory
+ */
+function logToMainLog(message: string, error?: any): void {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'main.log');
+    const timestamp = new Date().toISOString();
+    const formatted = `[${timestamp}] ${message} ${error ? (error.stack || error.message || error) : ''}\n`;
+    fs.appendFileSync(logPath, formatted, 'utf-8');
+  } catch (e) {
+    console.error('Failed to append to main.log:', e);
+  }
+}
+
 // Secure Key Storage File inside UserData
 function getSecureKeysFilePath(): string {
   return path.join(app.getPath('userData'), 'secure_keys.dat');
 }
 
+// User Settings File (Non-secret preferences like selected model)
+function getUserSettingsFilePath(): string {
+  return path.join(app.getPath('userData'), 'user_settings.json');
+}
+
+export const GEMINI_MODEL_REGEX = /^[A-Za-z0-9._-]{3,80}$/;
+
+interface UserDesktopSettings {
+  geminiModel?: string;
+}
+
+function loadUserSettings(): UserDesktopSettings {
+  try {
+    const settingsFile = getUserSettingsFilePath();
+    if (fs.existsSync(settingsFile)) {
+      const data = fs.readFileSync(settingsFile, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch {
+    // fallback
+  }
+  return {};
+}
+
+function saveUserSettings(settings: UserDesktopSettings): boolean {
+  try {
+    const settingsFile = getUserSettingsFilePath();
+    const parentDir = path.dirname(settingsFile);
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Failed to save user settings:', err);
+    return false;
+  }
+}
+
 /**
- * Loads the encrypted Gemini API key using Electron SafeStorage (Windows DPAPI)
+ * Returns effective Gemini model using exact priority:
+ * 1. User desktop setting
+ * 2. GEMINI_MODEL environment variable
+ * 3. Default: gemini-flash-latest
+ */
+function getEffectiveModel(overrideModel?: string): string {
+  if (overrideModel && GEMINI_MODEL_REGEX.test(overrideModel.trim())) {
+    return overrideModel.trim();
+  }
+  const settings = loadUserSettings();
+  if (settings.geminiModel && GEMINI_MODEL_REGEX.test(settings.geminiModel.trim())) {
+    return settings.geminiModel.trim();
+  }
+  const envModel = (process.env.GEMINI_MODEL || '').trim();
+  if (envModel && GEMINI_MODEL_REGEX.test(envModel)) {
+    return envModel;
+  }
+  return 'gemini-flash-latest';
+}
+
+/**
+ * Loads the encrypted Gemini API key strictly using Electron SafeStorage (Windows DPAPI)
+ * Never stores or reads plaintext fallback.
  */
 function loadDecryptedApiKey(): string {
   try {
     const keyFile = getSecureKeysFilePath();
     if (!fs.existsSync(keyFile)) {
-      return process.env.GEMINI_API_KEY || '';
+      return (process.env.GEMINI_API_KEY || '').trim();
     }
 
     const encryptedBuffer = fs.readFileSync(keyFile);
@@ -60,8 +136,8 @@ function loadDecryptedApiKey(): string {
     if (safeStorage.isEncryptionAvailable()) {
       return safeStorage.decryptString(encryptedBuffer);
     } else {
-      // Fallback for environments where DPAPI is unavailable
-      return encryptedBuffer.toString('utf-8');
+      // Invariant: If DPAPI is unavailable, do NOT load plaintext
+      return (process.env.GEMINI_API_KEY || '').trim();
     }
   } catch (err) {
     console.warn('Failed to decrypt stored API key:', err);
@@ -70,7 +146,8 @@ function loadDecryptedApiKey(): string {
 }
 
 /**
- * Stores the API key encrypted with Windows DPAPI
+ * Stores the API key encrypted with Windows DPAPI.
+ * Never stores plaintext: if DPAPI is unavailable, fails securely.
  */
 function storeEncryptedApiKey(rawKey: string): boolean {
   try {
@@ -88,13 +165,12 @@ function storeEncryptedApiKey(rawKey: string): boolean {
       return true;
     }
 
-    let bufferToWrite: Buffer;
-    if (safeStorage.isEncryptionAvailable()) {
-      bufferToWrite = safeStorage.encryptString(trimmed);
-    } else {
-      bufferToWrite = Buffer.from(trimmed, 'utf-8');
+    if (!safeStorage.isEncryptionAvailable()) {
+      // DPAPI unavailable -> reject storing plaintext
+      return false;
     }
 
+    const bufferToWrite = safeStorage.encryptString(trimmed);
     fs.writeFileSync(keyFile, bufferToWrite);
     return true;
   } catch (err) {
@@ -160,6 +236,8 @@ function createWindow(): void {
   nativeTheme.themeSource = 'light';
 
   const candidateIcons = [
+    path.join(__dirname, '../installer-assets/icon.ico'),
+    path.join(__dirname, '../installer-assets/icon.png'),
     path.join(__dirname, '../build/icon.ico'),
     path.join(__dirname, '../build/icon.png'),
     path.join(__dirname, '../build/icon.svg'),
@@ -187,6 +265,13 @@ function createWindow(): void {
       spellcheck: true
     }
   });
+
+  if (app.isPackaged) {
+    mainWindow.removeMenu();
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow?.webContents.closeDevTools();
+    });
+  }
 
   // Graceful show on ready
   mainWindow.once('ready-to-show', () => {
@@ -227,10 +312,24 @@ function createWindow(): void {
     }
   });
 
+  // Report load failure to user with Arabic dialog and log to main.log
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    const errMsg = `فشل تحميل الواجهة [${errorCode}]: ${errorDescription} (${validatedURL})`;
+    logToMainLog(errMsg);
+    dialog.showErrorBox(
+      'خطأ في تشغيل التطبيق',
+      'تعذر تحميل واجهة التطبيق بنجاح. يرجى إعادة تشغيل التطبيق أو التواصل مع الدعم الفني.'
+    );
+  });
+
   // Load URL from embedded loopback server
-  const targetUrl = boundServerUrl || (isDev ? devServerUrl : 'http://127.0.0.1:34567');
+  const targetUrl = boundServerUrl || (isDev ? devServerUrl : 'http://127.0.0.1:47321');
   mainWindow.loadURL(targetUrl).catch((err) => {
-    console.error('Failed to load embedded server URL:', targetUrl, err);
+    logToMainLog(`Failed to load target URL: ${targetUrl}`, err);
+    dialog.showErrorBox(
+      'تعذر الاتصال بالخادم المحلي',
+      'حدث خطأ أثناء الاتصال بالخادم المحلي (127.0.0.1:47321). يرجى إعادة تشغيل التطبيق.'
+    );
     // Fallback to local dist if available
     const indexPath = path.join(__dirname, '../dist/index.html');
     if (fs.existsSync(indexPath)) {
@@ -257,6 +356,12 @@ function setupShortcuts(): void {
       if (input.control && input.key.toLowerCase() === 'f' && input.type === 'keyDown') {
         event.preventDefault();
         mainWindow?.webContents.send('desktop:shortcut-search');
+      }
+
+      // Ctrl+, -> Settings & Gemini Key Management
+      if (input.control && input.key === ',' && input.type === 'keyDown') {
+        event.preventDefault();
+        mainWindow?.webContents.send('desktop:shortcut-settings');
       }
 
       // Esc -> Close Active Modals
@@ -491,25 +596,28 @@ function setupIpcHandlers(): void {
     });
   });
 
-  // 11. Secrets Management (SafeStorage Windows DPAPI)
+  // 11. Secrets Management (Strict SafeStorage Windows DPAPI)
   ipcMain.handle('secrets:get-api-key-status', (event): ApiKeyStatus => {
     if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
     const key = loadDecryptedApiKey();
     const isConfigured = Boolean(key && key.trim().length > 6);
-    const masked = isConfigured
-      ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}`
-      : null;
 
     return {
       isConfigured,
       isEncryptionAvailable: safeStorage.isEncryptionAvailable(),
-      maskedKey: masked,
-      storageType: safeStorage.isEncryptionAvailable() ? 'dpapi' : 'plaintext_fallback'
+      storageType: safeStorage.isEncryptionAvailable() ? 'dpapi' : 'unconfigured'
     };
   });
 
   ipcMain.handle('secrets:save-api-key', async (event, apiKey: string): Promise<{ success: boolean; error?: string }> => {
     if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!safeStorage.isEncryptionAvailable()) {
+      return {
+        success: false,
+        error: 'التشفير العتادي الآمن (Windows DPAPI) غير متاح على هذا النظام، ولن يتم حفظ المفتاح بنص صريح لحماية أمان بياناتك.'
+      };
+    }
+
     try {
       const cleanKey = (apiKey || '').trim();
       const success = storeEncryptedApiKey(cleanKey);
@@ -519,9 +627,9 @@ function setupIpcHandlers(): void {
         }
         return { success: true };
       }
-      return { success: false, error: 'Failed to write encrypted key to storage' };
+      return { success: false, error: 'فشل حفظ المفتاح المشفر في وحدة التخزين الآمنة' };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Key storage failed' };
+      return { success: false, error: err?.message || 'فشلت عملية حفظ المفتاح' };
     }
   });
 
@@ -561,7 +669,7 @@ function setupIpcHandlers(): void {
         }
       });
 
-      const testModel = process.env.GEMINI_MODEL || (embeddedServer ? embeddedServer.getModel() : 'gemini-flash-latest');
+      const testModel = getEffectiveModel();
       const response: any = await ai.models.generateContent({
         model: testModel,
         contents: 'Say OK',
@@ -576,7 +684,7 @@ function setupIpcHandlers(): void {
       if (text) {
         return {
           success: true,
-          message: `تم التحقق بنجاح من مفتاح Gemini API! زمن الاستجابة: ${latencyMs}ms`,
+          message: `تم التحقق بنجاح من مفتاح Gemini API! زمن الاستجابة: ${latencyMs}ms (${testModel})`,
           latencyMs
         };
       }
@@ -593,7 +701,50 @@ function setupIpcHandlers(): void {
     }
   });
 
-  // 12. Window Controls
+  // 12. Model Configuration IPC Handlers
+  ipcMain.handle('model:get-config', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    const settings = loadUserSettings();
+    return {
+      currentModel: getEffectiveModel(),
+      defaultModel: 'gemini-flash-latest',
+      userConfiguredModel: settings.geminiModel || null,
+      envModel: process.env.GEMINI_MODEL || null
+    };
+  });
+
+  ipcMain.handle('model:set-config', async (event, modelName: string) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    const clean = (modelName || '').trim();
+    const settings = loadUserSettings();
+
+    if (!clean) {
+      delete settings.geminiModel;
+      saveUserSettings(settings);
+      const effective = getEffectiveModel();
+      if (embeddedServer) {
+        embeddedServer.setModel(effective);
+      }
+      return { success: true, currentModel: effective };
+    }
+
+    if (!GEMINI_MODEL_REGEX.test(clean)) {
+      return {
+        success: false,
+        error: 'اسم النموذج غير صالح. يجب أن يتكون من 3 إلى 80 حرفاً ويحتوي فقط على أحرف وأرقام ونقاط وشرطات (^[A-Za-z0-9._-]{3,80}$).',
+        currentModel: getEffectiveModel()
+      };
+    }
+
+    settings.geminiModel = clean;
+    saveUserSettings(settings);
+    if (embeddedServer) {
+      embeddedServer.setModel(clean);
+    }
+    return { success: true, currentModel: clean };
+  });
+
+  // 13. Window Controls
   ipcMain.on('window:minimize', (event) => {
     if (!isTrustedSender(event)) return;
     mainWindow?.minimize();
@@ -612,63 +763,89 @@ function setupIpcHandlers(): void {
   });
 }
 
-// App lifecycle
-app.whenReady().then(async () => {
-  setupIpcHandlers();
-
-  // Initialize embedded Express server on neutral loopback 127.0.0.1
-  const initialKey = loadDecryptedApiKey();
-  const staticDir = path.join(__dirname, '../dist');
-
-  try {
-    embeddedServer = await startEmbeddedServer({
-      preferredPort: 34567,
-      staticDir,
-      initialApiKey: initialKey,
-      host: '127.0.0.1'
-    });
-    boundServerUrl = embeddedServer.url;
-    console.log(`[Embedded Server] Running on loopback: ${boundServerUrl}`);
-  } catch (err) {
-    console.warn('Failed to start embedded server, falling back to static loadFile:', err);
-    boundServerUrl = '';
-  }
-
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+if (gotTheLock) {
+  // Second instance focus
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  // App lifecycle
+  app.whenReady().then(async () => {
+    // 1. Enforce Content-Security-Policy on embedded loopback origin
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https:; frame-src https:; object-src 'none'; base-uri 'self';"
+          ]
+        }
+      });
+    });
 
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-  if (embeddedServer) {
-    embeddedServer.close().catch(() => {});
-  }
-});
+    // 2. Strict Permissions Request Handler: only allow media (camera/mic for OCR/Audio)
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+      if (permission === 'media') {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    });
 
-// Second instance focus
-app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-});
+    setupIpcHandlers();
+
+    // Initialize embedded Express server on neutral loopback 127.0.0.1
+    const initialKey = loadDecryptedApiKey();
+    const staticDir = path.join(__dirname, '../dist');
+
+    try {
+      embeddedServer = await startEmbeddedServer({
+        preferredPort: 47321,
+        staticDir,
+        initialApiKey: initialKey,
+        host: '127.0.0.1'
+      });
+      embeddedServer.setModel(getEffectiveModel());
+      boundServerUrl = embeddedServer.url;
+      console.log(`[Embedded Server] Running on loopback: ${boundServerUrl}`);
+    } catch (err) {
+      logToMainLog('Failed to start embedded server on 47321, falling back to static loadFile:', err);
+      boundServerUrl = '';
+    }
+
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    if (embeddedServer) {
+      embeddedServer.close().catch(() => {});
+    }
+  });
+}
 
 // Crash resilience
 process.on('uncaughtException', (error) => {
+  logToMainLog('Unhandled Electron Exception:', error);
   console.error('Unhandled Electron Exception:', error);
 });
 
 process.on('unhandledRejection', (reason) => {
+  logToMainLog('Unhandled Electron Rejection:', reason);
   console.error('Unhandled Electron Rejection:', reason);
 });

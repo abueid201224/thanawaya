@@ -30,7 +30,7 @@ export interface RunningEmbeddedServer {
  * Finds an available TCP port on local loopback (127.0.0.1)
  * Starts from startPort and probes sequentially to avoid collisions.
  */
-export async function findAvailablePort(startPort: number = 34567, host: string = '127.0.0.1'): Promise<number> {
+export async function findAvailablePort(startPort: number = 47321, host: string = '127.0.0.1'): Promise<number> {
   const maxAttempts = 100;
   for (let offset = 0; offset < maxAttempts; offset++) {
     const candidatePort = startPort + offset;
@@ -79,15 +79,28 @@ export function createExpressApp(options: {
     });
   }
 
+  const MODEL_REGEX = /^[A-Za-z0-9._-]{3,80}$/;
   let userConfiguredModel: string = '';
 
   function getModel(overrideModel?: string): string {
-    const candidate = overrideModel?.trim() || userConfiguredModel.trim() || (process.env.GEMINI_MODEL || '').trim();
-    return candidate || 'gemini-flash-latest';
+    if (overrideModel && MODEL_REGEX.test(overrideModel.trim())) {
+      return overrideModel.trim();
+    }
+    if (userConfiguredModel && MODEL_REGEX.test(userConfiguredModel.trim())) {
+      return userConfiguredModel.trim();
+    }
+    const envModel = (process.env.GEMINI_MODEL || '').trim();
+    if (envModel && MODEL_REGEX.test(envModel)) {
+      return envModel;
+    }
+    return 'gemini-flash-latest';
   }
 
   function setModel(modelName: string) {
-    userConfiguredModel = (modelName || '').trim();
+    const trimmed = (modelName || '').trim();
+    if (!trimmed || MODEL_REGEX.test(trimmed)) {
+      userConfiguredModel = trimmed;
+    }
   }
 
   function setApiKey(newKey: string) {
@@ -132,11 +145,10 @@ export function createExpressApp(options: {
     });
   });
 
-  // 2. Key Status endpoint (honest, no plaintext exposure)
+  // 2. Key Status endpoint (honest, no plaintext exposure: never returns raw key or prefix)
   app.get('/api/key-status', (_req: Request, res: Response) => {
     res.json({
-      isConfigured: Boolean(currentApiKey && currentApiKey.length > 5),
-      prefix: currentApiKey ? currentApiKey.substring(0, 4) + '...' : null
+      isConfigured: Boolean(currentApiKey && currentApiKey.length > 5)
     });
   });
 
@@ -290,10 +302,31 @@ export function createExpressApp(options: {
 
   app.post('/api/model-config', (req: Request, res: Response) => {
     const { model } = req.body;
-    if (typeof model === 'string') {
-      setModel(model);
+    if (typeof model !== 'string') {
+      return res.status(400).json({
+        error: 'طلب غير صالح. يجب توفير حقل model كقيمة نصية.',
+        currentModel: getModel()
+      });
     }
-    res.json({
+
+    const clean = model.trim();
+    if (!clean) {
+      setModel('');
+      return res.json({
+        success: true,
+        currentModel: getModel()
+      });
+    }
+
+    if (!MODEL_REGEX.test(clean)) {
+      return res.status(400).json({
+        error: 'اسم النموذج غير صالح. يجب أن يتكون من 3 إلى 80 حرفاً ويحتوي فقط على أحرف وأرقام ونقاط وشرطات (^[A-Za-z0-9._-]{3,80}$).',
+        currentModel: getModel()
+      });
+    }
+
+    setModel(clean);
+    return res.json({
       success: true,
       currentModel: getModel()
     });
@@ -329,7 +362,7 @@ export function createExpressApp(options: {
  */
 export async function startEmbeddedServer(options: AppServerOptions = {}): Promise<RunningEmbeddedServer> {
   const host = options.host || '127.0.0.1';
-  const preferredPort = options.preferredPort || 34567;
+  const preferredPort = options.preferredPort || 47321;
   const boundPort = await findAvailablePort(preferredPort, host);
 
   const { app, setApiKey, getApiKeyStatus, getModel, setModel } = createExpressApp({

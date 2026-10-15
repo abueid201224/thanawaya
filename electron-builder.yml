@@ -17,6 +17,10 @@ files:
 extraMetadata:
   main: "dist-electron/main.cjs"
 
+electronLanguages:
+  - "ar"
+  - "en-US"
+
 win:
   target:
     - target: "nsis"
@@ -25,12 +29,13 @@ win:
     - target: "portable"
       arch:
         - "x64"
-  icon: "build/icon.svg"
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  icon: "installer-assets/icon.ico"
+  artifactName: "ThanaweyaAmmaMathCopilot-Setup-${version}.${ext}"
   legalTrademarks: "Thanaweya Amma Math Copilot"
 
 nsis:
   oneClick: false
+  language: "1025"
   allowToChangeInstallationDirectory: true
   allowElevation: true
   createDesktopShortcut: true
@@ -42,7 +47,7 @@ nsis:
   perMachine: false
 
 portable:
-  artifactName: "${productName}-Portable-${version}.${ext}"
+  artifactName: "ThanaweyaAmmaMathCopilot-Portable-${version}.${ext}"
 
 compression: "maximum"
 asar: true

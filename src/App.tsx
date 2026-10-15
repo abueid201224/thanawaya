@@ -66,7 +66,9 @@ import { ResilientMediaModal } from './components/ResilientMediaModal';
 import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
 import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
 import { SecureApiKeyModal } from './components/SecureApiKeyModal';
+import { SplashLoader } from './components/SplashLoader';
 import { nativeDesktop } from './services/nativeDesktopBridge';
+import { authService } from './services/authService';
 
 export default function App() {
   // Navigation: Active Service Only (No clutter)
@@ -96,6 +98,7 @@ export default function App() {
   const [isDocumentExportModalOpen, setIsDocumentExportModalOpen] = useState(false);
   const [selectedExportDocId, setSelectedExportDocId] = useState<string | undefined>(undefined);
   const [activeVideoModal, setActiveVideoModal] = useState<MultimediaLibraryItem | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   // Handlers
   const handleSwitchRole = (newRole: UserRole) => {
@@ -300,7 +303,40 @@ export default function App() {
     }
   }, []);
 
-  // Global Windows Desktop Keyboard Shortcuts (Ctrl+P, Ctrl+F, Esc)
+  React.useEffect(() => {
+    // Initial Supabase Auth session bootstrap (No screen flicker)
+    authService.getInitialSession().then(({ user: authUser }) => {
+      if (authUser) {
+        setUser(authUser);
+      }
+    }).catch(() => {
+      // offline fallback
+    }).finally(() => {
+      setIsCheckingSession(false);
+    });
+
+    // Subscribe to session transitions
+    const unsubAuth = authService.onAuthStateChange((authUser) => {
+      if (authUser) {
+        setUser(authUser);
+      }
+    });
+
+    return () => {
+      unsubAuth();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    // First run auto-open: if Gemini API key not configured, guide student to settings
+    nativeDesktop.getApiKeyStatus().then((status) => {
+      if (!status.isConfigured) {
+        setIsApiKeyModalOpen(true);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Global Windows Desktop Keyboard Shortcuts (Ctrl+P, Ctrl+F, Ctrl+,, Esc)
   React.useEffect(() => {
     const triggerEscape = () => {
       setIsDocumentExportModalOpen(false);
@@ -358,6 +394,10 @@ export default function App() {
       }
     };
 
+    const triggerSettings = () => {
+      setIsApiKeyModalOpen(true);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // 1. Esc: Closes any open modal dialog
       if (e.key === 'Escape') {
@@ -376,6 +416,13 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         triggerSearch();
+        return;
+      }
+
+      // 4. Ctrl + ,: Opens Gemini API & Model Settings Modal
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        triggerSettings();
       }
     };
 
@@ -385,16 +432,22 @@ export default function App() {
     const unsubPrint = nativeDesktop.onShortcut('print', triggerPrint);
     const unsubSearch = nativeDesktop.onShortcut('search', triggerSearch);
     const unsubEscape = nativeDesktop.onShortcut('escape', triggerEscape);
+    const unsubSettings = nativeDesktop.onShortcut('settings', triggerSettings);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       unsubPrint();
       unsubSearch();
       unsubEscape();
+      unsubSettings();
     };
   }, [activeService]);
 
   const pendingScoutCount = scoutedResources.filter((r) => r.status === 'pending').length;
+
+  if (isCheckingSession) {
+    return <SplashLoader />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans" dir="rtl">

@@ -34,6 +34,21 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: 🔐 Validate Required Secrets for Windows Production Build
+        shell: pwsh
+        run: |
+          $supabaseUrl = "${{ secrets.VITE_SUPABASE_URL }}"
+          $supabaseKey = "${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          if ([string]::IsNullOrWhiteSpace($supabaseUrl) -or [string]::IsNullOrWhiteSpace($supabaseKey)) {
+            Write-Error "::error::فشل التحقق: يجب تعيين أسرار GitHub (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY) لتثبيت مصادقة Supabase بالواجهة."
+            exit 1
+          }
+          if (-not $supabaseUrl.StartsWith("https://")) {
+            Write-Error "::error::فشل التحقق: عنوان VITE_SUPABASE_URL يجب أن يبدأ بـ https://"
+            exit 1
+          }
+          Write-Host "✅ تم التحقق من وجود وصحة أسرار Supabase بنجاح."
+
       - name: 🔍 Type-check & Lint (TypeScript & Electron)
         run: npm run lint
 
@@ -42,16 +57,24 @@ jobs:
 
       - name: 🏗️ Build Frontend & Electron Processes
         run: npm run build:all
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: 🛡️ Verify Build Invariants & Anti-Drift Checks
+        run: node scripts/verify-build.mjs
 
       - name: 📦 Package Windows Installer & Portable Executable
         run: npx electron-builder --win --x64 --config electron-builder.yml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: 📤 Upload Build Artifacts (.exe)
         uses: actions/upload-artifact@v4
         with:
-          name: Thanaweya-Math-Copilot-Windows-x64
+          name: ThanaweyaAmmaMathCopilot-Windows-x64
           path: |
             release/*.exe
             release/*.blockmap

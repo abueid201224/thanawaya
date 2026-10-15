@@ -73,11 +73,12 @@ const api: ElectronAPIContract = {
     ipcRenderer.send('window:close');
   },
 
-  onShortcut: (shortcut: 'print' | 'search' | 'escape', callback: () => void): (() => void) => {
+  onShortcut: (shortcut: 'print' | 'search' | 'escape' | 'settings', callback: () => void): (() => void) => {
     const channelMap = {
       print: 'desktop:shortcut-print',
       search: 'desktop:shortcut-search',
-      escape: 'desktop:shortcut-escape'
+      escape: 'desktop:shortcut-escape',
+      settings: 'desktop:shortcut-settings'
     };
     const channel = channelMap[shortcut];
     const listener = () => callback();
@@ -101,6 +102,14 @@ const api: ElectronAPIContract = {
 
   testApiKey: (apiKey?: string) => {
     return ipcRenderer.invoke('secrets:test-api-key', apiKey);
+  },
+
+  getModelConfig: () => {
+    return ipcRenderer.invoke('model:get-config');
+  },
+
+  saveModelConfig: (model: string) => {
+    return ipcRenderer.invoke('model:set-config', model);
   },
 
   getEmbeddedServerUrl: () => {
