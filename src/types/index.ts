@@ -5,12 +5,14 @@ export interface UserProfile {
   name: string;
   email: string;
   role: UserRole;
-  seatingNumber?: string; // رقم الجلوس
+  fullName?: string;
+  whatsapp?: string;
+  seatingNumber?: string;
   school?: string;
   governorate?: string;
-  targetFaculty?: string; // e.g. كلية الهندسة - جامعة القاهرة
+  targetFaculty?: string;
   dailyStreak: number;
-  disciplineScore: number; // e.g. 94%
+  disciplineScore: number;
   preferredStudyHours: number;
   avatarUrl?: string;
 }

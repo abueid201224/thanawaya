@@ -15,6 +15,7 @@ export interface SignUpStudentData {
   governorate?: string;
   email: string;
   password: string;
+  role?: UserRole;
 }
 
 export interface AuthActionResult {
@@ -359,7 +360,142 @@ class AuthService {
       }
     }
   }
+
+  /**
+   * Update student profile in database
+   */
+  public async updateProfile(userId: string, profileData: Partial<UserProfile>): Promise<{ success: boolean; message: string; user?: UserProfile }> {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { success: false, message: SUPABASE_CONFIG_ERROR_ARABIC };
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        return { success: false, message: '\u0644\u0627 \u064a\u062a\u0645 \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645. \u064a\u0631\u062c\u0649 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.' };
+      }
+
+      const { error } = await supabase
+        .from('student_profiles')
+        .upsert({
+          id: userId,
+          email: profileData.email,
+          full_name: profileData.name || profileData.fullName,
+          phone_whatsapp: profileData.whatsapp ? normalizePhoneDigits(profileData.whatsapp) : null,
+          school_name: profileData.school,
+          governorate: profileData.governorate,
+          seating_number: profileData.seatingNumber,
+          target_faculty: profileData.targetFaculty,
+          daily_streak: profileData.dailyStreak,
+          discipline_score: profileData.disciplineScore,
+          preferred_study_hours: profileData.preferredStudyHours,
+          avatar_url: profileData.avatarUrl,
+          role: profileData.role
+        });
+
+      if (error) {
+        return { success: false, message: translateAuthError(error) };
+      }
+
+      const updatedProfile = await this.fetchStudentProfile(userId, authData.user.email || '');
+      return { success: true, message: '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0628\u0646\u062c\u0627\u062d.', user: updatedProfile };
+    } catch (err: any) {
+      return { success: false, message: translateAuthError(err) };
+    }
+  }
+
+  /**
+   * Change password for authenticated user
+   */
+  public async changePassword(newPassword: string): Promise<{ success: boolean; message: string }> {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { success: false, message: SUPABASE_CONFIG_ERROR_ARABIC };
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        return { success: false, message: translateAuthError(error) };
+      }
+
+      return {
+        success: true,
+        message: '\u062a\u0645 \u062a\u063a\u064a\u064a\u0631 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631. \u064a\u0631\u062c\u0649 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u062d\u062f\u064a\u062b\u0629 \u0641\u064a \u0627\u0644\u0627\u0645\u0644 \u0627\u0644\u0627\u062a\u0635\u0627\u0644.'
+      };
+    } catch (err: any) {
+      return { success: false, message: translateAuthError(err) };
+    }
+  }
+
+  /**
+   * Delete user account and all associated data
+   */
+  public async deleteAccount(userId: string): Promise<{ success: boolean; message: string }> {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { success: false, message: SUPABASE_CONFIG_ERROR_ARABIC };
+    }
+
+    try {
+      const { error: profileError } = await supabase
+        .from('student_profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error('Failed to delete profile:', profileError);
+      }
+
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+
+      if (authError) {
+        return { success: false, message: translateAuthError(authError) };
+      }
+
+      await this.signOut();
+      return {
+        success: true,
+        message: '\u062a\u0645 \u062a\u062e\u0632\u064a\u0641 \u0627\u0644\u062d\u0633\u0627\u0628 \u0628\u0646\u062c\u0627\u062d. \u064a\u0631\u062c\u0649 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649 \u0648\u0627\u0644\u0627\u0633\u062a\u0645\u0627\u0644 \u0645\u0639 \u0647\u0627\u0627 \u0627\u0644\u0639\u0645\u0644.'
+      };
+    } catch (err: any) {
+      return { success: false, message: translateAuthError(err) };
+    }
+  }
+
+  /**
+   * Verify email with OTP token
+   */
+  public async verifyEmail(token: string, type: 'signup' | 'invitation' | 'magiclink' | 'recovery' = 'signup'): Promise<{ success: boolean; message: string }> {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { success: false, message: SUPABASE_CONFIG_ERROR_ARABIC };
+    }
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type
+      });
+
+      if (error) {
+        return { success: false, message: translateAuthError(error) };
+      }
+
+      return {
+        success: true,
+        message: '\u062a\u0645 \u062a\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0628\u0631\u064a\u062f\u0643 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a. \u064a\u0631\u062c\u0649 \u062a\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0644\u0644\u0627\u0633\u062a\u0645\u0627\u0644 \u0627\u0644\u0627\u0644.'
+      };
+    } catch (err: any) {
+      return { success: false, message: translateAuthError(err) };
+    }
+  }
 }
 
 export const authService = new AuthService();
 export default authService;
+
