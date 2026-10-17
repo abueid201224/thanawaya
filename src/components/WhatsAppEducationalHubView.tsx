@@ -786,30 +786,60 @@ export const WhatsAppEducationalHubView: React.FC<WhatsAppEducationalHubViewProp
                     )}
                   </div>
 
-                  {/* Actions: WhatsApp Chat & Homework Delivery & Simulate */}
+                  {/* Actions: WhatsApp Web Chat & Homework Delivery with Copy Fallback */}
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <div className="grid grid-cols-2 gap-2">
-                      <a
-                        href={chatUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
-                        title="محادثة واتساب مباشرة مع المدرس"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>محادثة واتساب</span>
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <a
+                          href={chatUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => {
+                            if (nativeDesktop.isNativeDesktop) {
+                              e.preventDefault();
+                              nativeDesktop.openExternalUrl(chatUrl).catch(() => window.open(chatUrl, '_blank'));
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
+                          title="فتح WhatsApp Web للتواصل المباشر مع المدرس"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span className="truncate">WhatsApp Web</span>
+                        </a>
+                        <button
+                          onClick={() => handleCopyText(`wa_chat_${teacher.id}`, chatUrl, 'رابط WhatsApp Web')}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shrink-0"
+                          title="نسخ رابط WhatsApp Web في حال تعذر الفتح التلقائي"
+                        >
+                          {copiedId === `wa_chat_${teacher.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
 
-                      <a
-                        href={homeworkUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold transition-all shadow-xs"
-                        title="إرسال شيت الواجب وحل التدريبات للمساعدين"
-                      >
-                        <Send className="w-3.5 h-3.5 text-blue-600" />
-                        <span>إرسال الواجب</span>
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <a
+                          href={homeworkUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => {
+                            if (nativeDesktop.isNativeDesktop) {
+                              e.preventDefault();
+                              nativeDesktop.openExternalUrl(homeworkUrl).catch(() => window.open(homeworkUrl, '_blank'));
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold transition-all shadow-xs"
+                          title="إرسال شيت الواجب وحل التدريبات للمساعدين عبر WhatsApp Web"
+                        >
+                          <Send className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="truncate">إرسال الواجب</span>
+                        </a>
+                        <button
+                          onClick={() => handleCopyText(`wa_hw_${teacher.id}`, homeworkUrl, 'رابط إرسال الواجب')}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shrink-0"
+                          title="نسخ رابط تسليم الواجب في حال تعذر الفتح التلقائي"
+                        >
+                          {copiedId === `wa_hw_${teacher.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">

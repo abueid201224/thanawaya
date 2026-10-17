@@ -85,7 +85,7 @@ if (fs.existsSync(mainTsPath)) {
   assert(mainTsContent.includes('safeStorage.encryptString'), 'electron/main.ts uses safeStorage DPAPI encryption', 'electron/main.ts missing safeStorage.encryptString');
 }
 
-// 7. Verify Phase 3 migration file exists and enforces RLS
+// 7. Verify migration files exist and enforce RLS
 const migrationPath = path.join(rootDir, 'supabase/migrations/001_student_auth.sql');
 assert(fs.existsSync(migrationPath), 'supabase/migrations/001_student_auth.sql exists', '001_student_auth.sql missing');
 if (fs.existsSync(migrationPath)) {
@@ -96,7 +96,70 @@ if (fs.existsSync(migrationPath)) {
   assert(mig.includes('ahmed.hamada.gana.2012@gmail.com'), 'Migration configures master admin account ahmed.hamada.gana.2012@gmail.com', 'Master account missing from migration');
 }
 
-// 8. If app.asar exists (after packaging), verify size < 15MB and 0 node_modules
+// 7b. Verify standalone SQL scripts in database/supabase/
+const dbProfilesPath = path.join(rootDir, 'database/supabase/001_create_student_profiles_table.sql');
+const dbRlsPath = path.join(rootDir, 'database/supabase/002_enable_rls.sql');
+const dbSeedPath = path.join(rootDir, 'database/supabase/003_seed_admin_user.sql');
+assert(fs.existsSync(dbProfilesPath), 'database/supabase/001_create_student_profiles_table.sql exists', '001_create_student_profiles_table.sql missing');
+assert(fs.existsSync(dbRlsPath), 'database/supabase/002_enable_rls.sql exists', '002_enable_rls.sql missing');
+assert(fs.existsSync(dbSeedPath), 'database/supabase/003_seed_admin_user.sql exists', '003_seed_admin_user.sql missing');
+
+// 7c. Verify electron-builder.yml publish configuration
+const builderYmlPath = path.join(rootDir, 'electron-builder.yml');
+if (fs.existsSync(builderYmlPath)) {
+  const builderContent = fs.readFileSync(builderYmlPath, 'utf-8');
+  assert(builderContent.includes('publish:') && builderContent.includes('abueid201224'), 'electron-builder.yml has publish configuration for abueid201224/thanawaya', 'publish configuration missing from electron-builder.yml');
+}
+
+// 8. Verify Phase 4 Services Invariants
+if (fs.existsSync(serverAppPath)) {
+  const serverCode = fs.readFileSync(serverAppPath, 'utf-8');
+  assert(
+    serverCode.includes('MISSING_API_KEY') &&
+    serverCode.includes('EMPTY_OCR_RESPONSE') &&
+    serverCode.includes('RATE_LIMITED') &&
+    serverCode.includes('TIMEOUT'),
+    'server/app.ts defines all fixed OCR error codes (MISSING_API_KEY, EMPTY_OCR_RESPONSE, RATE_LIMITED, TIMEOUT)',
+    'Missing fixed OCR error codes in server/app.ts'
+  );
+  assert(
+    serverCode.includes('offlineSample'),
+    'server/app.ts supports offlineSample fallback for Coding Buddy',
+    'Missing offlineSample in server/app.ts'
+  );
+}
+
+const mathRendererPath = path.join(rootDir, 'src/components/MathRenderer.tsx');
+if (fs.existsSync(mathRendererPath)) {
+  const mathCode = fs.readFileSync(mathRendererPath, 'utf-8');
+  assert(
+    mathCode.includes('نسخ LaTeX'),
+    'MathRenderer.tsx contains text fallback and "نسخ LaTeX" button',
+    'MathRenderer.tsx missing LaTeX copy button fallback'
+  );
+}
+
+const whatsAppServicePath = path.join(rootDir, 'src/services/whatsAppEducationalService.ts');
+if (fs.existsSync(whatsAppServicePath)) {
+  const waCode = fs.readFileSync(whatsAppServicePath, 'utf-8');
+  assert(
+    waCode.includes('web.whatsapp.com/send') && waCode.includes('encodeURIComponent'),
+    'WhatsApp service generates web.whatsapp.com/send with encodeURIComponent',
+    'WhatsApp service missing web.whatsapp.com or encodeURIComponent'
+  );
+}
+
+const reschedulingPath = path.join(rootDir, 'src/services/reschedulingEngine.ts');
+if (fs.existsSync(reschedulingPath)) {
+  const reschedCode = fs.readFileSync(reschedulingPath, 'utf-8');
+  assert(
+    reschedCode.includes('seenSlotKeys') || reschedCode.includes('Deduplication'),
+    'reschedulingEngine enforces deduplication when absorbing backlog',
+    'reschedulingEngine missing deduplication'
+  );
+}
+
+// 9. If app.asar exists (after packaging), verify size < 15MB and 0 node_modules
 const asarPath = path.join(rootDir, 'release/win-unpacked/resources/app.asar');
 if (fs.existsSync(asarPath)) {
   const stats = fs.statSync(asarPath);

@@ -131,3 +131,68 @@ npm run package:win
   - `Ctrl + F`: التركيز المباشر على مربع البحث والاستكشاف.  
   - `Ctrl + ,`: فتح نافذة الإعدادات الآمنة ومفتاح الذكاء الاصطناعي.  
   - `Esc`: إغلاق النوافذ المنبثقة النشطة.
+
+---
+
+## 🌐 7. دليل إعداد قاعدة بيانات Supabase ونشر التحديثات (Release & Publish Guide)
+
+### أ) خطوات إعداد مشروع Supabase وتنفيذ نصوص SQL:
+1. اذهب إلى لوحة تحكم Supabase (`https://supabase.com/dashboard`).
+2. أنشئ مشروعاً جديداً باسم: **`thanaweya-math-copilot`**.
+3. من صفحة **Project Settings -> API**، انسخ:
+   - **Project URL** (يبدأ بـ `https://YOUR-PROJECT-REF.supabase.co`).
+   - **anon public key** (المفتاح العام فقط، واحذر نسخ `service_role`).
+4. الاتصال بقاعدة البيانات عبر أداة `psql` وتنفيذ نصوص الهجرة المنظمة:
+   ```bash
+   # الاتصال بقاعدة البيانات المباشرة
+   psql -h YOUR-PROJECT-REF.supabase.co -p 5432 -U postgres -d postgres
+
+   # تنفيذ نصوص الجداول وسياسات الأمان
+   \i database/supabase/001_create_student_profiles_table.sql
+   \i database/supabase/002_enable_rls.sql
+   \i database/supabase/003_seed_admin_user.sql
+   ```
+5. لتحديث وترقية حساب المشرف العام يدوياً في أي وقت:
+   ```sql
+   UPDATE auth.users 
+   SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+   WHERE email = 'ahmed.hamada.gana.2012@gmail.com';
+   ```
+6. ضع القيم في ملف `.env.production` (أو أسرار مستودع GitHub):
+   ```env
+   VITE_SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+
+### ب) خيارات نشر التحديثات والمثبتات (Auto-Updates & Publishing):
+
+#### الخيار A (مستودع GitHub Releases - الأسهل والموصى به):
+1. تم ضبط `electron-builder.yml` للإيداع المباشر في المستودع:
+   ```yaml
+   publish:
+     - provider: "github"
+       owner: "abueid201224"
+       repo: "thanawaya"
+       token: "${GITHUB_TOKEN}"
+   ```
+2. أنشئ رمز وصول شخصي (GitHub Personal Access Token) بصلاحيات `repo`.
+3. قم بتنفيذ أمر التجميع والنشر التلقائي:
+   ```bash
+   # على أنظمة Linux/macOS
+   GITHUB_TOKEN=your-token-here npm run build:all && electron-builder --win --x64 --config electron-builder.yml --publish always
+
+   # أو على نظام Windows (PowerShell)
+   $env:GITHUB_TOKEN="your-token-here"; npm run build:all; electron-builder --win --x64 --config electron-builder.yml --publish always
+   ```
+
+#### الخيار B (خادم تحديثات ذاتي - Self-Hosted Server):
+في حال الرغبة في استضافة التحديثات على خادمك الخاص (Nginx / Apache):
+1. عدّل إعدادات `publish` في `electron-builder.yml`:
+   ```yaml
+   publish:
+     - provider: "generic"
+       url: "https://updates.yourdomain.com/updates"
+       channel: "stable"
+   ```
+2. ارفع ملفات `.exe` وملف `latest.yml` الناتج في مجلد `release/` إلى خادم التحديثات.
+

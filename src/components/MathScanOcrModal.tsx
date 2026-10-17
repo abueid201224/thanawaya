@@ -320,16 +320,23 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
     }, 700);
   };
 
-  // Real OCR Analysis Pipeline (Strict Honest Error Handling)
+  // Real OCR Analysis Pipeline (Strict Honest Error Handling & >=30s Timeout)
   const runOcrAnalysis = async (imageSrc: string) => {
     setIsProcessingOcr(true);
     setOcrError(null);
+    setExtractedLatex('');
+    setPlainText('');
+    setScaffoldingSteps([]);
     setOcrProgressStep('1/3 مسح تراكيب الصورة واكتشاف الأنماط الرياضية...');
 
     try {
       const timer1 = setTimeout(() => {
         setOcrProgressStep('2/3 فك الترميز الضوئي وتحويل الكسور والتكاملات إلى KaTeX...');
       }, 700);
+
+      // Client-side 35s timeout signal
+      const controller = new AbortController();
+      const clientTimeoutId = setTimeout(() => controller.abort(), 35000);
 
       const response = await fetch('/api/ocr-math', {
         method: 'POST',
@@ -339,10 +346,12 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         body: JSON.stringify({
           imageBase64: imageSrc,
           mimeType: 'image/jpeg'
-        })
+        }),
+        signal: controller.signal
       });
 
       clearTimeout(timer1);
+      clearTimeout(clientTimeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -363,14 +372,20 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         return;
       } else {
         const errorJson = await response.json().catch(() => ({}));
-        const message = errorJson.error || 'تعذر معالجة الصورة الرياضية. يرجى التأكد من وضوح المسألة ومراجعة إعدادات المفتاح.';
+        const message = errorJson.error || 'تعذر استخراج المعادلة الرياضية من الصورة. يرجى التأكد من وضوح المسألة ومراجعة إعدادات المفتاح.';
         setOcrError(message);
+        setExtractedLatex('');
         setIsProcessingOcr(false);
         return;
       }
     } catch (err: any) {
       console.warn('Backend OCR call failed:', err);
-      setOcrError('تعذر الاتصال بخادم الذكاء الاصطناعي (127.0.0.1). يرجى التأكد من تشغيل التطبيق أو مراجعة إعدادات المفتاح.');
+      setExtractedLatex('');
+      if (err?.name === 'AbortError') {
+        setOcrError('استغرقت معالجة الصورة أكثر من 30 ثانية (TIMEOUT). يرجى التأكد من اتصال الإنترنت أو استخدام صورة ذات حجم أصغر.');
+      } else {
+        setOcrError('تعذر الاتصال بخادم الذكاء الاصطناعي (127.0.0.1). يرجى التأكد من تشغيل التطبيق أو مراجعة إعدادات المفتاح (Ctrl+,).');
+      }
       setIsProcessingOcr(false);
     }
   };
@@ -721,7 +736,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
 
                 {/* Extracted KaTeX Box or Error State */}
                 {ocrError ? (
-                  <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3 shadow-lg">
+                  <div role="alert" aria-live="assertive" className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3 shadow-lg">
                     <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
                       <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                       <span>تنبيه من محرك الذكاء الاصطناعي:</span>

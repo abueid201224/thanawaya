@@ -42,8 +42,26 @@ export function calculateDynamicReschedule(
   ];
 
   const rescheduledList: DailyScheduleSlot[] = [...completedSlots];
+  const seenSlotKeys = new Set<string>(completedSlots.map((s) => `${s.subjectCode}_${s.topic}`));
+
+  // Morning rollover schedule buffers for accumulated overflow
+  const nextDaysTimeline = [
+    { start: '08:00 (غداً)', end: '09:15 (غداً)', label: 'صباح الغد' },
+    { start: '09:30 (غداً)', end: '10:45 (غداً)', label: 'صباح الغد' },
+    { start: '08:00 (بعد غد)', end: '09:15 (بعد غد)', label: 'صباح بعد الغد' },
+    { start: '09:30 (بعد غد)', end: '10:45 (بعد غد)', label: 'صباح بعد الغد' }
+  ];
+
+  let rolloverIndex = 0;
 
   sortedPending.forEach((slot, index) => {
+    const slotKey = `${slot.subjectCode}_${slot.topic}`;
+    // Deduplication check: avoid duplicate identical tasks
+    if (seenSlotKeys.has(slotKey)) {
+      return;
+    }
+    seenSlotKeys.add(slotKey);
+
     if (index < eveningTimeline.length) {
       // Allocate to optimized evening block
       rescheduledList.push({
@@ -70,22 +88,24 @@ export function calculateDynamicReschedule(
         });
       }
     } else {
-      // Excess lower-priority slots rolled over smoothly to tomorrow morning buffer
+      // Excess lower-priority slots rolled over smoothly to tomorrow / next morning buffers without collision
+      const buffer = nextDaysTimeline[rolloverIndex % nextDaysTimeline.length];
+      rolloverIndex++;
+
       rescheduledList.push({
         ...slot,
-        timeStart: '08:00 (غداً)',
-        timeEnd: '09:00 (غداً)',
-        notes: 'تم ترحيل هذا الجزء آلياً إلى باكر الصباح لتجنب الإجهاد الذهني الزائد الليلة.',
+        id: `${slot.id}_rollover_${rolloverIndex}`,
+        timeStart: buffer.start,
+        timeEnd: buffer.end,
+        notes: `تم استيعاب التراكم وترحيله آلياً إلى (${buffer.label}) لحماية ساعات النوم وتجنب الإجهاد الذهني الزائد.`,
+        aiPriorityReason: `استيعاب التراكم: ترحيل منظم إلى موعد لاحق بدون تكرار الحصص.`,
         priority: 'medium'
       });
     }
   });
 
-  // Sort by time
-  const timeCompare = (a: DailyScheduleSlot, b: DailyScheduleSlot) => {
-    return a.timeStart.localeCompare(b.timeStart);
-  };
-  rescheduledList.sort(timeCompare);
+  // Sort by timeStart cleanly
+  rescheduledList.sort((a, b) => a.timeStart.localeCompare(b.timeStart));
 
   return {
     originalHours: Math.round(uncompletedSlots.length * 1.5),
@@ -93,7 +113,7 @@ export function calculateDynamicReschedule(
     slotsModified: uncompletedSlots.length,
     redistributedSlots: rescheduledList,
     recoveryStrategy:
-      'تم تأمين الدروس ذات الوزن النسبي الأكبر (التفاضل والميكانيكا) في أفضل فترات التركيز المسائية مع حماية ساعات النوم الطبيعية وترحيل المواد التكميلية لصباح الغد.',
+      'تم الحفاظ على كافة إنجازات الطالب المكتملة، وتأمين الدروس ذات الوزن النسبي الأكبر في الفترة المسائية، مع استيعاب التراكم وترحيل الحصص المتبقية للأيام التالية دون أي تكرار.',
     appliedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
   };
 }

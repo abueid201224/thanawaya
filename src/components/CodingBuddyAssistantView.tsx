@@ -767,10 +767,31 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
                   <Sparkles className="w-5 h-5 text-violet-400" />
                   <h3 className="text-base font-bold text-white">{aiResponse.title}</h3>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                  +10 XP مكتسبة ✨
-                </span>
+                <div className="flex items-center gap-2">
+                  {aiResponse.offlineSample ? (
+                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                      مثال جاهز بدون اتصال
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                      +10 XP مكتسبة ✨
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Offline Sample Note Banner */}
+              {aiResponse.offlineSample && (
+                <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                    <span className="font-bold">ملاحظة: مثال جاهز بدون اتصال</span>
+                  </div>
+                  <span className="text-[11px] text-amber-300/80 hidden sm:inline">
+                    لتفعيل الذكاء الاصطناعي الحي بالكامل، اضغط Ctrl+, لإدخال مفتاح Gemini الخاص بك.
+                  </span>
+                </div>
+              )}
 
               {/* Fun Explanation */}
               <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans">

@@ -152,7 +152,7 @@ export function createExpressApp(options: {
     });
   });
 
-  // 3. Math OCR & Scaffolding extraction endpoint (Strict Honest Error Handling)
+  // 3. Math OCR & Scaffolding extraction endpoint (Strict Honest Error Handling & >=30s Timeout)
   app.post('/api/ocr-math', async (req: Request, res: Response) => {
     try {
       const { imageBase64, mimeType = 'image/jpeg' } = req.body;
@@ -165,7 +165,7 @@ export function createExpressApp(options: {
 
       if (!aiClient || !currentApiKey) {
         return res.status(503).json({
-          error: 'مفتاح Gemini API غير مضبوط أو غير مفعل. يرجى إدخال مفتاح الذكاء الاصطناعي في إعدادات التطبيق الآمنة.',
+          error: 'مفتاح Gemini API غير مضبوط أو غير مفعل. يرجى إدخال مفتاح الذكاء الاصطناعي في إعدادات التطبيق الآمنة (Ctrl+,).',
           code: 'MISSING_API_KEY'
         });
       }
@@ -200,12 +200,22 @@ export function createExpressApp(options: {
 }`;
 
       const targetModel = getModel(req.body.model);
-      const response: any = await aiClient.models.generateContent({
+
+      // Enforce at least 30-second timeout (32 seconds)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          const timeoutErr = new Error('TIMEOUT');
+          timeoutErr.name = 'TimeoutError';
+          reject(timeoutErr);
+        }, 32000);
+      });
+
+      const ocrPromise = aiClient.models.generateContent({
         model: targetModel,
         contents: {
           parts: [
             imagePart,
-            { text: 'قم باستخراج المعادلة الرياضية من صورة المسألة المرفقة وتقديم الخطوات السقالية.' }
+            { text: 'قم باستخراج المعادلة الرياضية بدقة من صورة المسألة المرفقة وتقديم الخطوات السقالية.' }
           ],
         },
         config: {
@@ -215,10 +225,12 @@ export function createExpressApp(options: {
         },
       });
 
+      const response: any = await Promise.race([ocrPromise, timeoutPromise]);
       const responseText = response.text?.trim() || '';
+
       if (!responseText) {
         return res.status(500).json({
-          error: 'لم يقدم النموذج استجابة صالحة لتحليل الصورة. يرجى المحاولة بصورة ذات إضاءة ووضوح أعلى.',
+          error: 'لم يقدم النموذج استجابة صالحة لتحليل الصورة (Empty OCR Response). يرجى المحاولة بصورة ذات إضاءة ووضوح أعلى.',
           code: 'EMPTY_OCR_RESPONSE'
         });
       }
@@ -226,7 +238,23 @@ export function createExpressApp(options: {
       const parsed = JSON.parse(responseText);
       return res.json(parsed);
     } catch (err: any) {
-      console.error('[OCR Error Log]:', err);
+      console.error('[OCR Error Log]:', err?.message || err);
+
+      if (err?.name === 'TimeoutError' || String(err?.message || '').includes('TIMEOUT')) {
+        return res.status(504).json({
+          error: 'استغرقت معالجة الصورة الرياضية أكثر من 30 ثانية. يرجى التأكد من اتصال الإنترنت وتجربة صورة بحجم أصغر.',
+          code: 'TIMEOUT'
+        });
+      }
+
+      const errMsg = String(err?.message || '').toLowerCase();
+      if (err?.status === 429 || errMsg.includes('429') || errMsg.includes('rate limit') || errMsg.includes('resource_exhausted')) {
+        return res.status(429).json({
+          error: 'تم تجاوز معدل الطلبات المسموح به لخدمة الذكاء الاصطناعي (Rate Limited). يرجى الانتظار دقيقة والمحاولة مجدداً.',
+          code: 'RATE_LIMITED'
+        });
+      }
+
       return res.status(500).json({
         error: 'تعذر التعرف على المسألة الرياضية من الصورة حالياً. يرجى التأكد من وضوح المعادلة والإضاءة ومراجعة اتصال الخدمة.',
         code: 'OCR_PROCESSING_FAILED'
@@ -234,7 +262,7 @@ export function createExpressApp(options: {
     }
   });
 
-  // 4. AI Coding Coach Endpoint
+  // 4. AI Coding Coach Endpoint (with offlineSample fallback when key is unconfigured)
   app.post('/api/coding-buddy', async (req: Request, res: Response) => {
     try {
       const { userPrompt, language = 'python', model } = req.body;
@@ -242,16 +270,60 @@ export function createExpressApp(options: {
         return res.status(400).json({ error: 'userPrompt is required', code: 'PROMPT_REQUIRED' });
       }
 
+      // Offline Curated Samples when API key is missing
       if (!aiClient || !currentApiKey) {
-        return res.status(503).json({
-          error: 'مفتاح Gemini API غير مضبوط. يرجى إدخال مفتاح API في الإعدادات الآمنة لتفعيل المساعد البرمجي.',
-          code: 'MISSING_API_KEY'
+        const query = userPrompt.toLowerCase();
+        let sampleTitle = 'شرح الدوال البرمجية (Functions) بطريقة ممتعة';
+        let sampleExplanation = 'الدالة في البرمجة تشبه آلة المصنع أو محل الأكل: تعطيها مدخلات محددة (Ingredients)، وتنفذ خطوات ثابتة، ثم ترجع لك ناتجاً جاهزاً (Output).';
+        let sampleAnalogy = 'الدالة زي ماكينة الصراف الآلي: بتدخل البطاقة والرقم السري (Inputs) فتديلك الفلوس والوصل (Outputs).';
+        let sampleCode = `# تعريف دالة حساب مساحة المثلث في بايثون\ndef calculate_triangle_area(base, height):\n    area = 0.5 * base * height\n    return area\n\n# تجربة الدالة\nresult = calculate_triangle_area(10, 6)\nprint(f"مساحة المثلث = {result} سم مربع")`;
+        let sampleOutput = 'مساحة المثلث = 30.0 سم مربع';
+        let sampleTrick = 'احذر من نسيان كلمة return؛ فبدونها ترجع الدالة القيمة None افتراضياً!';
+        let sampleMath = 'الدالة البرمجية f(x) تطابق تماماً الدالة الرياضية ص = د(س) في الجبر وحساب المثلثات.';
+
+        if (query.includes('شاورما') || query.includes('دوال') || query.includes('function')) {
+          sampleTitle = 'الدوال Functions كأنها محل شاورما 🥙';
+          sampleExplanation = 'الدالة هي "سيخ الشاورما والشف": تطلب ساندوتش حجم عائلي بالتومية (Arguments)، يقطّع ويلف ويسخن (Logic)، ويسلمك الساندوتش جاهز (Return)!';
+          sampleAnalogy = 'الزبون يطلب الطلب (Input)، والمعلم يلف وينفذ (Process)، والساندوتش يخرج ساخن (Output).';
+          sampleCode = `def make_shawarma(size="large", garlic_sauce=True):\n    price = 85 if size == "large" else 60\n    sauce = "مع تومية زيادة" if garlic_sauce else "بدون تومية"\n    return f"طلب شاورما {size} {sauce} - الحساب: {price} جنيه"\n\nprint(make_shawarma("large", True))`;
+          sampleOutput = 'طلب شاورما large مع تومية زيادة - الحساب: 85 جنيه';
+        } else if (query.includes('ميل') || query.includes('تفاضل') || query.includes('اشتقاق')) {
+          sampleTitle = 'حساب ميل المماس والتفاضل العددي بكود بايثون 📐';
+          sampleExplanation = 'التفاضل برمجياً هو حساب التغير الصغير جداً في ص مقسوماً على التغير في س عند اقتراب هـ من الصفر.';
+          sampleAnalogy = 'التفاضل مثل عداد السرعة اللحظي للسيارة: يحسب المسافة المقطوعة في جزء من الثانية.';
+          sampleCode = `def derivative(f, x, h=1e-5):\n    return (f(x + h) - f(x)) / h\n\n# دالة س تربيع f(x) = x^2\nf = lambda x: x**2\n\n# مشتقة س تربيع عند س = 3 هي 2*3 = 6\nprint(f"ميل المماس التقريبي = {derivative(f, 3):.4f}")`;
+          sampleOutput = 'ميل المماس التقريبي = 6.0000';
+          sampleMath = 'تطبيق مباشر لقانون تعريف المشتقة الأولى: دَ(س) = نها [د(س+هـ) - د(س)] / هـ';
+        } else if (query.includes('لعبة') || query.includes('game') || query.includes('تخمين')) {
+          sampleTitle = 'برمجة لعبة تخمين الأرقام الذكية 🕹️';
+          sampleExplanation = 'لعبة ممتعة تطبق مفهوم الحلقات التكرارية والشرط المنطقي والمقارنات.';
+          sampleAnalogy = 'مثل لعبة فك شفرة الخزينة: كل محاولة تعطيك تلميحاً هل الرقم أعلى أم أقل.';
+          sampleCode = `import random\n\nsecret = 7\nguess = int(input("خمن رقم بين 1 و 10: ") or 7)\nif guess == secret:\n    print("🎉 برافو! خمنت الرقم الصحيح!")\nelse:\n    print(f"للأسف الرقم كان {secret}")`;
+          sampleOutput = '🎉 برافو! خمنت الرقم الصحيح!';
+        }
+
+        return res.json({
+          offlineSample: true,
+          title: sampleTitle,
+          funExplanation: sampleExplanation,
+          analogy: sampleAnalogy,
+          codeSnippet: sampleCode,
+          codeLanguage: language,
+          outputSimulation: sampleOutput,
+          goldenTrick: sampleTrick,
+          mathConnection: sampleMath,
+          recommendedResource: {
+            title: 'منصة هرمش لتعلم بايثون بالعربية مجاناً',
+            url: 'https://harmash.com/tutorials/python',
+            type: 'عربي مجاني'
+          }
         });
       }
 
       const systemInstruction = `أنت "كود كوتش (Code Coach) 🚀": المساعد الذكي لتعليم البرمجة لطلاب الثانوية العامة علمي رياضة.
 قدم شروحات ممتعة مع كود نظيف وتشبيهات واقعية وربط مع المفاهيم الرياضية بصيغة JSON نظيفة:
 {
+  "offlineSample": false,
   "title": "عنوان جذاب للتريكة أو الإجابة",
   "funExplanation": "شرح لطيف ومبسط",
   "analogy": "تشبيه واقعي يثبت المفهوم",
@@ -280,6 +352,7 @@ export function createExpressApp(options: {
 
       const responseText = response.text?.trim() || '';
       const parsed = JSON.parse(responseText);
+      parsed.offlineSample = false;
       return res.json(parsed);
     } catch (err: any) {
       console.error('[Coding Coach Error Log]:', err);

@@ -500,12 +500,11 @@ class WhatsAppEducationalService {
   }
 
   /**
-   * Generate standard WhatsApp chat link with prefilled text
+   * Generate official WhatsApp Web send link with prefilled text
+   * Pattern: https://web.whatsapp.com/send?phone=...&text=...
    */
   public getWhatsAppChatUrl(phone: string, text: string = ''): string {
-    const cleanPhone = phone.replace(/[^\d+]/g, '').replace('+', '');
-    const encoded = encodeURIComponent(text);
-    return `https://wa.me/${cleanPhone}${text ? `?text=${encoded}` : ''}`;
+    return generateWhatsAppWebUrl(phone, text);
   }
 
   /**
@@ -563,6 +562,26 @@ class WhatsAppEducationalService {
     return MONTHLY_PACING_TIMELINE_DATA;
   }
 
+  /**
+   * Generates a direct WhatsApp Web URL for teacher communication:
+   * https://web.whatsapp.com/send?phone=...&text=...
+   * Uses encodeURIComponent to safely encode the message.
+   */
+  public generateTeacherInquiryUrl(
+    teacherId: string,
+    topicOrProblemText: string = 'استفسار بخصوص تدريبات الحصة والواجب'
+  ): { url: string; fallbackText: string } | null {
+    const teacher = this.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return null;
+
+    const rawPhone = teacher.whatsAppNumber || '201012345678';
+
+    const messageText = `السلام عليكم ورحمة الله وبركاته يا أستاذ ${teacher.name}،\nمع حضرتك طالب ثانوية عامة (علمي رياضة) عبر تطبيق Thanaweya Copilot.\nلدي استفسار في مادة (${teacher.subjectNameAr}):\n"${topicOrProblemText}"\nجزاكم الله كل خير!`;
+
+    const url = generateWhatsAppWebUrl(rawPhone, messageText);
+    return { url, fallbackText: messageText };
+  }
+
   private formatBytes(bytes: number): string {
     if (!bytes || bytes === 0) return '0 MB';
     const mb = bytes / (1024 * 1024);
@@ -573,5 +592,25 @@ class WhatsAppEducationalService {
   }
 }
 
+/**
+ * Normalizes digits and generates standard WhatsApp Web link:
+ * https://web.whatsapp.com/send?phone=...&text=...
+ */
+export function generateWhatsAppWebUrl(phone: string, text: string): string {
+  const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  let clean = phone || '';
+  for (let i = 0; i < 10; i++) {
+    clean = clean.replace(new RegExp(arabicDigits[i], 'g'), i.toString());
+    clean = clean.replace(new RegExp(persianDigits[i], 'g'), i.toString());
+  }
+  clean = clean.replace(/[\s+()-]/g, '');
+  if (clean.startsWith('01')) {
+    clean = '2' + clean; // International Egyptian prefix
+  }
+  return `https://web.whatsapp.com/send?phone=${clean}&text=${encodeURIComponent(text)}`;
+}
+
 export const whatsAppEducationalService = new WhatsAppEducationalService();
 export default whatsAppEducationalService;
+
