@@ -1,0 +1,232 @@
+name: Build and Deploy Windows
+
+on:
+  push:
+    branches:
+      - main
+      - release/*
+    tags:
+      - v*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: ''
+      publish:
+        description: 'Publish to GitHub Releases'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_VERSION: '44.6.0'
+
+jobs:
+  build:
+    name: Build Windows Packages
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install electron-updater --save-dev --legacy-peer-deps
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Build Electron main process
+        run: npm run build:electron
+
+      - name: Package for Windows (NSIS + Portable)
+        env:
+          # For development, disable signing
+          # For production, set CERTIFICATE_PASSWORD secret
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          UPDATE_FEED_URL: ${{ secrets.UPDATE_FEED_URL || 'https://github.com/abueid201224/thanawaya/releases' }}
+        run: |
+          # Build without signing for CI (unless certificate is configured)
+          if [ -z "$CERTIFICATE_PASSWORD" ]; then
+            # Disable signing for CI builds without certificate
+            node -e "const fs = require('fs'); let config = fs.readFileSync('electron-builder.yml', 'utf8'); config = config.replace(/sign: true/, 'sign: false'); fs.writeFileSync('electron-builder.yml', config);"
+          fi
+          
+          npm run package:win
+
+      - name: Verify build
+        run: npm run verify-build
+
+      - name: List release files
+        run: |
+          echo "Release files:"
+          ls -lh release/
+          echo ""
+          echo "app.asar size:"
+          du -sh release/win-unpacked/resources/app.asar || dir release\win-unpacked\resources\app.asar
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            release/
+            !release/win-unpacked/
+          retention-days: 7
+
+      - name: Upload unpacked for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-unpacked
+          path: release/win-unpacked/
+          retention-days: 3
+
+  publish:
+    name: Publish to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/') || github.event.inputs.publish == 'true' }}
+    
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: release/
+
+      - name: List downloaded files
+        run: ls -lh release/
+
+      - name: Create SHA256 checksums
+        run: |
+          cd release/
+          for file in *; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" >> SHA256SUMS
+            fi
+          done
+          cat SHA256SUMS
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # If tag exists, use it
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag || format('v{0}', steps.version.outputs.version) }}
+          name: ${{ format('Thanaweya Amma Math Copilot v{0}', steps.version.outputs.version) }}
+          body: |
+            ## Thanaweya Amma Math Copilot v${{ steps.version.outputs.version }}
+            
+            **تطبيق مساعد لطلاب ثانوية عامة قسم رياضة**
+            
+            ### ميزات هذا الإصدار:
+            - نظام تسجيل دخول شامل (تسجيل - تسجيل جديد - استمرار كضيف)
+            - قائمة إعدادات شاملة
+            - استعادة كلمة المرور
+            - التحقق من البريد الإلكتروني
+            - التحديث التلقائي
+            - توقيع الكود لحزم Windows
+            - دمج كامل مع Supabase
+            
+            ### ملفات التثبيت:
+            - **ThanaweyaAmmaMathCopilot-Setup-${{ steps.version.outputs.version }}.exe** - تثبيت كامل
+            - **ThanaweyaAmmaMathCopilot-Portable-${{ steps.version.outputs.version }}.exe** - إصدار محمول
+            
+            ### التحقق:
+            - SHA256 checksums: [SHA256SUMS](SHA256SUMS)
+          files: |
+            release/*.exe
+            release/*.yml
+            release/SHA256SUMS
+          draft: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/v') }}
+          prerelease: ${{ contains(steps.version.outputs.version, '-alpha') || contains(steps.version.outputs.version, '-beta') }}
+          fail_on_unmatched_files: false
+
+  deploy-updates:
+    name: Deploy Update Files
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: release/
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure update server
+        if: ${{ env.UPDATE_SERVER_ENABLED == 'true' }}
+        env:
+          UPDATE_SERVER_URL: ${{ secrets.UPDATE_SERVER_URL }}
+          UPDATE_SERVER_USER: ${{ secrets.UPDATE_SERVER_USER }}
+          UPDATE_SERVER_SSH_KEY: ${{ secrets.UPDATE_SERVER_SSH_KEY }}
+        run: |
+          # Create app-update.yml for this version
+          cat > app-update.yml << EOF
+provider: "generic"
+url: "$UPDATE_SERVER_URL"
+currentVersion: "$VERSION"
+
+files:
+  - url: "ThanaweyaAmmaMathCopilot-Setup-${{ steps.version.outputs.version }}.exe"
+    sha256: "$(sha256sum release/ThanaweyaAmmaMathCopilot-Setup-${{ steps.version.outputs.version }}.exe | awk '{print $1}')"
+    size: $(stat -c%s release/ThanaweyaAmmaMathCopilot-Setup-${{ steps.version.outputs.version }}.exe)
+    channel: "stable"
+    platform: "win32"
+    arch: "x64"
+    
+  - url: "ThanaweyaAmmaMathCopilot-Portable-${{ steps.version.outputs.version }}.exe"
+    sha256: "$(sha256sum release/ThanaweyaAmmaMathCopilot-Portable-${{ steps.version.outputs.version }}.exe | awk '{print $1}')"
+    size: $(stat -c%s release/ThanaweyaAmmaMathCopilot-Portable-${{ steps.version.outputs.version }}.exe)
+    channel: "stable"
+    platform: "win32"
+    arch: "x64"
+
+releaseNotes:
+  "$VERSION":
+    ar: "الإصدار $VERSION - تحسينات واصلاحات"
+    en: "Version $VERSION - Improvements and bug fixes"
+
+publish:
+  - provider: "generic"
+    url: "$UPDATE_SERVER_URL"
+    channel: "stable"
+EOF
+
+          # Deploy to update server
+          echo "Deploying to update server..."
+          # scp app-update.yml $UPDATE_SERVER_USER@$UPDATE_SERVER:/var/www/updates/
+          # scp release/*.exe $UPDATE_SERVER_USER@$UPDATE_SERVER:/var/www/updates/files/
+          echo "Update files ready for deployment"

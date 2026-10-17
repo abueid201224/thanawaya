@@ -1,0 +1,94 @@
+# Auto-Update Configuration for Thanaweya Amma Math Copilot
+# Version: 1.0.0
+# Format: electron-builder app-update.yml
+
+provider: "generic"
+url: "https://thanaweya-copilot-updates.example.com/updates"
+
+# Current version being served
+currentVersion: "1.0.0"
+
+# Update channels
+channels:
+  - "stable"
+  - "beta"
+  - "alpha"
+
+# Files for each platform
+files:
+  - url: "ThanaweyaAmmaMathCopilot-Setup-1.0.0.exe"
+    sha256: "YOUR_SHA256_HASH_HERE"
+    size: 123456789
+    channel: "stable"
+    platform: "win32"
+    arch: "x64"
+    
+  - url: "ThanaweyaAmmaMathCopilot-Portable-1.0.0.exe"
+    sha256: "YOUR_SHA256_HASH_HERE"
+    size: 123456789
+    channel: "stable"
+    platform: "win32"
+    arch: "x64"
+
+# Release notes for each version
+releaseNotes:
+  "1.0.0":
+    ar: |
+      ### الإصدار 1.0.0 - الإصدار الأول
+      
+      **ميزات جديدة:**
+      - نظام تسجيل دخول شامل مع تسجيل جديد واستمرار كضيف
+      - قائمة إعدادات شاملة مع إدارة الملف الشخصي
+      - استعادة كلمة المرور عبر البريد الإلكتروني
+      - التحقق من البريد الإلكتروني
+      - نظام التحديث التلقائي
+      - توقيع الكود لحزم Windows
+      - دمج كامل مع Supabase
+      
+      **تحسينات:**
+      - واجهة مستخدم عصرية ومتجاوبة
+      - دعم كامل للغة العربية
+      - أصوات تأكيدية للعمليات المهمة
+      - حماية قوية ضد الأخطاء
+      
+      **ملاحظات:**
+      - هذا هو الإصدار الأول من التطبيق
+      - مخصص لطلاب ثانوية عامة قسم رياضة
+      - يعمل على نظام Windows 10/11
+    
+    en: |
+      ### Version 1.0.0 - First Release
+      
+      **New Features:**
+      - Comprehensive authentication system with login, register, and guest mode
+      - Full settings menu with profile management
+      - Password recovery via email
+      - Email verification
+      - Auto-update system
+      - Code signing for Windows packages
+      - Full Supabase integration
+      
+      **Improvements:**
+      - Modern and responsive UI
+      - Full Arabic language support
+      - Confirmation sounds for important actions
+      - Strong error protection
+      
+      **Notes:**
+      - This is the first release of the application
+      - Designed for Thanaweya Amma Math students
+      - Works on Windows 10/11
+
+# Publish configuration
+publish:
+  - provider: "generic"
+    url: "https://thanaweya-copilot-updates.example.com/updates"
+    channel: "stable"
+    
+  - provider: "generic"
+    url: "https://thanaweya-copilot-updates.example.com/updates/beta"
+    channel: "beta"
+    
+  - provider: "generic"
+    url: "https://thanaweya-copilot-updates.example.com/updates/alpha"
+    channel: "alpha"
