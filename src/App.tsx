@@ -61,6 +61,8 @@ import { ProgressDisciplineView } from './components/ProgressDisciplineView';
 import { BreakMotivationModal } from './components/BreakMotivationModal';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
+import { EnhancedAuthModal } from './components/EnhancedAuthModal';
+import { SettingsModal } from './components/SettingsModal';
 import { OfflineSyncModal } from './components/OfflineSyncModal';
 import { ResilientMediaModal } from './components/ResilientMediaModal';
 import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
@@ -91,6 +93,7 @@ export default function App() {
 
   // Modals & Diagnostic/Export Suites
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
   const [isDiagnosticsModalOpen, setIsDiagnosticsModalOpen] = useState(false);
@@ -644,12 +647,22 @@ export default function App() {
         onClose={() => setIsBreakModalOpen(false)}
       />
 
-      {/* User Auth & Profile Modal */}
-      <AuthModal
+      {/* Enhanced User Auth & Profile Modal */}
+      <EnhancedAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={user}
         onUpdateUser={(updated) => setUser(updated)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        currentUser={user}
+        onUpdateUser={(updated) => setUser(updated)}
+        onSwitchRole={handleSwitchRole}
       />
 
       {/* Offline Storage & PWA Sync Modal */}

@@ -13,6 +13,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { startEmbeddedServer, RunningEmbeddedServer } from '../server/app';
+import { updateService } from '../src/services/updateService';
 import type {
   SystemInfo,
   FileWriteOptions,
@@ -33,6 +34,10 @@ if (!gotTheLock) {
 let mainWindow: BrowserWindow | null = null;
 let embeddedServer: RunningEmbeddedServer | null = null;
 let boundServerUrl: string = '';
+
+// Configure update service
+const UPDATE_FEED_URL = process.env.UPDATE_FEED_URL || 'https://thanaweya-copilot-updates.example.com/updates';
+updateService.setMainWindow(mainWindow);
 
 // Determine environment
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -761,6 +766,37 @@ function setupIpcHandlers(): void {
     if (!isTrustedSender(event)) return;
     mainWindow?.close();
   });
+
+  // 14. Update Service IPC Handlers
+  ipcMain.handle('update:check', async (event): Promise<{ hasUpdate: boolean; version?: string; message?: string }> => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    try {
+      await updateService.checkForUpdates();
+      return { hasUpdate: false, message: '\u062c\u0627\u0631\u064e \u062a\u0641\u0639\u064f\u0644 \u0627\u0644\u0627\u0635\u062f\u0627\u0631...' };
+    } catch (err: any) {
+      return { hasUpdate: false, message: err?.message || '\u062d\u062f\u062b \u062e\u0637\u0623' };
+    }
+  });
+
+  ipcMain.handle('update:download-install', async (event): Promise<{ success: boolean; message: string }> => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    try {
+      await updateService.downloadAndInstall();
+      return { success: true, message: '\u062c\u0627\u0631\u064e \u062a\u0646\u0632\u064e\u0644 \u0627\u0644\u062a\u0641\u0639\u064e\u0644...' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || '\u062d\u062f\u062b \u062e\u0637\u0623' };
+    }
+  });
+
+  ipcMain.handle('update:install', async (event): Promise<void> => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    updateService.installUpdate();
+  });
+
+  ipcMain.handle('update:get-version', (event): { version: string } => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    return { version: updateService.getCurrentVersion() };
+  });
 }
 
 if (gotTheLock) {
@@ -818,6 +854,12 @@ if (gotTheLock) {
 
     createWindow();
 
+    // Start auto-update checker (only in production)
+    if (app.isPackaged) {
+      updateService.startAutoCheck();
+      console.log('[UpdateService] Auto-update checker started');
+    }
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
@@ -833,6 +875,7 @@ if (gotTheLock) {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
+    updateService.stopAutoCheck();
     if (embeddedServer) {
       embeddedServer.close().catch(() => {});
     }

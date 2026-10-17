@@ -22,16 +22,18 @@ electronLanguages:
   - "en-US"
 
 win:
-  target:
-    - target: "nsis"
-      arch:
-        - "x64"
-    - target: "portable"
-      arch:
-        - "x64"
   icon: "installer-assets/icon.ico"
   artifactName: "ThanaweyaAmmaMathCopilot-Setup-${version}.${ext}"
   legalTrademarks: "Thanaweya Amma Math Copilot"
+  target:
+    - nsis
+    - portable
+  sign: true
+  signingHashAlgorithms:
+    - "sha256"
+  rfc3161TimeStampServer: "http://timestamp.digicert.com"
+  certificateFile: "installer-assets/cert.pfx"
+  certificatePassword: "${CERTIFICATE_PASSWORD}"
 
 nsis:
   oneClick: false
