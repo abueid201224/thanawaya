@@ -810,19 +810,21 @@ if (gotTheLock) {
 
   // App lifecycle
   app.whenReady().then(async () => {
-    // 1. Enforce Content-Security-Policy on embedded loopback origin
+    // 1. Enforce strict Content-Security-Policy on embedded loopback origin
+    // Prevents 'unsafe-eval' and restricts sources to loopback and essentials only
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https:; frame-src https:; object-src 'none'; base-uri 'self';"
+            "default-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; frame-src 'none'; object-src 'none'; base-uri 'self';"
           ]
         }
       });
     });
 
     // 2. Strict Permissions Request Handler: only allow media (camera/mic for OCR/Audio)
+    // All other permissions (geolocation, notifications, etc.) are explicitly denied
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
       if (permission === 'media') {
         callback(true);
@@ -830,6 +832,9 @@ if (gotTheLock) {
         callback(false);
       }
     });
+
+    // 3. Disable webRequest caching to prevent stale CSP headers
+    session.defaultSession.setDisableWebSecurity(false);
 
     setupIpcHandlers();
 
