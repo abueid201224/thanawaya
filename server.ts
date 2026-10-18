@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const PORT = parseInt(process.env.PORT || '3000', 10);
   const apiKey = process.env.GEMINI_API_KEY;
+  const DEFAULT_HOST = process.env.HOST || (process.env.NODE_ENV === 'development' ? '0.0.0.0' : '127.0.0.1');
 
   const { app } = createExpressApp({
     initialApiKey: apiKey
@@ -33,8 +34,8 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Thanaweya Math Copilot Server listening on port ${PORT}`);
+  app.listen(PORT, DEFAULT_HOST, () => {
+    console.log(`\ud83d\ude80 Thanaweya Math Copilot Server listening on ${DEFAULT_HOST}:${PORT}`);
   });
 }
 
@@ -42,4 +43,3 @@ startServer().catch((err) => {
   console.error('Fatal server startup error:', err);
   process.exit(1);
 });
-
