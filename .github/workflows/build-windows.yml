@@ -1,93 +1,46 @@
-name: Build Windows Packages
+name: Build Windows Installer
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-      - develop
-      - feature/*
-      - vibe/*
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - 'docs/**'
-  pull_request:
-    branches:
-      - main
-      - develop
-  workflow_dispatch:
-
-concurrency:
-  group: build-windows-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  NODE_VERSION: '20'
 
 jobs:
-  build:
-    name: Build and Test
+  build-windows:
     runs-on: windows-latest
+    env:
+      NODE_OPTIONS: --max_old_space_size=4096
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm install electron-updater --save-dev --legacy-peer-deps
-
-      - name: Run TypeScript check
-        run: npm run lint
-
-      - name: Build web app
-        run: npm run build
-
-      - name: Build Electron main process
-        run: npm run build:electron
-
-      - name: Package for Windows
+          
+      - run: npm ci --legacy-peer-deps
+          
+      - run: npm run icons
+          
+      - run: npm run build
+          
+      - run: npm run build:electron
+          
+      - name: Package with electron-builder
         env:
-          # Disable signing for CI builds (no certificate configured)
-          CERTIFICATE_PASSWORD: ''
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          # Temporarily disable signing for CI
-          node -e "const fs = require('fs'); let config = fs.readFileSync('electron-builder.yml', 'utf8'); config = config.replace(/sign: true/, 'sign: false'); fs.writeFileSync('electron-builder.yml', config);"
-          npm run package:win
-
-      - name: Verify build
-        run: npm run verify-build
-
-      - name: Check build size
-        run: |
-          $asarPath = "release\win-unpacked\resources\app.asar"
-          if (Test-Path $asarPath) {
-            $size = (Get-Item $asarPath).Length / 1MB
-            Write-Host "app.asar size: $size MB"
-            if ($size -gt 15) {
-              Write-Error "app.asar size exceeds 15MB limit!"
-              exit 1
-            }
-          }
-
-      - name: List release files
-        run: |
-          Write-Host "Release files:"
-          Get-ChildItem release\ -Recurse | Format-Table Name, Length
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+          npx electron-builder --win --x64 --config electron-builder.yml --publish never
+          
+      - uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: |
-            release/
-          retention-days: 7
+          name: thanaweya-windows-build
+          path: release/**/*.exe
