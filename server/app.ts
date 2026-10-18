@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
+import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
 
 export interface AppServerOptions {
@@ -25,6 +26,46 @@ export interface RunningEmbeddedServer {
   setModel: (model: string) => void;
   close: () => Promise<void>;
 }
+
+// Zod Schemas for AI Response Validation
+// OCR Math Response Schema
+const ocrScaffoldingStepSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  title: z.string(),
+  guidingQuestion: z.string(),
+  hintFormulaLatex: z.string().optional(),
+  officialMinistryRule: z.string().optional()
+});
+
+const ocrMathResponseSchema = z.object({
+  latex: z.string().optional(),
+  plainText: z.string(),
+  confidence: z.number().min(0).max(100).optional(),
+  scaffoldingSteps: z.array(ocrScaffoldingStepSchema).optional(),
+  finalAnswerVerification: z.string().optional(),
+  topic: z.string().optional()
+});
+
+// Coding Buddy Response Schema
+const recommendedResourceSchema = z.object({
+  title: z.string(),
+  url: z.string().optional(),
+  type: z.string().optional()
+});
+
+const codingBuddyResponseSchema = z.object({
+  title: z.string(),
+  funExplanation: z.string(),
+  analogy: z.string(),
+  codeSnippet: z.string(),
+  codeLanguage: z.string(),
+  outputSimulation: z.string(),
+  goldenTrick: z.string(),
+  mathConnection: z.string(),
+  recommendedResource: recommendedResourceSchema.optional()
+});
+
+
 
 /**
  * Finds an available TCP port on local loopback (127.0.0.1)
@@ -223,8 +264,27 @@ export function createExpressApp(options: {
         });
       }
 
-      const parsed = JSON.parse(responseText);
-      return res.json(parsed);
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch (parseErr) {
+        return res.status(502).json({
+          error: '\u062e\u0637\u0623 \u0627\u0644\u062a\u062d\u0644\u0644: \u0627\u0644\u0627\u0633\u062a\u062c\u0627\u0628\u0629 \u063a\u064a\u0631 \u0635\u0627\u0648\u0644\u0629 \u0628\u0635\u064a\u063a\u0629 JSON.',
+          code: 'INVALID_JSON_RESPONSE'
+        });
+      }
+
+      // Validate AI response structure using Zod schema
+      const validationResult = ocrMathResponseSchema.safeParse(parsed);
+      if (!validationResult.success) {
+        return res.status(502).json({
+          error: '\u062e\u0637\u0623 \u0627\u0644\u062a\u062d\u0644\u0644: \u0644\u0645 \u064a\u062f\u0639\u0645 \u0627\u0644\u0647\u064a\u0624\u0644 \u0627\u0644\u0635\u0627\u062d\u0629 \u0627\u0644\u0645\u062a\u0648\u0642\u0639\u0629 \u0644\u0644\u0646\u0635\u064b.',
+          code: 'INVALID_AI_RESPONSE_FORMAT',
+          validationError: validationResult.error.message
+        });
+      }
+
+      return res.json(validationResult.data);
     } catch (err: any) {
       console.error('[OCR Error Log]:', err);
       return res.status(500).json({
@@ -279,8 +339,27 @@ export function createExpressApp(options: {
       });
 
       const responseText = response.text?.trim() || '';
-      const parsed = JSON.parse(responseText);
-      return res.json(parsed);
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch (parseErr) {
+        return res.status(502).json({
+          error: '\u062e\u0637\u0623 \u0627\u0644\u062a\u062d\u0644\u0644: \u0627\u0644\u0627\u0633\u062a\u062c\u0627\u0628\u0629 \u063a\u064e\u0631 \u0635\u0627\u0648\u0644\u0629 \u0628\u0635\u064e\u064a\u063a\u0629 JSON.',
+          code: 'INVALID_JSON_RESPONSE'
+        });
+      }
+
+      // Validate AI response structure using Zod schema
+      const validationResult = codingBuddyResponseSchema.safeParse(parsed);
+      if (!validationResult.success) {
+        return res.status(502).json({
+          error: '\u062e\u0637\u0623 \u0627\u0644\u062a\u062d\u0644\u0644: \u0644\u0645 \u064a\u062f\u0639\u0645 \u0627\u0644\u0647\u064e\u064a\u0624\u0644 \u0627\u0644\u0635\u0627\u062d\u0629 \u0627\u0644\u0645\u062a\u0648\u0642\u0639\u0629 \u0644\u0644\u0645\u062f\u064e\u0627\u0631.',
+          code: 'INVALID_AI_RESPONSE_FORMAT',
+          validationError: validationResult.error.message
+        });
+      }
+
+      return res.json(validationResult.data);
     } catch (err: any) {
       console.error('[Coding Coach Error Log]:', err);
       return res.status(500).json({
