@@ -17,6 +17,7 @@
 - ترحيل عميل WPF إلى Supabase C# SDK 8.8.0 وتكييف namespaces وواجهات الجداول مع الإصدار المدعوم؛ المراجع: [NuGet](https://www.nuget.org/packages/Supabase/8.8.0)، [ملاحظات إصدار C#](https://supabase.com/docs/reference/csharp/release-notes)، [دليل ترحيل v8](https://github.com/supabase/supabase-csharp/blob/master/docs/migrations/v8.0.0.md).
 - إصلاح بناء WPF: استبدال خصائص `StackPanel.Spacing` غير المدعومة بهوامش، وتصحيح تواقيع `AsyncRelayCommand` وتحويل نتائج استعلام Supabase.
 - استكمال `package-lock.json` بـ62 حزمة native اختيارية لإصدارات Windows وبقية المنصات المطابقة للإصدارات المسجلة، بعد أن كشف CI أن lockfile المولّد على Linux أغفل اعتماديات TypeScript وVite/Tailwind الاختيارية الخاصة بـWindows.
+- إزالة macro رمز النشر من `electron-builder.yml`؛ البناء مع `--publish never` لا يحتاج اعتماد نشر، ويُمرر `GH_TOKEN` فقط عند النشر اليدوي. يتوافق ذلك مع [دليل electron-builder v26 للنشر](https://www.electron.build/v26/docs/publish/) و[دليل GitHub Actions](https://www.electron.build/v26/docs/features/github-actions).
 
 ## نتائج التحقق المحلي
 
@@ -32,7 +33,7 @@
 
 ## حدود مهمة لم تُختبر بعد
 
-- لم يكتمل بعد تشغيل Windows CI على أحدث commit بعد إصلاح lockfile. التشغيل السابق اجتاز مرحلة .NET ووصل إلى فحوص TypeScript، ثم كشف الحزم الاختيارية الناقصة؛ أُصلح القفل ويجب انتظار التشغيل الجديد قبل اعتبار بوابة Windows ناجحة.
+- اجتاز Windows CI على commit `77b8ef3` اختبارات .NET وTypeScript والبناء وفحوص الأمان، لكن مهمة إنشاء المثبت فشلت بسبب macro `GITHUB_TOKEN` غير المعرف. أزيلت macro من إعداد الحزمة ووُثقت طريقة النشر؛ يلزم تشغيل جديد لتأكيد أن المثبت وملف portable يُنتجان ويراجع أرشيفهما.
 - لم تُطبّق ترحيلات SQL على مشروع Supabase حي أو تجريبي، ولم يُجر اختبار RLS بمستخدم طالب ومشرف فعليين.
 - لم تُختبر طلبات Gemini/OCR بمفتاح API أو خدمة خارجية. نجاح البناء لا يثبت صحة مخرجات النموذج.
 - لم تُراجع بعد كل مادة وكل سؤال مقابل كتاب الوزارة أو مواصفة امتحان السنة الدراسية المستهدفة. لذلك لا ينبغي وصف بنك الأسئلة أو قواعد OCR الحالية بأنها معتمدة وزارياً.

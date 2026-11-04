@@ -161,22 +161,24 @@ npm run package:win
 ### ب) خيارات نشر التحديثات والمثبتات (Auto-Updates & Publishing):
 
 #### الخيار A (مستودع GitHub Releases - الأسهل والموصى به):
-1. تم ضبط `electron-builder.yml` للإيداع المباشر في المستودع:
+1. يحتوي `electron-builder.yml` على مزود GitHub والمالك والمستودع فقط؛ لا تضع رمز وصول أو متغيراً سرياً داخل ملف الإعداد.
    ```yaml
    publish:
      - provider: "github"
        owner: "abueid201224"
        repo: "thanawaya"
-       token: "${GITHUB_TOKEN}"
    ```
-2. أنشئ رمز وصول شخصي (GitHub Personal Access Token) بصلاحيات `repo`.
-3. قم بتنفيذ أمر التجميع والنشر التلقائي:
+2. عند النشر اليدوي، استخدم رمزاً دقيق الصلاحية يقتصر على هذا المستودع وعلى `Contents: Read and write`. مرّره في المتغير `GH_TOKEN` لعملية النشر فقط؛ لا تحتاج خطوة بناء المثبّت إلى رمز كتابة.
+3. نفّذ أمر التجميع والنشر الصريح:
    ```bash
    # على أنظمة Linux/macOS
-   GITHUB_TOKEN=your-token-here npm run build:all && electron-builder --win --x64 --config electron-builder.yml --publish always
+   export GH_TOKEN=your-token-here
+   npm run build:all && npx electron-builder --win --x64 --config electron-builder.yml --publish always
 
    # أو على نظام Windows (PowerShell)
-   $env:GITHUB_TOKEN="your-token-here"; npm run build:all; electron-builder --win --x64 --config electron-builder.yml --publish always
+   $env:GH_TOKEN="your-token-here"
+   npm run build:all
+   if ($LASTEXITCODE -eq 0) { npx electron-builder --win --x64 --config electron-builder.yml --publish always }
    ```
 
 #### الخيار B (خادم تحديثات ذاتي - Self-Hosted Server):
