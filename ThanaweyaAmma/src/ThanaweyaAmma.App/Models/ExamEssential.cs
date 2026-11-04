@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Postgrest.Attributes;
-using Postgrest.Models;
+using System.Text.Json.Serialization;
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
 
 namespace ThanaweyaAmma.App.Models
 {

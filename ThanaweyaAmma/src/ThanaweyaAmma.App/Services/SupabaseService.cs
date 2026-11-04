@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Postgrest;
+using Supabase.Postgrest;
 using Serilog;
 using Supabase;
 using ThanaweyaAmma.App.Models;
@@ -112,7 +112,7 @@ namespace ThanaweyaAmma.App.Services
                 var query = _client.From<MultimediaItem>();
                 if (!string.IsNullOrEmpty(filterFileType))
                 {
-                    query = (Postgrest.Table<MultimediaItem>)query.Filter(x => x.FileType, Constants.Operator.Equals, filterFileType);
+                    query = (Table<MultimediaItem>)query.Filter(x => x.FileType, Constants.Operator.Equals, filterFileType);
                 }
 
                 var response = await query.Order(x => x.UploadDate, Constants.Ordering.Descending).Get(cancellationToken);
@@ -134,7 +134,7 @@ namespace ThanaweyaAmma.App.Services
                 var query = _client.From<AdminNotification>();
                 if (pendingOnly)
                 {
-                    query = (Postgrest.Table<AdminNotification>)query.Filter(x => x.Status, Constants.Operator.Equals, "PendingApproval");
+                    query = (Table<AdminNotification>)query.Filter(x => x.Status, Constants.Operator.Equals, "PendingApproval");
                 }
 
                 var response = await query.Order(x => x.DiscoveredAt, Constants.Ordering.Descending).Get(cancellationToken);
