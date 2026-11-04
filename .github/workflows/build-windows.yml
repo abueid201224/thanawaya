@@ -1,6 +1,10 @@
-name: Build & Release Windows Electron App
+name: Quality, Windows Build & Release
 
 on:
+  pull_request:
+    branches:
+      - main
+      - master
   push:
     branches:
       - main
@@ -10,80 +14,123 @@ on:
   release:
     types:
       - published
-      - created
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-and-package:
-    name: Build & Package Windows (x64)
+  verify:
+    name: Tests & Build (Windows)
     runs-on: windows-latest
 
     steps:
-      - name: 📥 Check out repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js 22.x
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
+          cache: npm
 
-      - name: 📦 Install dependencies
-        run: npm ci --legacy-peer-deps
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
-      - name: 🔐 Validate Required Secrets for Windows Production Build
-        shell: pwsh
-        run: |
-          $supabaseUrl = "${{ secrets.VITE_SUPABASE_URL }}"
-          $supabaseKey = "${{ secrets.VITE_SUPABASE_ANON_KEY }}"
-          if ([string]::IsNullOrWhiteSpace($supabaseUrl) -or [string]::IsNullOrWhiteSpace($supabaseKey)) {
-            Write-Error "::error::فشل التحقق: يجب تعيين أسرار GitHub (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY) لتثبيت مصادقة Supabase بالواجهة."
-            exit 1
-          }
-          if (-not $supabaseUrl.StartsWith("https://")) {
-            Write-Error "::error::فشل التحقق: عنوان VITE_SUPABASE_URL يجب أن يبدأ بـ https://"
-            exit 1
-          }
-          Write-Host "✅ تم التحقق من وجود وصحة أسرار Supabase بنجاح."
+      - name: Install Node dependencies from lockfile
+        run: npm ci --no-audit --no-fund
 
-      - name: 🔍 Type-check & Lint (TypeScript & Electron)
-        run: npm run lint
+      - name: Run .NET application tests
+        run: dotnet test ThanaweyaAmma/tests/ThanaweyaAmma.Tests/ThanaweyaAmma.Tests.csproj --configuration Release
 
-      - name: 🧪 Run Automated Tests
+      - name: Run TypeScript checks and unit tests
         run: npm test
 
-      - name: 🏗️ Build Frontend & Electron Processes
+      - name: Build frontend and Electron processes
         run: npm run build:all
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: 🛡️ Verify Build Invariants & Anti-Drift Checks
+      - name: Verify build and security invariants
         run: node scripts/verify-build.mjs
 
-      - name: 📦 Package Windows Installer & Portable Executable
-        run: npx electron-builder --win --x64 --config electron-builder.yml
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      - name: Upload compiled app for packaging
+        uses: actions/upload-artifact@v4
+        with:
+          name: thanaweya-compiled-app
+          path: |
+            dist/
+            dist-electron/
+          if-no-files-found: error
+          retention-days: 3
 
-      - name: 📤 Upload Build Artifacts (.exe)
+  package-windows:
+    name: Package Windows x64
+    needs: verify
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install packaging dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Download verified application build
+        uses: actions/download-artifact@v4
+        with:
+          name: thanaweya-compiled-app
+          path: .
+
+      - name: Create Windows installer and portable build
+        run: npx electron-builder --win --x64 --config electron-builder.yml --publish never
+
+      - name: Verify packaged Windows archive
+        run: node scripts/verify-build.mjs
+        env:
+          VERIFY_WINDOWS_PACKAGE: '1'
+
+      - name: Upload Windows build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ThanaweyaAmmaMathCopilot-Windows-x64
           path: |
             release/*.exe
             release/*.blockmap
+          if-no-files-found: error
           retention-days: 14
 
-      - name: 🚀 Publish Assets to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+  publish-release:
+    name: Publish Windows assets to GitHub Release
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+    needs: package-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Windows build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ThanaweyaAmmaMathCopilot-Windows-x64
+          path: release
+
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          files: |
+            release/*.exe
+            release/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

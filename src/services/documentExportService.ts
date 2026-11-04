@@ -10,9 +10,6 @@
  * 7. Comprehensive Self-Test & Audit Suite for all printable materials
  */
 
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
 export interface ExportableDocumentItem {
   id: string;
   title: string;
@@ -64,6 +61,10 @@ export class DocumentExportService {
   ): Promise<boolean> {
     try {
       if (options?.onProgress) options.onProgress('جاري معالجة وتصيير عناصر الصفحة...');
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
 
       const scale = options?.scale || 2;
       const canvas = await html2canvas(element, {

@@ -31,10 +31,9 @@ interface RubricStep {
 interface EssayProblemSample {
   id: string;
   subjectAr: string;
-  examSession: string; // e.g. "ثانوية عامة 2024 دور أول (سؤال مقالي)"
+  examSession: string;
   questionPrompt: string;
   totalMarks: number;
-  sampleHandwrittenImage: string;
   studentEarnedMarks: number;
   overallFeedback: string;
   rubricSteps: RubricStep[];
@@ -45,12 +44,11 @@ export const HandwrittenEssayGraderView: React.FC = () => {
     {
       id: 'essay_1',
       subjectAr: 'التفاضل والتكامل',
-      examSession: 'امتحان الثانوية العامة 2024 - الدور الأول (مقالي)',
+      examSession: 'مثال تدريبي توضيحي — التفاضل والتكامل',
       questionPrompt: 'أوجد أبعاد أكبر أسطوانة دائرية قائمة يمكن وضعها داخل مخروط دائري قائم نصف قطر قاعدته ٦ سم وارتفاعه ١٢ سم بحيث تقع قاعدة الأسطوانة على قاعدة المخروط.',
       totalMarks: 3.0,
       studentEarnedMarks: 2.5,
-      sampleHandwrittenImage: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=800&auto=format&fit=crop&q=80',
-      overallFeedback: 'إجابة ممتازة وخطوات واضحة ومنظمة. تم خصم نصف درجة فقط لعدم التحقق الصريح من المشتقة الثانية للتأكيد على أن الحجم قيمة عظمى مطلقة.',
+      overallFeedback: 'تعليق تعليمي مكتوب مسبقاً لشرح توزيع الخطوات في هذا المثال، وليس تصحيحاً لإجابة طالب حقيقية.',
       rubricSteps: [
         {
           stepName: '1. الرسم واستنتاج العلاقة المساعدة (تشابه المثلثات)',
@@ -77,19 +75,18 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           status: 'partial',
           studentWorkDetected: 'ع = 12 - 2(4) = 4 سم. الأبعاد هي: نق = 4 سم، الارتفاع = 4 سم.',
           officialAnswerModel: '\\frac{d^2V}{dr^2} = \\pi(24 - 12r) = \\pi(24 - 48) = -24\\pi < 0 \\implies \\text{قيمة عظمى}',
-          remedialComment: 'تنبيه وزاري: تم إيجاد الأبعاد بشكل صحيح ولكن تم إهمال اختبار المشتقة الثانية أو بحث الإشارة للتأكيد على أنها قيمة عظمى (خصم 0.5 درجة).'
+          remedialComment: 'لإكمال الحل، وضّح كيف يؤكد اختبار المشتقة الثانية أن الحجم قيمة عظمى.'
         }
       ]
     },
     {
       id: 'essay_2',
       subjectAr: 'الاستاتيكا',
-      examSession: 'امتحان الثانوية العامة 2023 - الدور الأول (مقالي)',
+      examSession: 'مثال تدريبي توضيحي — الاستاتيكا',
       questionPrompt: 'قضيب منتظم أ ب طوله ٨٠ سم ووزنه ٢٠ ث.كجم متصل بطرفه أ بمفصل مثبت في حائط رأسي. حفظ القضيب في وضع أفقي بواسطة خيط خفيف متصل بنقطة على القضيب تبعد ٦٠ سم عن أ ومثبت طرفه الآخر في نقطة على الحائط أعلى أ بمسافة ٨٠ سم. أوجد مقدار الشد في الخيط ورد فعل المفصل.',
       totalMarks: 3.0,
       studentEarnedMarks: 3.0,
-      sampleHandwrittenImage: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80',
-      overallFeedback: 'إجابة نموذجية كاملة مطابقة تماماً لتوزيع درجات المركز القومي للامتحانات (3/3 درجات).',
+      overallFeedback: 'تعليق تعليمي مكتوب مسبقاً لشرح توزيع الخطوات في هذا المثال، وليس تصحيحاً لإجابة طالب حقيقية.',
       rubricSteps: [
         {
           stepName: '1. تحليل القوى وإيجاد زاوية ميل الخيط',
@@ -107,7 +104,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           status: 'full',
           studentWorkDetected: 'العزوم حول أ = 0 => 20 * 40 - (ش * جا هـ) * 60 = 0 => 800 = ش * (4/5) * 60 => ش = 16.67 ث.كجم',
           officialAnswerModel: '\\sum M_A = 0 \\implies 20 \\times 40 = (T \\sin\\theta) \\times 60 \\implies T = \\frac{50}{3} \\text{ kg.wt}',
-          remedialComment: 'حساب العزوم دقيق وتحديد ذراع القوة مطابق للنموذج الرسمي.'
+          remedialComment: 'تحقق من ذراع القوة واتجاه العزم قبل اعتماد المعادلة.'
         },
         {
           stepName: '3. مركبات رد فعل المفصل والمقدار النهائي',
@@ -123,36 +120,34 @@ export const HandwrittenEssayGraderView: React.FC = () => {
   ];
 
   const [activeProblem, setActiveProblem] = useState<EssayProblemSample>(sampleProblems[0]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleSwitchProblem = (problem: EssayProblemSample) => {
-    setIsAnalyzing(true);
-    setTimeout(() => {
-      setActiveProblem(problem);
-      setIsAnalyzing(false);
-    }, 800);
+    setActiveProblem(problem);
   };
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-amber-400/40 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-100" role="note">
+        <strong>عرض توضيحي فقط:</strong> الدرجات والخطوات والتعليقات أمثلة ثابتة أُعدت لشرح شكل الحل. لا توجد هنا عملية رفع أو قراءة لخط يد طالب، ولا تمثل هذه الأمثلة تصحيحاً رسمياً أو نموذجاً وزارياً معتمداً.
+      </div>
       {/* Top Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-amber-950/70 via-slate-900 to-blue-950/70 border border-amber-800/40 p-6 lg:p-7 shadow-2xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/30">
               <Brain className="w-3.5 h-3.5 text-amber-400" />
-              مصحح الأسئلة المقالية وخط اليد (Handwritten Essay Vision Grader)
+              أمثلة تدريبية على تنظيم الحل المقالي
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              تصحيح فوري لخطوات الحل المقالي وفق نماذج إجابة الوزارة
+              تعلّم كيف تُعرض خطوات الحل والتغذية الراجعة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              تحليل خطوة بخطوة للورقة المقالية (خطوة القانون، خطوة التعويض والاشتقاق، والناتج النهائي مع الوحدة). يكتشف الذكاء الاصطناعي أين تضيع درجاتك في المسائل المقالية لتلافيها قبل لجان الامتحان.
+              استعرض أمثلة توضيحية على تنظيم القانون والتعويض والنتيجة. هذه الشاشة لا ترفع الصور ولا تنفّذ تصحيحاً آلياً؛ لذلك لا تستخدم درجاتها لقياس مستواك.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 min-w-[260px] text-center space-y-2 shadow-xl">
-            <div className="text-xs text-slate-400 font-semibold">الدرجة المقدرة للورقة المصححة</div>
+            <div className="text-xs text-slate-400 font-semibold">درجة المثال التوضيحي فقط</div>
             <div className="flex items-baseline justify-center gap-1">
               <span className="text-3xl font-black text-amber-400 font-mono">
                 {activeProblem.studentEarnedMarks}
@@ -160,7 +155,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
               <span className="text-sm text-slate-400 font-mono">/ {activeProblem.totalMarks} درجات</span>
             </div>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
-              مطابق لباريم تصحيح الوزارة
+              ليست نتيجة طالب أو تصحيحاً رسمياً
             </span>
           </div>
         </div>
@@ -168,7 +163,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
 
       {/* Problem Selector Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl text-xs">
-        <span className="text-slate-400 font-bold">نماذج مسائل امتحانات الثانوية العامة المصححة:</span>
+        <span className="text-slate-400 font-bold">أمثلة تدريبية ثابتة:</span>
         <div className="flex items-center gap-2">
           {sampleProblems.map((prob) => (
             <button
@@ -205,29 +200,24 @@ export const HandwrittenEssayGraderView: React.FC = () => {
             </h4>
           </div>
 
-          {/* Student Handwritten Work Preview */}
+          {/* Local illustrative sheet; no student image is uploaded or analyzed here. */}
           <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-black aspect-[4/3] shadow-xl">
-            <img
-              src={activeProblem.sampleHandwrittenImage}
-              alt="Handwritten math solution"
-              className="w-full h-full object-cover opacity-85"
-            />
-
-            {isAnalyzing && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
-                <span className="text-xs font-mono text-amber-300 font-bold">
-                  جاري مطابقة خطوات خط اليد مع نموذج الإجابة الرسمي...
-                </span>
+            <div className="h-full w-full bg-slate-200 p-6 flex items-center justify-center" role="img" aria-label="ورقة حل تخطيطية للتوضيح فقط وليست صورة لطالب">
+              <div className="w-full max-w-sm h-full rounded-lg bg-white p-5 shadow-xl text-slate-800 font-mono text-sm leading-10">
+                <div className="border-b border-slate-200 pb-2 text-center font-sans font-bold">مثال مكتوب للتوضيح</div>
+                <div className="mt-3">المعطيات ← العلاقة</div>
+                <div>القانون ← التعويض</div>
+                <div>الخطوات ← النتيجة والوحدة</div>
+                <div className="mt-4 text-center text-xs text-slate-500 font-sans">لا يمثل إجابة طالب حقيقية</div>
               </div>
-            )}
+            </div>
 
             <div className="absolute bottom-3 right-3 left-3 bg-slate-950/90 border border-slate-700/80 rounded-xl p-2.5 text-xs text-slate-300 flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>تم التعرف على خطوات الطالب المكتوبة بخط اليد بنجاح</span>
+                <FileText className="w-3.5 h-3.5" />
+                <span>رسم توضيحي محلي — لا يتضمن OCR</span>
               </span>
-              <span className="font-mono text-[10px] text-slate-400">Gemini Vision OCR</span>
+              <span className="font-mono text-[10px] text-slate-400">مثال ثابت</span>
             </div>
           </div>
 
@@ -235,7 +225,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/30 to-slate-900 border border-amber-800/40 text-xs space-y-2">
             <div className="font-bold text-amber-300 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>ملاحظة رئيس لجنة التقدير:</span>
+              <span>تعليق تعليمي على المثال:</span>
             </div>
             <p className="text-slate-300 leading-relaxed text-[11px]">{activeProblem.overallFeedback}</p>
           </div>
@@ -246,9 +236,9 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           <div className="flex items-center justify-between pb-1">
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <FileCheck className="w-4 h-4 text-emerald-400" />
-              <span>تفصيل توزيع الدرجات الوزاري (Rubric Breakdown):</span>
+              <span>تفصيل توضيحي للخطوات:</span>
             </h4>
-            <span className="text-xs text-slate-400">توزيع دقيق لكل نصف درجة</span>
+            <span className="text-xs text-slate-400">تقسيم إرشادي غير رسمي</span>
           </div>
 
           <div className="space-y-4">
@@ -281,13 +271,13 @@ export const HandwrittenEssayGraderView: React.FC = () => {
 
                   {/* Student Work Extracted */}
                   <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 space-y-1 text-xs">
-                    <div className="text-[11px] text-slate-400 font-semibold">ما تم رصده في ورقة الطالب:</div>
+                    <div className="text-[11px] text-slate-400 font-semibold">خطوة توضيحية في المثال:</div>
                     <div className="text-slate-200 leading-relaxed font-mono text-[11px]">{step.studentWorkDetected}</div>
                   </div>
 
                   {/* Official Model Answer Formula */}
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-blue-900/30 space-y-1 text-xs">
-                    <div className="text-[11px] text-blue-400 font-semibold">نموذج الوزارة المعتمد:</div>
+                    <div className="text-[11px] text-blue-400 font-semibold">حل مرجعي توضيحي:</div>
                     <div className="text-center py-1">
                       <MathRenderer latex={step.officialAnswerModel} block={true} className="text-sm text-cyan-300" />
                     </div>

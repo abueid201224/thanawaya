@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CurriculumUnit, SkipEvaluationResult, PracticeQuestion } from '../types';
 import { MixedTextRenderer } from './MathRenderer';
+import { canApproveUnitSkip } from '../lib/assessmentScoring';
 
 interface SkipExamEngineProps {
   units: CurriculumUnit[];
@@ -45,41 +46,8 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(20 * 60); // 20 mins
   const [evaluationResult, setEvaluationResult] = useState<SkipEvaluationResult | null>(null);
 
-  // Generate 4-5 test questions for the placement test
-  const testQuestions: PracticeQuestion[] = activeUnit?.practiceQuestions?.length
-    ? activeUnit.practiceQuestions
-    : [
-        {
-          id: 'sq_1',
-          questionNumber: 1,
-          questionText: 'إذا كانت ص = ظا(٢س)، فإن د²ص / دس² تساوي:',
-          options: [
-            { key: 'A', text: '٨ قا²(٢س) ظا(٢س)' },
-            { key: 'B', text: '٤ قا²(٢س) ظا(٢س)' },
-            { key: 'C', text: '٨ قا⁴(٢س)' },
-            { key: 'D', text: '٢ قا²(٢س)' }
-          ],
-          correctKey: 'A',
-          explanation: 'دص/دس = ٢ قا²(٢س). بالاشتقاق مرة أخرى: د²ص/دس² = ٢ × ٢ قا(٢س) × [قا(٢س) ظا(٢س) × ٢] = ٨ قا²(٢س) ظا(٢س).',
-          difficulty: 'B',
-          targetedLearningOutcome: 'إيجاد المشتقات العليا للدوال المثلثية'
-        },
-        {
-          id: 'sq_2',
-          questionNumber: 2,
-          questionText: 'قضيب منتظم يرتكز على أرض خشنة (م_س = ٠٫٥)، إذا كان القضيب على وشك الانزلاق عندما كانت زاوية ميله هـ، فإن ظا(هـ) تساوي:',
-          options: [
-            { key: 'A', text: '١' },
-            { key: 'B', text: '٢' },
-            { key: 'C', text: '٠٫٥' },
-            { key: 'D', text: '٠٫٢٥' }
-          ],
-          correctKey: 'A',
-          explanation: 'في حالة السلم المرتكز على أرض خشنة وحائط أملس على وشك الانزلاق: ظا(هـ) = ١ / (٢ م_س) = ١ / (٢ × ٠٫٥) = ١.',
-          difficulty: 'A',
-          targetedLearningOutcome: 'شروط انزلاق السلالم المنتظمة'
-        }
-      ];
+  // A diagnostic must use questions authored for this unit; never substitute unrelated generic items.
+  const testQuestions: PracticeQuestion[] = activeUnit?.practiceQuestions ?? [];
 
   // Timer countdown
   React.useEffect(() => {
@@ -95,6 +63,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
   }, [examStarted, evaluationResult, timeRemainingSeconds]);
 
   const handleStartExam = () => {
+    if (!activeUnit || testQuestions.length === 0) return;
     setUserAnswers({});
     setEvaluationResult(null);
     setCurrentQuestionIndex(0);
@@ -107,6 +76,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
   };
 
   const handleSubmitExam = () => {
+    if (!activeUnit || testQuestions.length === 0) return;
     let score = 0;
     const weakPoints: string[] = [];
     const masteredPoints: string[] = [];
@@ -124,12 +94,12 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
     const maxScore = testQuestions.length || 1;
     const percentage = Math.round((score / maxScore) * 100);
 
-    let verdict: 'mastered_skip_approved' | 'partial_mastery_review_weak_points' | 'needs_full_study';
+    let verdict: SkipEvaluationResult['verdict'];
     let verdictTitle: string;
     let tailoredAdvice: string;
     let nextRecommendedAction: string;
 
-    if (percentage >= 80) {
+    if (canApproveUnitSkip(activeUnit.skipAssessmentReady === true, percentage)) {
       verdict = 'mastered_skip_approved';
       verdictTitle = 'مستوى متميز: تم إثبات الإتقان وتخطي دراسة الوحدة بنجاح! 🏆';
       tailoredAdvice =
@@ -139,6 +109,13 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
 
       // Confirm skip in parent
       onConfirmSkipUnit(activeUnit.id, percentage);
+    } else if (activeUnit.skipAssessmentReady !== true) {
+      verdict = 'diagnostic_only';
+      verdictTitle = 'نتيجة تشخيصية فقط — لم يُعتمد اختبار التخطي لهذه الوحدة';
+      tailoredAdvice =
+        'تساعدك هذه النتيجة على مراجعة الأسئلة التي أجبت عنها، لكنها لا تثبت إتقان الوحدة ولا تتجاوزها. يلزم اعتماد تغطية الاختبار من مدرس قبل استخدامه لاتخاذ قرار التخطي.';
+      nextRecommendedAction =
+        'راجع نواتج التعلم والأسئلة التي أخطأت فيها، ثم تابع خطة دراسة الوحدة إلى أن يعتمد مدرس اختبارها التشخيصي.';
     } else if (percentage >= 50) {
       verdict = 'partial_mastery_review_weak_points';
       verdictTitle = 'مستوى متوسط: إتقان جزئي جيد (لا داعي لدراسة الوحدة كاملة) ⚡';
@@ -187,16 +164,16 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               محرك التخطي الذكي والإتقان المسبق (Fast-Track Diagnostic Engine)
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              تخطي ما درسته مسبقاً باختبار إتقان تقييمي
+              اختبار تشخيصي لتحديد ما يحتاج إلى مراجعة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              إذا كنت قد ذاكرت أي وحدة أو درس سابقاً في دروسك الخاصة أو المدرسة، لا تضيع وقتك! خض هذا الاختبار التقييمي القصير؛ وإذا حققت ٨٠٪ فأكثر، سيتم تخطي الوحدة رسمياً واعتمادها كمنجزة، مع تقديم نصائح ذكية مفصلة حسب مستواك.
+              أجب عن أسئلة الوحدة لتتعرف على ما راجعته وما يحتاج إلى تدريب. لا يعتمد تجاوز الوحدة تلقائياً إلا بعد مراجعة مدرس وتوثيق كفاية الاختبار.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 min-w-[270px] text-xs space-y-2">
             <div className="flex justify-between text-slate-300">
-              <span>شرط الاعتماد والتخطي:</span>
+              <span>حد النجاح بعد اعتماد الاختبار:</span>
               <span className="font-bold text-emerald-400 font-mono">≥ 80%</span>
             </div>
             <div className="flex justify-between text-slate-300">
@@ -243,9 +220,11 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
                 {activeUnit.subjectNameAr}
               </span>
-              <span className="text-xs text-slate-400">
-                {testQuestions.length} أسئلة قياس نواتج تعلم • المدة: ١٥ دقيقة
-              </span>
+                <span className="text-xs text-slate-400">
+                  {testQuestions.length > 0
+                    ? `${testQuestions.length} أسئلة تشخيصية • المدة: ١٥ دقيقة`
+                    : 'لا توجد أسئلة مراجعة متاحة لهذه الوحدة بعد'}
+                </span>
             </div>
 
             <h4 className="text-base font-bold text-white">{activeUnit.title}</h4>
@@ -260,13 +239,20 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               ))}
             </div>
 
-            <div className="pt-4 flex justify-end">
-              <button
-                onClick={handleStartExam}
-                className="bg-amber-500 hover:bg-amber-400 text-black px-6 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
-              >
-                <FastForward className="w-4 h-4 fill-black" />
-                <span>بدء اختبار التخطي والإتقان الآن ⚡</span>
+              {!activeUnit.skipAssessmentReady && testQuestions.length > 0 && (
+                <p className="text-xs text-amber-300" role="note">
+                  هذا تشخيص تدريبي فقط؛ تجاوز الوحدة غير متاح قبل مراجعة الاختبار واعتماده.
+                </p>
+              )}
+
+              <div className="pt-4 flex justify-end">
+                <button
+                  disabled={testQuestions.length === 0}
+                  onClick={handleStartExam}
+                  className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black px-6 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  <FastForward className="w-4 h-4 fill-black" />
+                  <span>بدء الاختبار التشخيصي</span>
               </button>
             </div>
           </div>
@@ -385,6 +371,8 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
                 ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
                 : evaluationResult.verdict === 'partial_mastery_review_weak_points'
                 ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                : evaluationResult.verdict === 'diagnostic_only'
+                ? 'bg-blue-950/40 border-blue-500/50 text-blue-200'
                 : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
             }`}
           >
@@ -409,7 +397,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
               <div className="text-emerald-400 font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>نقاط القوة ونواتج التعلم المتقنة:</span>
+                <span>الأسئلة التي أجبت عنها بشكل صحيح:</span>
               </div>
               {evaluationResult.masteredTopics.length > 0 ? (
                 <ul className="space-y-1 list-disc list-inside text-slate-300">
@@ -435,7 +423,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
                   ))}
                 </ul>
               ) : (
-                <div className="text-emerald-400">لا توجد أي نقاط ضعف! إتقان مثالي ١٠٠٪.</div>
+                <div className="text-emerald-400">أجبت عن جميع أسئلة هذه العينة بشكل صحيح.</div>
               )}
             </div>
           </div>
