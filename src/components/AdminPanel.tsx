@@ -10,16 +10,15 @@ import {
   Users,
   FileText,
   Lock,
-  Star,
   CheckCircle2,
   AlertCircle,
   Database,
   ArrowRight
 } from 'lucide-react';
-import { ScoutedOfficialResource, MultimediaLibraryItem, UserRole } from '../types';
+import { ScoutedResourceCandidate, MultimediaLibraryItem, UserRole } from '../types';
 
 interface AdminPanelProps {
-  scoutedResources: ScoutedOfficialResource[];
+  scoutedResources: ScoutedResourceCandidate[];
   onApproveResource: (resourceId: string) => void;
   onRejectResource: (resourceId: string) => void;
   onAddNewLibraryItem: (newItem: MultimediaLibraryItem) => void;
@@ -40,7 +39,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newSubject, setNewSubject] = useState('CALCULUS');
   const [newFileType, setNewFileType] = useState<'video' | 'audio' | 'printable_doc'>('printable_doc');
   const [newUrl, setNewUrl] = useState('');
-  const [newSourceName, setNewSourceName] = useState('وزارة التربية والتعليم - moe.gov.eg');
+  const [newSourceName, setNewSourceName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPagesOrDuration, setNewPagesOrDuration] = useState('4 صفحات A4');
 
@@ -50,12 +49,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
           <Lock className="w-6 h-6" />
         </div>
-        <h3 className="text-xl font-bold text-white">منطقة مقيدة بصلاحيات المشرف العام (RBAC Guard)</h3>
+        <h3 className="text-xl font-bold text-white">منطقة إدارة المحتوى</h3>
         <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-          هذه الشاشة مخصصة لإدارة المناهج، مراجعة وتضمين روابط المواقع الحكومية المعتمدة، ومراقبة انضباط الطلاب وفق المعايير المؤسسية الدولية.
+          هذه الشاشة لإدارة العناصر التي تُضاف إلى مكتبة التطبيق. إضافتها أو موافقة المشرف لا تعني التحقق من المحتوى أو اعتماده من جهة تعليمية.
         </p>
         <div className="text-xs text-slate-400">
-          يمكنك تفعيل صلاحية المشرف بالضغط على زر "الصلاحية" في الشريط العلوي لتجربة لوحة التحكم.
+          لا يمكن تفعيل صلاحية الإدارة من واجهة الطالب. اطلب منحها عبر إعدادات الإدارة الموثوقة.
         </div>
       </div>
     );
@@ -82,16 +81,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       title: newTitle,
       description: newDescription,
       fileType: newFileType,
-      url: newUrl || 'https://moe.gov.eg/official_document.pdf',
-      sourceName: newSourceName,
-      rating: 5.0,
+      url: newUrl,
+      sourceName: newSourceName || 'غير محدد',
       durationOrPages: newPagesOrDuration,
-      isVerifiedByMinistry: true,
+      sourceStatus: 'unverified',
       uploadDate: new Date().toISOString().split('T')[0],
-      printableCheatSheet: [
-        'قاعدة معتمدة تم إدراجها بواسطة المشرف التربوي.',
-        'قوانين ونواتج تعلم موثقة.'
-      ]
+      printableCheatSheet: []
     };
 
     onAddNewLibraryItem(newItem);
@@ -109,30 +104,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30">
               <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-              صلاحيات الإشراف الأكاديمي والتحكم المؤسسي (Enterprise RBAC)
+              إدارة مواد مكتبة التطبيق
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              إدارة المصادر المعتمدة ومراجعة كشاف المواقع الحكومية
+              إدارة المواد المرشحة للمكتبة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              تحكم كامل في قبول أو رفض المستندات والروابط المرصودة عبر كشاف الذكاء الاصطناعي من بوابة وزارة التربية والتعليم (moe.gov.eg)، بنك المعرفة (ekb.eg)، ومنصة نجوى.
+              يمكن مراجعة الروابط التي أُضيفت يدوياً إلى التطبيق. لا يعمل هنا كشاف آلي للمواقع، ولا تعني الموافقة على الإضافة اعتماداً رسمياً.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 min-w-[260px] text-xs space-y-2">
             <div className="flex justify-between text-slate-300">
-              <span>الطلبات بانتظار الاعتماد:</span>
+              <span>مواد بانتظار المراجعة:</span>
               <span className="font-bold text-amber-400 font-mono">
                 {scoutedResources.filter((r) => r.status === 'pending').length} مستندات
               </span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>البروتوكول الأمني:</span>
-              <span className="font-bold text-emerald-400 font-mono">RBAC ISO-27001</span>
+              <span>حالة سجل التدقيق:</span>
+              <span className="font-bold text-emerald-400 font-mono">غير متاح في هذه الواجهة</span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>جلسة المشرف:</span>
-              <span className="font-bold text-purple-400 font-mono">مصرحة ومحمية</span>
+              <span>حالة الجلسة:</span>
+              <span className="font-bold text-purple-400 font-mono">وفق صلاحيات التطبيق</span>
             </div>
           </div>
         </div>
@@ -148,7 +143,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          طابور اعتماد روابط الكشاف الحكومي (Human-in-the-Loop)
+          مراجعة العناصر المقترحة
         </button>
 
         <button
@@ -181,13 +176,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Search className="w-4 h-4 text-purple-400" />
-              <span>الروابط والمذكرات المرصودة من المنصات الحكومية المعتمدة</span>
+              <span>الروابط والمواد المقترحة للمكتبة</span>
             </h3>
             <span className="text-xs text-slate-400">
-              تخضع للمراجعة قبل إتاحتها في مكتبة الطالب وتضمينها في RAG
+              تُراجع قبل الإضافة؛ والمراجعة هنا لا تثبت دقة المحتوى أو رسميته
             </span>
           </div>
 
+          {scoutedResources.length === 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
+              لا توجد مصادر مرشحة مسجلة. لا يعمل ماسح تلقائي للمواقع في هذه النسخة.
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {scoutedResources.map((res) => {
               const isPending = res.status === 'pending';
@@ -211,9 +211,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             : 'bg-amber-500/10 text-amber-400'
                         }`}
                       >
-                        {res.status === 'approved' && 'معتمد في المكتبة'}
+                        {res.status === 'approved' && 'أُضيف إلى المكتبة — غير موثّق'}
                         {res.status === 'rejected' && 'مرفوض'}
-                        {res.status === 'pending' && 'بانتظار موافقة المشرف'}
+                        {res.status === 'pending' && 'بانتظار مراجعة المشرف'}
                       </span>
                     </div>
 
@@ -222,10 +222,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
                       <span>المادة المقترحة: {res.suggestedSubject}</span>
-                      <span className="flex items-center gap-1 text-amber-400 font-mono">
-                        <Star className="w-3 h-3 fill-amber-400" />
-                        {res.ratingScore}
-                      </span>
+                      <span>المصدر: {res.platform}</span>
                     </div>
                   </div>
 
@@ -252,7 +249,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-md shadow-emerald-600/20"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>اعتماد ونشر في المكتبة</span>
+                          <span>إضافة إلى المكتبة</span>
                         </button>
                       </div>
                     )}
@@ -261,6 +258,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -269,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="max-w-2xl bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2 pb-3 border-b border-slate-800">
             <Plus className="w-4 h-4 text-purple-400" />
-            <span>إضافة مذكرة A4 أو وسائط للمكتبة بصلاحية المشرف</span>
+            <span>إضافة مذكرة أو وسائط للمكتبة</span>
           </h3>
 
           <form onSubmit={handleCreateResource} className="space-y-4 text-xs">
@@ -318,12 +316,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">المصدر المعتمد</label>
+              <label className="block text-slate-400 mb-1">اسم المصدر (اختياري)</label>
               <input
                 type="text"
                 value={newSourceName}
                 onChange={(e) => setNewSourceName(e.target.value)}
-                placeholder="مثلاً: وزارة التربية والتعليم - moe.gov.eg"
+                placeholder="مثلاً: الجهة أو الموقع المصدر"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
               />
             </div>
@@ -334,7 +332,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 type="url"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="https://moe.gov.eg/document.pdf"
+                placeholder="https://example.org/resource"
+                required={newFileType !== 'printable_doc'}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
               />
             </div>
@@ -355,7 +354,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 type="submit"
                 className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold cursor-pointer shadow-md shadow-purple-600/30"
               >
-                نشر واعتماد في مكتبة الطلاب
+                إضافة للمكتبة دون اعتماد رسمي
               </button>
             </div>
           </form>
@@ -371,10 +370,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </h3>
 
           <div className="bg-slate-950 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-2 border border-slate-800">
-            <div className="text-emerald-400">[2026-10-28 14:02:11] RBAC Session Verified: User 'Admin_Ahmed' authenticated via DPAPI vault token.</div>
-            <div className="text-blue-400">[2026-10-28 14:15:30] Web Scout Scanner dispatched to 'moe.gov.eg' - 2 documents discovered.</div>
-            <div className="text-purple-400">[2026-10-28 14:22:45] Permission Grant: Only Verified Admin can mutate 'multimedia_library' table.</div>
-            <div className="text-slate-400">[2026-10-28 14:30:19] Student Role Gated: Students hold read/quiz/chat authorization only (NIST SP 800-162 compliant).</div>
+            <div className="text-slate-400">لا تتوفر أحداث تدقيق محفوظة في هذه النسخة؛ هذه اللوحة لا تعرض سجلاً أمنياً حياً.</div>
           </div>
         </div>
       )}

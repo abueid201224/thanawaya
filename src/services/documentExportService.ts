@@ -10,9 +10,6 @@
  * 7. Comprehensive Self-Test & Audit Suite for all printable materials
  */
 
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
 export interface ExportableDocumentItem {
   id: string;
   title: string;
@@ -31,7 +28,7 @@ export interface ExportableDocumentItem {
     latexFormulas?: string[];
     notes?: string;
   }>;
-  officialMinistrySeal?: boolean;
+
 }
 
 export interface PrintableAuditReport {
@@ -64,6 +61,10 @@ export class DocumentExportService {
   ): Promise<boolean> {
     try {
       if (options?.onProgress) options.onProgress('جاري معالجة وتصيير عناصر الصفحة...');
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
 
       const scale = options?.scale || 2;
       const canvas = await html2canvas(element, {
@@ -124,7 +125,7 @@ export class DocumentExportService {
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>${doc.title} - طباعة معتمدة A4</title>
+  <title>${doc.title} - طباعة تدريبية غير رسمية A4</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <style>
     @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
@@ -251,18 +252,18 @@ export class DocumentExportService {
 
   <div class="page-box">
     <div class="watermark">
-      جمهورية مصر العربية<br>وزارة التربية والتعليم<br>نسخة معتمدة للامتحان
+      ملخص تدريبي<br>غير رسمي<br>تحقّق من المصدر
     </div>
 
     <div class="header-row">
       <div>
-        <div class="gov-title">جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</div>
-        <div class="sub-title">امتحانات شهادة إتمام الثانوية العامة - الشعبة العلمية (رياضيات)</div>
+        <div class="gov-title">مادة تدريبية من التطبيق — غير صادرة عن الوزارة</div>
+        <div class="sub-title">للمراجعة الذاتية فقط؛ راجع الكتاب والمصادر الرسمية للعام الدراسي الحالي</div>
         <div class="main-title">${doc.title}</div>
         <div class="sub-title">${doc.subjectAr} ${doc.branchAr ? `• ${doc.branchAr}` : ''} • المرجع: ${doc.authorOrSource}</div>
       </div>
       <div>
-        <span class="badge">A4 Standard</span>
+        <span class="badge">تدريبي غير رسمي</span>
       </div>
     </div>
 
@@ -280,7 +281,7 @@ export class DocumentExportService {
             ? sec.latexFormulas.map((f) => `<div class="formula-row">الصيغة الرياضية: ${f}</div>`).join('')
             : ''
         }
-        ${sec.notes ? `<div class="notes-box">⚠️ تنبيه وزاري: ${sec.notes}</div>` : ''}
+        ${sec.notes ? `<div class="notes-box">⚠️ تنبيه تدريبي: ${sec.notes}</div>` : ''}
       </div>
     `
       )
@@ -288,7 +289,7 @@ export class DocumentExportService {
 
     <div class="footer-row">
       <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</span>
-      <span>منظومة المخطط الذكي للثانوية العامة • الدفعة الرسمية 2026/2027</span>
+      <span>محتوى تدريبي غير معتمد من الوزارة</span>
       <span style="font-family: monospace;">THN-${doc.id.toUpperCase()}</span>
     </div>
   </div>
@@ -480,13 +481,13 @@ export class DocumentExportService {
   <div class="page-container">
     <div class="header-bar">
       <div>
-        <div class="gov-title">جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</div>
-        <div class="subtitle">امتحانات شهادة إتمام الثانوية العامة - الشعبة العلمية (رياضيات)</div>
+        <div class="gov-title">مادة تدريبية من التطبيق — غير صادرة عن الوزارة</div>
+        <div class="subtitle">للمراجعة الذاتية فقط؛ راجع الكتاب والمصادر الرسمية للعام الدراسي الحالي</div>
         <h1 class="main-title">${doc.title}</h1>
         <div class="subtitle">${doc.subjectAr} ${doc.branchAr ? `• ${doc.branchAr}` : ''} • المرجع: ${doc.authorOrSource}</div>
       </div>
       <div>
-        <span class="badge">وثيقة A4 معتمدة</span>
+        <span class="badge">مذكرة تدريبية غير رسمية</span>
       </div>
     </div>
 
@@ -506,7 +507,7 @@ export class DocumentExportService {
               ? sec.latexFormulas.map((f) => `<div class="formula-box">LaTeX Formula: ${f}</div>`).join('')
               : ''
           }
-          ${sec.notes ? `<div style="font-size: 12px; color: #b45309; margin-top: 8px;">تنبيه فخ وزاري: ${sec.notes}</div>` : ''}
+          ${sec.notes ? `<div style="font-size: 12px; color: #b45309; margin-top: 8px;">تنبيه تدريبي: ${sec.notes}</div>` : ''}
         </div>
       </div>
     `
@@ -515,7 +516,7 @@ export class DocumentExportService {
 
     <div class="footer-bar">
       <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</span>
-      <span>منظومة المخطط الذكي للثانوية العامة • الدفعة الرسمية 2026/2027</span>
+      <span>محتوى تدريبي غير معتمد من الوزارة</span>
       <span>كود الوثيقة: THN-${doc.id.toUpperCase()}</span>
     </div>
   </div>
@@ -551,7 +552,7 @@ export class DocumentExportService {
         md += `\`\`\`\n`;
       }
       if (sec.notes) {
-        md += `\n⚠️ **تنبيه وزاري:** ${sec.notes}\n`;
+        md += `\n⚠️ **تنبيه تدريبي:** ${sec.notes}\n`;
       }
       md += `\n`;
     });

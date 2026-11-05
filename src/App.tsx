@@ -18,12 +18,11 @@ import {
 
 import {
   UserProfile,
-  UserRole,
   DailyScheduleSlot,
   MultimediaLibraryItem,
   SubjectProgress,
   DisciplineMetrics,
-  ScoutedOfficialResource,
+  ScoutedResourceCandidate,
   CurriculumUnit,
   MonthlyExam
 } from './types';
@@ -45,27 +44,27 @@ import {
 
 import { Navbar } from './components/Navbar';
 import { SidebarNav, ActiveNavService } from './components/SidebarNav';
-import { DailyPlannerView } from './components/DailyPlannerView';
-import { FullCurriculumExplorer } from './components/FullCurriculumExplorer';
-import { SkipExamEngine } from './components/SkipExamEngine';
-import { MonthlyExamsView } from './components/MonthlyExamsView';
-import { HeatmapAnalyticsView } from './components/HeatmapAnalyticsView';
-import { OfficialConceptBookletView } from './components/OfficialConceptBookletView';
-import { HandwrittenEssayGraderView } from './components/HandwrittenEssayGraderView';
-import { InteractiveGrapherView } from './components/InteractiveGrapherView';
-import { SubjectLibraryView } from './components/SubjectLibraryView';
-import { CodingBuddyAssistantView } from './components/CodingBuddyAssistantView';
-import { WhatsAppEducationalHubView } from './components/WhatsAppEducationalHubView';
-import { AiTutorScheduleView } from './components/AiTutorScheduleView';
-import { ProgressDisciplineView } from './components/ProgressDisciplineView';
-import { BreakMotivationModal } from './components/BreakMotivationModal';
-import { AdminPanel } from './components/AdminPanel';
-import { AuthModal } from './components/AuthModal';
-import { OfflineSyncModal } from './components/OfflineSyncModal';
-import { ResilientMediaModal } from './components/ResilientMediaModal';
-import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
-import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
-import { SecureApiKeyModal } from './components/SecureApiKeyModal';
+const DailyPlannerView = React.lazy(() => import('./components/DailyPlannerView').then((m) => ({ default: m.DailyPlannerView })));
+const FullCurriculumExplorer = React.lazy(() => import('./components/FullCurriculumExplorer').then((m) => ({ default: m.FullCurriculumExplorer })));
+const SkipExamEngine = React.lazy(() => import('./components/SkipExamEngine').then((m) => ({ default: m.SkipExamEngine })));
+const MonthlyExamsView = React.lazy(() => import('./components/MonthlyExamsView').then((m) => ({ default: m.MonthlyExamsView })));
+const HeatmapAnalyticsView = React.lazy(() => import('./components/HeatmapAnalyticsView').then((m) => ({ default: m.HeatmapAnalyticsView })));
+const OfficialConceptBookletView = React.lazy(() => import('./components/OfficialConceptBookletView').then((m) => ({ default: m.OfficialConceptBookletView })));
+const HandwrittenEssayGraderView = React.lazy(() => import('./components/HandwrittenEssayGraderView').then((m) => ({ default: m.HandwrittenEssayGraderView })));
+const InteractiveGrapherView = React.lazy(() => import('./components/InteractiveGrapherView').then((m) => ({ default: m.InteractiveGrapherView })));
+const SubjectLibraryView = React.lazy(() => import('./components/SubjectLibraryView').then((m) => ({ default: m.SubjectLibraryView })));
+const CodingBuddyAssistantView = React.lazy(() => import('./components/CodingBuddyAssistantView').then((m) => ({ default: m.CodingBuddyAssistantView })));
+const WhatsAppEducationalHubView = React.lazy(() => import('./components/WhatsAppEducationalHubView').then((m) => ({ default: m.WhatsAppEducationalHubView })));
+const AiTutorScheduleView = React.lazy(() => import('./components/AiTutorScheduleView').then((m) => ({ default: m.AiTutorScheduleView })));
+const ProgressDisciplineView = React.lazy(() => import('./components/ProgressDisciplineView').then((m) => ({ default: m.ProgressDisciplineView })));
+const BreakMotivationModal = React.lazy(() => import('./components/BreakMotivationModal').then((m) => ({ default: m.BreakMotivationModal })));
+const AdminPanel = React.lazy(() => import('./components/AdminPanel').then((m) => ({ default: m.AdminPanel })));
+const AuthModal = React.lazy(() => import('./components/AuthModal').then((m) => ({ default: m.AuthModal })));
+const OfflineSyncModal = React.lazy(() => import('./components/OfflineSyncModal').then((m) => ({ default: m.OfflineSyncModal })));
+const ResilientMediaModal = React.lazy(() => import('./components/ResilientMediaModal').then((m) => ({ default: m.ResilientMediaModal })));
+const UniversalDocumentExportModal = React.lazy(() => import('./components/UniversalDocumentExportModal').then((m) => ({ default: m.UniversalDocumentExportModal })));
+const ServiceDiagnosticsModal = React.lazy(() => import('./components/ServiceDiagnosticsModal').then((m) => ({ default: m.ServiceDiagnosticsModal })));
+const SecureApiKeyModal = React.lazy(() => import('./components/SecureApiKeyModal').then((m) => ({ default: m.SecureApiKeyModal })));
 import { SplashLoader } from './components/SplashLoader';
 import { nativeDesktop } from './services/nativeDesktopBridge';
 import { authService } from './services/authService';
@@ -84,7 +83,7 @@ export default function App() {
   const [monthlyExams, setMonthlyExams] = useState<MonthlyExam[]>(initialMonthlyExams);
   const [subjectProgressList, setSubjectProgressList] = useState<SubjectProgress[]>(initialSubjectProgress);
   const [disciplineMetrics, setDisciplineMetrics] = useState<DisciplineMetrics>(initialDisciplineMetrics);
-  const [scoutedResources, setScoutedResources] = useState<ScoutedOfficialResource[]>(initialScoutedResources);
+  const [scoutedResources, setScoutedResources] = useState<ScoutedResourceCandidate[]>(initialScoutedResources);
 
   // Skip assessment target
   const [targetSkipUnit, setTargetSkipUnit] = useState<CurriculumUnit | null>(null);
@@ -101,10 +100,6 @@ export default function App() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   // Handlers
-  const handleSwitchRole = (newRole: UserRole) => {
-    setUser({ ...user, role: newRole });
-  };
-
   const handleUpdateSchedule = (newSchedule: DailyScheduleSlot[]) => {
     setSchedule(newSchedule);
 
@@ -181,20 +176,7 @@ export default function App() {
     }));
   };
 
-  const handleUpdateUnitResources = (unitId: string) => {
-    // Increment local resources count & sync date
-    setCurriculumUnits((prev) =>
-      prev.map((u) =>
-        u.id === unitId
-          ? {
-              ...u,
-              localResourcesCount: u.localResourcesCount + 2,
-              lastUpdatedDate: new Date().toISOString().split('T')[0]
-            }
-          : u
-      )
-    );
-  };
+
 
   const handleCompleteMonthlyExam = (examId: string, score: number) => {
     setMonthlyExams((prev) =>
@@ -248,15 +230,11 @@ export default function App() {
       fileType: resource.fileType,
       url: resource.url,
       sourceName: resource.platform,
-      rating: resource.ratingScore,
-      durationOrPages: 'معتمد وزارياً',
-      isVerifiedByMinistry: true,
+      durationOrPages: 'غير محددة',
+      sourceStatus: 'unverified',
       uploadDate: new Date().toISOString().split('T')[0],
       isPrintable: resource.fileType === 'printable_doc',
-      printableCheatSheet: [
-        'وثيقة ونماذج امتحانية معتمدة من بوابة وزارة التربية والتعليم.',
-        'نواتج تعلم مطابقة لمواصفات الورقة الامتحانية الحديثة.'
-      ]
+      printableCheatSheet: [resource.summary]
     };
 
     setLibraryItems((prev) => [newItem, ...prev]);
@@ -455,7 +433,6 @@ export default function App() {
       <Navbar
         user={user}
         onOpenAuth={() => setIsAuthModalOpen(true)}
-        onSwitchRole={handleSwitchRole}
         activeTab={activeService}
         onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
         onOpenApiKeySettings={() => setIsApiKeyModalOpen(true)}
@@ -485,6 +462,7 @@ export default function App() {
 
         {/* Focused Main Stage: ONLY THE ACTIVE SERVICE IS DISPLAYED */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto max-w-7xl mx-auto w-full transition-all">
+          <React.Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" role="status">جارٍ تحميل مساحة الدراسة…</div>}>
           {/* SERVICE 1: DAILY STUDY PLANNER */}
           {activeService === 'planner' && (
             <DailyPlannerView
@@ -500,7 +478,6 @@ export default function App() {
             <FullCurriculumExplorer
               units={curriculumUnits}
               onOpenSkipExam={handleOpenSkipExam}
-              onUpdateUnitResources={handleUpdateUnitResources}
             />
           )}
 
@@ -605,59 +582,53 @@ export default function App() {
               userRole={user.role}
             />
           )}
+          </React.Suspense>
         </main>
       </div>
 
-      {/* Resilient Media Modal with Multi-tier Fallbacks (Direct Video, YouTube Embed, Audio & Interactive Capsules) */}
-      <ResilientMediaModal
-        item={activeVideoModal}
-        onClose={() => setActiveVideoModal(null)}
-        onOpenDocumentExport={(code) => {
-          setSelectedExportDocId(code ? `doc_${code.toLowerCase().slice(0, 4)}_a4` : undefined);
-          setIsDocumentExportModalOpen(true);
-        }}
-      />
-
-      {/* Universal Document Export & Standardized A4 Print Suite */}
-      <UniversalDocumentExportModal
-        isOpen={isDocumentExportModalOpen}
-        onClose={() => setIsDocumentExportModalOpen(false)}
-        defaultDocumentId={selectedExportDocId}
-      />
-
-      {/* Services Health & Live Diagnostics Test Suite */}
-      <ServiceDiagnosticsModal
-        isOpen={isDiagnosticsModalOpen}
-        onClose={() => setIsDiagnosticsModalOpen(false)}
-        onOpenDocumentExport={() => setIsDocumentExportModalOpen(true)}
-      />
-
-      {/* Secure Gemini API Key Settings Modal (Windows DPAPI) */}
-      <SecureApiKeyModal
-        isOpen={isApiKeyModalOpen}
-        onClose={() => setIsApiKeyModalOpen(false)}
-      />
-
-      {/* Break Motivation Modal */}
-      <BreakMotivationModal
-        isOpen={isBreakModalOpen}
-        onClose={() => setIsBreakModalOpen(false)}
-      />
-
-      {/* User Auth & Profile Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={user}
-        onUpdateUser={(updated) => setUser(updated)}
-      />
-
-      {/* Offline Storage & PWA Sync Modal */}
-      <OfflineSyncModal
-        isOpen={isOfflineSyncModalOpen}
-        onClose={() => setIsOfflineSyncModalOpen(false)}
-        cachedResourcesCount={libraryItems.length}
-      />
+      <React.Suspense fallback={null}>
+        {activeVideoModal && (
+          <ResilientMediaModal
+            item={activeVideoModal}
+            onClose={() => setActiveVideoModal(null)}
+            onOpenDocumentExport={(code) => {
+              setSelectedExportDocId(code ? `doc_${code.toLowerCase().slice(0, 4)}_a4` : undefined);
+              setIsDocumentExportModalOpen(true);
+            }}
+          />
+        )}
+        {isDocumentExportModalOpen && (
+          <UniversalDocumentExportModal
+            isOpen
+            onClose={() => setIsDocumentExportModalOpen(false)}
+            defaultDocumentId={selectedExportDocId}
+          />
+        )}
+        {isDiagnosticsModalOpen && (
+          <ServiceDiagnosticsModal
+            isOpen
+            onClose={() => setIsDiagnosticsModalOpen(false)}
+            onOpenDocumentExport={() => setIsDocumentExportModalOpen(true)}
+          />
+        )}
+        {isApiKeyModalOpen && <SecureApiKeyModal isOpen onClose={() => setIsApiKeyModalOpen(false)} />}
+        {isBreakModalOpen && <BreakMotivationModal isOpen onClose={() => setIsBreakModalOpen(false)} />}
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen
+            onClose={() => setIsAuthModalOpen(false)}
+            currentUser={user}
+            onUpdateUser={(updated) => setUser(updated)}
+          />
+        )}
+        {isOfflineSyncModalOpen && (
+          <OfflineSyncModal
+            isOpen
+            onClose={() => setIsOfflineSyncModalOpen(false)}
+            cachedResourcesCount={libraryItems.length}
+          />
+        )}
+      </React.Suspense>
     </div>
   );
 }

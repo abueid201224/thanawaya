@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import {
   BookOpen,
-  FastForward,
   CheckCircle2,
   Clock,
   FileText,
+  FastForward,
   HelpCircle,
   Sparkles,
   Download,
   Plus,
-  RefreshCw,
   Search,
   ChevronDown,
   ChevronUp,
@@ -25,19 +24,16 @@ import { MixedTextRenderer } from './MathRenderer';
 interface FullCurriculumExplorerProps {
   units: CurriculumUnit[];
   onOpenSkipExam: (unit: CurriculumUnit) => void;
-  onUpdateUnitResources: (unitId: string) => void;
 }
 
 export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
   units,
   onOpenSkipExam,
-  onUpdateUnitResources
 }) => {
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedUnitId, setExpandedUnitId] = useState<string | null>(units[0]?.id || null);
   const [revealedSolutions, setRevealedSolutions] = useState<Record<string, boolean>>({});
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   const subjects = [
     { code: 'ALL', name: 'جميع المواد' },
@@ -59,12 +55,6 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
     setRevealedSolutions((prev) => ({ ...prev, [qId]: !prev[qId] }));
   };
 
-  const handleSyncWithScout = (unitId: string, unitTitle: string) => {
-    onUpdateUnitResources(unitId);
-    setSyncFeedback(`تم فحص وتحديث الروابط والمذكرات المحلية لوحدة: "${unitTitle}" بنجاح.`);
-    setTimeout(() => setSyncFeedback(null), 3500);
-  };
-
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -73,19 +63,19 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold border border-blue-500/30">
               <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-              مكتبة المناهج والتدريبات المحلية الشاملة
+              فهرس أولي للوحدات والمواد التدريبية
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
               فهرس الوحدات وتدريبات نواتج التعلم وخاصية التخطي
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              مكتبة محلية متكاملة لجميع فروع الرياضيات والعلوم. يمكنك دراسة كل درس وحل تدريباته، أو تأكيد دراستك السابقة وتخطي الوحدة فوراً عبر اجتياز اختبار الإتقان الذكي!
+              يعرض التطبيق مجموعة أولية من وحدات التدريب. المحتوى ونواتج التعلم قيد المراجعة مقابل وثائق المنهج؛ ولا تُعدّ القائمة فهرساً كاملاً أو مصدراً رسمياً.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 min-w-[270px] text-xs space-y-2">
             <div className="flex justify-between text-slate-300">
-              <span>الوحدات الدراسية المسجلة:</span>
+              <span>الوحدات المسجلة في التطبيق:</span>
               <span className="font-bold text-white font-mono">{units.length} وحدات</span>
             </div>
             <div className="flex justify-between text-slate-300">
@@ -95,25 +85,12 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
               </span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>التحديث التلقائي:</span>
-              <span className="font-bold text-blue-400 font-mono">متصل بكشاف الوزارة</span>
+              <span>حالة تدقيق المصادر:</span>
+              <span className="font-bold text-amber-300 font-mono">قيد المراجعة</span>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Sync Alert Banner if triggered */}
-      {syncFeedback && (
-        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs font-medium flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{syncFeedback}</span>
-          </div>
-          <button onClick={() => setSyncFeedback(null)} className="text-slate-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Subject Filter & Search Bar */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -199,9 +176,6 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                       </span>
                     )}
 
-                    <span className="text-[11px] text-slate-400">
-                      {unit.localResourcesCount} موارد ومذكرات محلية
-                    </span>
                   </div>
 
                   <h3 className="text-lg font-bold text-white leading-snug">
@@ -219,21 +193,12 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                     <button
                       onClick={() => onOpenSkipExam(unit)}
                       className="px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/10"
-                      title="خض اختبار التخطي إذا كنت قد ذاكرت هذه الوحدة مسبقاً لاعتمادها فورياً"
+                      title="استخدم الاختبار للتشخيص؛ لا يُعتمد تخطي الوحدة إلا إذا كان الاختبار مراجعاً من مدرس"
                     >
-                      <FastForward className="w-3.5 h-3.5" />
-                      <span>تخطي باختبار إتقان ⚡</span>
+                      <Target className="w-3.5 h-3.5" />
+                      <span>اختبار تشخيصي للوحدة</span>
                     </button>
                   )}
-
-                  {/* Sync Local Resources from Scout */}
-                  <button
-                    onClick={() => handleSyncWithScout(unit.id, unit.title)}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer"
-                    title="تحديث الروابط والمذكرات المحلية من كشاف المساعد الذكي"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
 
                   {/* Accordion toggle */}
                   <button
@@ -254,7 +219,7 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                     <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
                       <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
                         <Target className="w-3.5 h-3.5" />
-                        نواتج التعلم الوزارية المستهدفة:
+                        نواتج تعلم مقترحة للتدريب — غير موثقة بعد:
                       </div>
                       <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside leading-relaxed">
                         {unit.learningOutcomes.map((lo, idx) => (
@@ -266,7 +231,7 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                     <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
                       <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        ملخص القوانين والكبسولة الذهبية:
+                        ملخص قوانين للتدريب — راجع مرجعاً موثوقاً:
                       </div>
                       <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside leading-relaxed">
                         {unit.studyNotesSummary.map((note, idx) => (
@@ -347,7 +312,7 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                               <div className="p-3.5 rounded-xl bg-blue-950/30 border border-blue-800/40 text-xs text-blue-200 space-y-1.5 leading-relaxed">
                                 <div className="font-bold text-blue-300 flex items-center gap-1.5">
                                   <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span>خطوات الحل المعتمدة من مستشار المادة:</span>
+                                  <span>خطوات حل تدريبية أولية:</span>
                                 </div>
                                 <MixedTextRenderer text={q.explanation} />
                                 <div className="text-[11px] text-slate-400 pt-1">

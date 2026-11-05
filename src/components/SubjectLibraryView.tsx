@@ -8,7 +8,6 @@ import {
   Search,
   Star,
   ExternalLink,
-  ShieldCheck,
   Play,
   Pause,
   Download,
@@ -121,7 +120,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
               <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-              مكتبة الوسائط التعليمية المعتمدة لكل مادة
+              مكتبة المواد التدريبية
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
               فيديوهات، تسجيلات صوتية، وملخصات جاهزة للطباعة
@@ -153,8 +152,8 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
 
           <div className="bg-slate-900/90 border border-slate-700/70 rounded-2xl p-4 min-w-[260px] text-xs space-y-2">
             <div className="flex justify-between text-slate-300">
-              <span>المحتويات المعتمدة:</span>
-              <span className="font-bold text-emerald-400 font-mono">{items.length} مصادر</span>
+              <span>مواد تدريبية أولية:</span>
+              <span className="font-bold text-emerald-400 font-mono">{items.length} مواد</span>
             </div>
             <div className="flex justify-between text-slate-300">
               <span>ملخصات جاهزة للطباعة:</span>
@@ -269,7 +268,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
               className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
             >
               <div className="space-y-3">
-                {/* Header row: badge & rating */}
+                {/* Header row: subject and documented rating, when available */}
                 <div className="flex items-center justify-between">
                   <span
                     className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
@@ -286,10 +285,12 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                     <span>{item.subjectNameAr}</span>
                   </span>
 
-                  <div className="flex items-center gap-1 text-amber-400 text-xs font-mono">
-                    <Star className="w-3.5 h-3.5 fill-amber-400" />
-                    <span>{item.rating}</span>
-                  </div>
+                  {typeof item.rating === 'number' && (
+                    <div className="flex items-center gap-1 text-amber-400 text-xs font-mono" aria-label={`التقييم ${item.rating}`}>
+                      <Star className="w-3.5 h-3.5 fill-amber-400" />
+                      <span>{item.rating}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -322,16 +323,23 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                       <span>كبسولة صوتية سريعة</span>
                       <span className="font-mono">{item.durationOrPages}</span>
                     </div>
-                    <audio src={item.url} controls className="w-full h-8" />
+                    {item.url ? (
+                      <audio src={item.url} controls className="w-full h-8" />
+                    ) : (
+                      <p className="text-[11px] text-amber-300">لا يوجد رابط صوتي مرفق لهذا العنصر.</p>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Footer / Action */}
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1 text-[11px] text-emerald-400">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>معتمد وزارياً</span>
+                <div className="text-[11px] text-amber-300">
+                  {item.sourceStatus === 'official_source_verified'
+                    ? 'مصدر رسمي موثّق'
+                    : item.sourceStatus === 'third_party_source_verified'
+                    ? 'مصدر خارجي موثّق'
+                    : 'محتوى تدريبي — غير موثّق'}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -371,7 +379,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                     </button>
                   )}
 
-                  {isAudio && (
+                  {isAudio && item.url && (
                     <a
                       href={item.url}
                       download
@@ -380,7 +388,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
                       className="text-amber-400 hover:text-amber-300 flex items-center gap-1 text-xs font-medium"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>تحميل MP3</span>
+                      <span>تحميل الملف الصوتي</span>
                     </a>
                   )}
                 </div>
@@ -398,7 +406,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
             <div className="p-5 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
               <div>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                  {printableModalItem.subjectNameAr} • وثيقة طباعة رسمية
+                      {printableModalItem.subjectNameAr} • ملخص تدريبي غير رسمي
                 </span>
                 <h3 className="text-lg font-bold text-white mt-1">
                   {printableModalItem.title}
@@ -441,20 +449,20 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
               {/* Header Box on Sheet */}
               <div className="border-2 border-slate-700 rounded-2xl p-5 bg-slate-900/80 text-center space-y-2">
                 <div className="text-xs font-bold text-blue-400">
-                  جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني • ثانوية عامة (علمي رياضة)
+                  مادة تدريبية داخل التطبيق — غير صادرة عن وزارة التربية والتعليم
                 </div>
                 <h2 className="text-xl font-extrabold text-white">
                   {printableModalItem.title}
                 </h2>
                 <div className="text-xs text-slate-400">
-                  المصدر: {printableModalItem.sourceName} • كبسولة المفاهيم والقوانين التي لا يخلو منها الامتحان
+                  المصدر: {printableModalItem.sourceName} • راجع المنهج والمصادر الرسمية للعام الدراسي الحالي
                 </div>
               </div>
 
               {/* Formula & Rule List */}
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-amber-400 border-b border-slate-800 pb-2">
-                  القوانين والقواعد الذهبية المعتمدة للحل السريع:
+                  مفاهيم وقوانين للمراجعة الأولية:
                 </h4>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -476,7 +484,7 @@ export const SubjectLibraryView: React.FC<SubjectLibraryViewProps> = ({
 
               {/* Watermark / Guidance Footer */}
               <div className="p-4 rounded-xl bg-blue-950/30 border border-blue-800/30 text-xs text-slate-300 space-y-1">
-                <div className="font-bold text-blue-300">ملاحظة موجه الرياضيات الأول:</div>
+                <div className="font-bold text-blue-300">تنبيه:</div>
                 <p>
                   احفظ هذه الورقة بجوار مكتب مذاكرتك وراجعها أسبوعياً بنظام التكرار المتباعد (Spaced Repetition).
                 </p>

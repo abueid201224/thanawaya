@@ -29,11 +29,21 @@ export interface DailyScheduleSlot {
   priority: PriorityLevel;
   isCompleted: boolean;
   notes?: string;
-  examEssentialKey?: string; // Link to "نقاط لا يخلو منها الامتحان"
-  aiPriorityReason?: string;
+  examEssentialKey?: string; // Link to practice notes; not evidence of exam frequency
+  aiPriorityReason?: string; // Suggested study note, not a statistical exam prediction
 }
 
 export type MediaFileType = 'video' | 'audio' | 'printable_doc';
+export type ContentSourceStatus = 'unverified' | 'official_source_verified' | 'third_party_source_verified';
+
+export interface CurriculumSourceReference {
+  id: string;
+  title: string;
+  url: string;
+  publisher: string;
+  yearScope: string;
+  limitation: string;
+}
 
 export interface MultimediaLibraryItem {
   id: string;
@@ -42,14 +52,14 @@ export interface MultimediaLibraryItem {
   title: string;
   description: string;
   fileType: MediaFileType;
-  url: string;
-  sourceName: string; // e.g. "وزارة التربية والتعليم - moe.gov.eg", "منصة نجوى", "بنك المعرفة"
-  rating: number; // out of 5, e.g. 4.9
+  url: string; // Empty when no source or media URL has been verified.
+  sourceName: string;
+  rating?: number; // Show only when backed by a real, documented rating source.
   durationOrPages: string; // e.g. "24 دقيقة" or "4 صفحات PDF"
   isPrintable?: boolean;
   printableCheatSheet?: string[]; // Bulleted high-yield formulas & summaries
-  isVerifiedByMinistry: boolean;
-  uploadDate: string;
+  sourceStatus: ContentSourceStatus;
+  uploadDate?: string;
   unitId?: string; // Linked curriculum unit
 }
 
@@ -58,8 +68,8 @@ export interface ExamEssential {
   subjectCode: string;
   subjectNameAr: string;
   topic: string;
-  importanceRating: number; // e.g. 100%
-  pastExamOccurrences: string[]; // e.g. ["دور أول 2021", "دور أول 2023", "دور ثان 2024", "تجريبي 2025"]
+  importanceRating: number; // Use 0 when no documented exam-frequency evidence exists
+  pastExamOccurrences: string[]; // Populate only with a verified exam paper and year
   coreConcept: string; // القاعدة الذهبية
   examTrapWarning: string; // الخدعة التي يقع فيها الطلاب
   sampleExamQuestion: string;
@@ -102,14 +112,13 @@ export interface BreakGuidance {
   durationMinutes: number;
 }
 
-export interface ScoutedOfficialResource {
+export interface ScoutedResourceCandidate {
   id: string;
   title: string;
   platform: 'moe.gov.eg' | 'nagwa.com' | 'ekb.eg' | 'al-azhar';
   url: string;
   summary: string;
   suggestedSubject: string;
-  ratingScore: number;
   dateDiscovered: string;
   status: 'pending' | 'approved' | 'rejected';
   fileType: MediaFileType;
@@ -143,11 +152,10 @@ export interface CurriculumUnit {
   learningOutcomes: string[];
   status: UnitStudyStatus;
   skipExamScore?: number; // Score achieved in skip assessment if taken
+  skipAssessmentReady?: boolean; // Set only after teacher review confirms sufficient topic coverage
   lastAssessmentDate?: string;
   practiceQuestions: PracticeQuestion[];
   studyNotesSummary: string[];
-  localResourcesCount: number;
-  lastUpdatedDate: string;
 }
 
 export interface MonthlyExam {
@@ -170,7 +178,7 @@ export interface SkipEvaluationResult {
   score: number;
   maxScore: number;
   percentage: number;
-  verdict: 'mastered_skip_approved' | 'partial_mastery_review_weak_points' | 'needs_full_study';
+  verdict: 'mastered_skip_approved' | 'partial_mastery_review_weak_points' | 'needs_full_study' | 'diagnostic_only';
   verdictTitle: string;
   weakTopics: string[];
   masteredTopics: string[];
@@ -209,7 +217,7 @@ export interface ScannedMathProblem {
     title: string;
     guidingQuestion: string;
     hintFormulaLatex: string;
-    officialMinistryRule: string;
+    learningHint: string;
   }>;
   finalAnswerVerification: string;
 }

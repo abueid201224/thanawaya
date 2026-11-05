@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Cpu,
   Flame,
-  ShieldCheck,
   User,
   LogOut,
   Award,
@@ -15,12 +14,11 @@ import {
   Download,
   KeyRound
 } from 'lucide-react';
-import { UserProfile, UserRole } from '../types';
+import { UserProfile } from '../types';
 
 interface NavbarProps {
   user: UserProfile;
   onOpenAuth: () => void;
-  onSwitchRole: (newRole: UserRole) => void;
   activeTab: string;
   onOpenDiagnostics?: () => void;
   onOpenDocumentExport?: () => void;
@@ -30,7 +28,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   onOpenAuth,
-  onSwitchRole,
   activeTab,
   onOpenDiagnostics,
   onOpenDocumentExport,
@@ -110,22 +107,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
           <Award className="w-4 h-4 text-emerald-600" />
           <span>انضباط: {user.disciplineScore}%</span>
-        </div>
-
-        {/* RBAC Role Selector */}
-        <div className="relative group">
-          <button
-            onClick={() => onSwitchRole(user.role === 'student' ? 'admin' : 'student')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-xs ${
-              user.role === 'admin'
-                ? 'bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100'
-                : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-            }`}
-            title="انقر للتبديل بين وضع الطالب وصلاحيات المشرف العام (RBAC)"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{user.role === 'admin' ? 'مشرف (Admin)' : 'طالب (Student)'}</span>
-          </button>
         </div>
 
         {/* User Profile Button */}

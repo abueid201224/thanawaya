@@ -12,14 +12,12 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowRight,
-  ShieldCheck,
   RefreshCw,
   Clock,
-  Sparkles,
   X,
   ExternalLink
 } from 'lucide-react';
-import { UserProfile, UserRole } from '../types';
+import { UserProfile } from '../types';
 import { authService, normalizePhoneDigits } from '../services/authService';
 import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR_ARABIC } from '../services/supabaseClient';
 import { resilientAudio } from '../services/resilientAudioService';
@@ -84,9 +82,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [viewState, setViewState] = useState<'form' | 'forgot_password' | 'email_pending'>('form');
 
   // Login Form State
-  const [loginEmail, setLoginEmail] = useState(
-    currentUser.email !== 'student@thanaweya-copilot.local' ? currentUser.email : ''
-  );
+  const [loginEmail, setLoginEmail] = useState(currentUser.email || '');
   const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -378,15 +374,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Fill Registered Master Account helper for convenient instant testing
-  const handleFillMasterAccount = () => {
-    setActiveTab('login');
-    setViewState('form');
-    setLoginEmail('ahmed.hamada.gana.2012@gmail.com');
-    setLoginPassword('');
-    loginPasswordRef.current?.focus();
-  };
-
   const strength = getPasswordStrength(registerPassword);
 
   return (
@@ -419,24 +406,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             aria-label="إغلاق النافذة"
           >
             <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Master Account Quick Banner */}
-        <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/80 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-blue-900">
-            <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>الحساب المسجل المعتمد:</span>
-            <span className="font-mono font-bold text-[11px] text-blue-700 dir-ltr">
-              ahmed.hamada.gana.2012@gmail.com
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleFillMasterAccount}
-            className="text-[11px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
-          >
-            تعبئة سريعة
           </button>
         </div>
 

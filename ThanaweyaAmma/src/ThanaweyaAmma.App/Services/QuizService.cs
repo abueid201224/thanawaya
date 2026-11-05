@@ -24,18 +24,19 @@ namespace ThanaweyaAmma.App.Services
             Stream handwrittenImageStream,
             string mimeType,
             string questionPrompt,
-            string officialMinistryModelAnswer,
+            string referenceModelAnswer,
             double maxScore = 4.0,
             CancellationToken cancellationToken = default);
     }
 
     /// <summary>
-    /// Intuitive Quiz Engine & Vision Essay Grading Service.
-    /// Dynamically constructs concept-driven MCQs adhering to Egyptian Thanweya Amma specifications
-    /// and performs multimodal OCR handwriting assessment via Gemini Vision against official ministry rubrics.
+    /// Drafts training MCQs and advisory image-based feedback.
+    /// AI output is not ministry-approved and must be reviewed by a qualified teacher before it is used
+    /// for grading, mastery decisions, or progression.
     /// </summary>
     public class QuizService : IQuizService
     {
+        private const int MaxHandwrittenImageBytes = 10 * 1024 * 1024;
         private static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         private readonly AppConfig _appConfig;
         private readonly ISupabaseService _supabaseService;
@@ -53,19 +54,25 @@ namespace ThanaweyaAmma.App.Services
             CancellationToken cancellationToken = default)
         {
             Log.Information("[QuizService] Dynamically constructing {Count} MCQs for {Subject} on '{Topic}'...", questionCount, subjectCode, topicName);
+            if (questionCount < 1 || questionCount > 20)
+                throw new ArgumentOutOfRangeException(nameof(questionCount), "عدد الأسئلة يجب أن يكون بين 1 و20.");
+            if (string.IsNullOrWhiteSpace(subjectCode) || string.IsNullOrWhiteSpace(topicName))
+                throw new ArgumentException("يجب تحديد المادة والموضوع قبل إنشاء الأسئلة.");
+
             var apiKey = _appConfig.Credentials.GeminiApiKey;
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                Log.Warning("[QuizService] Gemini API key not detected. Using curated fallback exam questions.");
-                return GenerateCuratedFallbackQuestions(topicName);
+                Log.Information("[QuizService] Gemini API key is unavailable; no unreviewed fallback questions will be shown.");
+                return new List<McqQuestion>();
             }
 
             try
             {
                 var prompt = $@"
-أنت المستشار الأول لوضع امتحانات الثانوية العامة بجمهورية مصر العربية (شعبة علمي رياضة).
-المطلوب: توليد {questionCount} أسئلة اختيار من متعدد (MCQ) للمادة: {subjectCode}، الموضوع: '{topicName}'.
+أنت مساعد لصياغة مسودة أسئلة تدريبية غير رسمية لطلاب الصف الثالث الثانوي (علمي رياضة).
+المطلوب: صياغة {questionCount} أسئلة اختيار من متعدد (MCQ) للمادة: {subjectCode}، الموضوع: '{topicName}'.
+هذه مسودة مولدة آلياً وليست امتحاناً أو محتوى معتمداً من وزارة التربية والتعليم. لا تنسب سؤالاً إلى مصدر أو امتحان رسمي، ويجب أن يراجع المعلم صحة السؤال والإجابة قبل استخدامهما في تقييم درجات أو إتقان.
 الشروط:
 1. الأسئلة تقيس المستويات العليا للتفكير ونواتج التعلم (فهم، تطبيق، تحليل).
 2. كل سؤال يحتوي على 4 خيارات (أ، ب، ج، د) أو (A, B, C, D) مع خيار واحد صحيح وبدائل جذابة (distractors).
@@ -104,11 +111,12 @@ namespace ThanaweyaAmma.App.Services
                     }
                 };
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
-                var request = new HttpRequestMessage(HttpMethod.Post, url)
+                var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json")
                 };
+                request.Headers.TryAddWithoutValidation("x-goog-api-key", apiKey);
 
                 using var response = await HttpClient.SendAsync(request, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -120,19 +128,24 @@ namespace ThanaweyaAmma.App.Services
                 if (!string.IsNullOrWhiteSpace(rawJson))
                 {
                     var questions = JsonConvert.DeserializeObject<List<McqQuestion>>(rawJson);
-                    if (questions != null && questions.Count > 0)
+                    if (IsValidQuestionSet(questions, questionCount))
                     {
                         Log.Information("[QuizService] Successfully generated {Count} questions via Gemini API.", questions.Count);
-                        return questions;
+                        return questions!;
                     }
                 }
 
-                return GenerateCuratedFallbackQuestions(topicName);
+                Log.Warning("[QuizService] Generated MCQ payload failed schema validation; returning no questions.");
+                return new List<McqQuestion>();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[QuizService] Failed to generate dynamic MCQs, falling back to curated test items.");
-                return GenerateCuratedFallbackQuestions(topicName);
+                Log.Error("[QuizService] MCQ generation failed. Error type: {ErrorType}", ex.GetType().Name);
+                return new List<McqQuestion>();
             }
         }
 
@@ -140,12 +153,38 @@ namespace ThanaweyaAmma.App.Services
             Stream handwrittenImageStream,
             string mimeType,
             string questionPrompt,
-            string officialMinistryModelAnswer,
+            string referenceModelAnswer,
             double maxScore = 4.0,
             CancellationToken cancellationToken = default)
         {
             Log.Information("[QuizService] Initiating Gemini Vision multimodal handwriting inspection...");
             var apiKey = _appConfig.Credentials.GeminiApiKey;
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                throw new InvalidOperationException("التصحيح الآلي غير متاح حالياً لعدم إعداد خدمة الذكاء الاصطناعي. لم تُمنح أي درجة.");
+            }
+            if (handwrittenImageStream == null || !handwrittenImageStream.CanRead)
+            {
+                throw new ArgumentException("يجب توفير صورة إجابة قابلة للقراءة.", nameof(handwrittenImageStream));
+            }
+            if (string.IsNullOrWhiteSpace(questionPrompt) || string.IsNullOrWhiteSpace(referenceModelAnswer))
+            {
+                throw new ArgumentException("يجب توفير السؤال ونموذج الإجابة المرجعي قبل طلب التقييم.");
+            }
+            if (!double.IsFinite(maxScore) || maxScore <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxScore), "يجب أن تكون الدرجة العظمى رقماً موجباً ومحدداً.");
+            }
+            var normalizedMimeType = string.IsNullOrWhiteSpace(mimeType) ? "image/jpeg" : mimeType.Trim().ToLowerInvariant();
+            if (normalizedMimeType != "image/jpeg" && normalizedMimeType != "image/png" && normalizedMimeType != "image/webp")
+            {
+                throw new ArgumentException("نوع الصورة المدعوم هو JPEG أو PNG أو WebP.", nameof(mimeType));
+            }
+            if (handwrittenImageStream.CanSeek && handwrittenImageStream.Length > MaxHandwrittenImageBytes)
+            {
+                throw new ArgumentException("حجم صورة الإجابة يجب ألا يتجاوز 10 ميغابايت.", nameof(handwrittenImageStream));
+            }
 
             byte[] imageBytes;
             using (var memoryStream = new MemoryStream())
@@ -153,41 +192,29 @@ namespace ThanaweyaAmma.App.Services
                 await handwrittenImageStream.CopyToAsync(memoryStream, cancellationToken);
                 imageBytes = memoryStream.ToArray();
             }
+            if (imageBytes.Length == 0 || imageBytes.Length > MaxHandwrittenImageBytes)
+            {
+                throw new ArgumentException("يجب توفير صورة غير فارغة لا يتجاوز حجمها 10 ميغابايت.", nameof(handwrittenImageStream));
+            }
 
             var base64Image = Convert.ToBase64String(imageBytes);
-
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                Log.Warning("[QuizService] Gemini API Key missing for vision evaluation. Returning simulated offline rubric result.");
-                return new EssayGradingEvaluation
-                {
-                    ScoreAwarded = maxScore * 0.85,
-                    MaxPossibleScore = maxScore,
-                    TranscriptionOfHandwriting = "بما أن ق1 + ق2 = 0 في حالة الاتزان، إذن العزوم حول النقطة أ = 0، ومنها ق = 15 ث.كجم",
-                    MathematicalAccuracy = true,
-                    PositivePoints = new List<string> { "كتابة معادلة الاتزان بشكل صحيح", "تحديد ذراع القوة بزاوية 30 درجة بدقة" },
-                    Deficiencies = new List<string> { "إهمال كتابة وحدة القياس في الخطوة النهائية" },
-                    RemedialGuidance = "تذكر دائماً أن مصحح الثانوية العامة يدقق على وحدات القياس (النيوتن مقابل الثقل كجم).",
-                    OfficialModelComparison = "مطابق لنموذج الوزارة مع خصم نصف درجة لعدم كتابة الوحدة في الناتج النهائي."
-                };
-            }
 
             try
             {
                 var evaluationPrompt = $@"
-أنت المصحح الخبير للأسئلة المقالية في امتحانات الثانوية العامة المصرية (علمي رياضة).
-أمامك صورة بخط يد الطالب تحتوي على إجابته الرياضية.
+أنت مساعد تقويم آلي مبدئي لإجابة رياضية بخط اليد لطالب في المرحلة الثانوية.
+التقييم استرشادي فقط، وليس تصحيحاً رسمياً أو بديلاً عن المعلم؛ لا تدّع اعتماداً وزارياً، ولا تجعل الدرجة الناتجة أساساً وحيداً لقرار مصيري.
 السؤال المطروح:
 {questionPrompt}
 
-نموذج الإجابة الرسمي وتوزيع الدرجات المعتمد من الوزارة (الدرجة العظمى: {maxScore}):
-{officialMinistryModelAnswer}
+نموذج الإجابة المرجعي وتوزيع الدرجات الذي أدخله المستخدم (الدرجة العظمى: {maxScore}):
+{referenceModelAnswer}
 
 المطلوب:
 1. قراءة الخط اليدوي بدقة وتفريغه (OCR Transcription).
 2. التحقق من صحة الخطوات الرياضية والقوانين والتعويضات والناتج النهائي مع الوحدات.
-3. تقدير الدرجة المستحقة من {maxScore}.
-4. تقديم تغذية راجعة علاجية توضح نقاط القوة والثغرات مقارنة بالنموذج الرسمي.
+3. اقتراح تقدير استرشادي من {maxScore}، واطلب مراجعة المعلم عند غموض الخط أو نقص المرجع.
+4. تقديم تغذية راجعة علاجية ومقارنة بالنموذج المرجعي المقدم، لا بمصدر رسمي مستقل.
 
 أرجع النتيجة بصيغة JSON حصراً بهذا المخطط:
 {{
@@ -198,7 +225,7 @@ namespace ThanaweyaAmma.App.Services
   ""PositivePoints"": [""نقطة قوة 1"", ""نقطة قوة 2""],
   ""Deficiencies"": [""نقطة ضعف إن وجدت""],
   ""RemedialGuidance"": ""إرشاد علاجي للطالب"",
-  ""OfficialModelComparison"": ""مقارنة تفصيلية مع النموذج الوزاري""
+  ""ReferenceAnswerComparison"": ""مقارنة استرشادية مع النموذج المرجعي الذي أدخله المستخدم""
 }}
 ";
 
@@ -216,7 +243,7 @@ namespace ThanaweyaAmma.App.Services
                                 {
                                     inlineData = new
                                     {
-                                        mimeType = string.IsNullOrEmpty(mimeType) ? "image/jpeg" : mimeType,
+                                        mimeType = normalizedMimeType,
                                         data = base64Image
                                     }
                                 }
@@ -230,11 +257,12 @@ namespace ThanaweyaAmma.App.Services
                     }
                 };
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
-                var request = new HttpRequestMessage(HttpMethod.Post, url)
+                var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json")
                 };
+                request.Headers.TryAddWithoutValidation("x-goog-api-key", apiKey);
 
                 using var response = await HttpClient.SendAsync(request, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -246,7 +274,17 @@ namespace ThanaweyaAmma.App.Services
                 if (!string.IsNullOrWhiteSpace(rawResult))
                 {
                     var result = JsonConvert.DeserializeObject<EssayGradingEvaluation>(rawResult);
-                    if (result != null)
+                    if (result != null &&
+                        !string.IsNullOrWhiteSpace(result.TranscriptionOfHandwriting) &&
+                        result.PositivePoints != null &&
+                        result.Deficiencies != null &&
+                        !string.IsNullOrWhiteSpace(result.RemedialGuidance) &&
+                        !string.IsNullOrWhiteSpace(result.ReferenceAnswerComparison) &&
+                        double.IsFinite(result.ScoreAwarded) &&
+                        result.ScoreAwarded >= 0 &&
+                        result.ScoreAwarded <= maxScore &&
+                        double.IsFinite(result.MaxPossibleScore) &&
+                        Math.Abs(result.MaxPossibleScore - maxScore) < 0.000001)
                     {
                         Log.Information("[QuizService] Essay grading completed. Score: {Score}/{Max}", result.ScoreAwarded, result.MaxPossibleScore);
                         return result;
@@ -257,46 +295,53 @@ namespace ThanaweyaAmma.App.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[QuizService] Gemini Vision essay evaluation failed.");
+                Log.Error("[QuizService] Gemini Vision essay grading failed. Error type: {ErrorType}", ex.GetType().Name);
                 throw;
             }
         }
 
-        private List<McqQuestion> GenerateCuratedFallbackQuestions(string topic)
+        private static bool IsValidQuestionSet(List<McqQuestion>? questions, int expectedCount)
         {
-            return new List<McqQuestion>
+            if (questions == null || expectedCount <= 0 || questions.Count != expectedCount)
             {
-                new McqQuestion
+                return false;
+            }
+
+            var questionNumbers = new HashSet<int>();
+            var allowedOptionKeys = new HashSet<string>(new[] { "A", "B", "C", "D" }, StringComparer.OrdinalIgnoreCase);
+            foreach (var question in questions)
+            {
+                if (question == null ||
+                    question.Number < 1 || question.Number > expectedCount || !questionNumbers.Add(question.Number) ||
+                    string.IsNullOrWhiteSpace(question.QuestionText) ||
+                    string.IsNullOrWhiteSpace(question.Explanation) ||
+                    string.IsNullOrWhiteSpace(question.TargetedLearningOutcome) ||
+                    question.Options == null || question.Options.Count != 4)
                 {
-                    Number = 1,
-                    QuestionText = "إذا كانت ص = ظا³(٢س)، فإن دص / دس عند س = π / ٨ تساوي:",
-                    Options = new List<McqOption>
-                    {
-                        new McqOption { Key = "A", Text = "١٢" },
-                        new McqOption { Key = "B", Text = "٦" },
-                        new McqOption { Key = "C", Text = "٢٤" },
-                        new McqOption { Key = "D", Text = "٣" }
-                    },
-                    CorrectOptionKey = "A",
-                    Explanation = "دص/دس = ٣ ظا²(٢س) × قا²(٢س) × ٢ = ٦ ظا²(٢س) قا²(٢س). بالتعويض بـ س = π/٨، ٢س = π/٤. ظا(٤٥) = ١، قا(٤٥) = √٢، قا²(٤٥) = ٢. إذن الناتج = ٦ × (١)² × ٢ = ١٢.",
-                    TargetedLearningOutcome = "تطبيق قاعدة السلسلة ومشتقات الدوال المثلثية المركبة"
-                },
-                new McqQuestion
-                {
-                    Number = 2,
-                    QuestionText = "جسم وزنه و نيوتن موضوع على مستوى خشن يميل على الأفقي بزاوية قياسها هـ، إذا كانت زاوية الاحتكاك ل وكان الجسم على وشك الانزلاق لأسفل، فإن:",
-                    Options = new List<McqOption>
-                    {
-                        new McqOption { Key = "A", Text = "هـ = ل" },
-                        new McqOption { Key = "B", Text = "هـ > ل" },
-                        new McqOption { Key = "C", Text = "هـ < ل" },
-                        new McqOption { Key = "D", Text = "هـ + ل = ٩٠°" }
-                    },
-                    CorrectOptionKey = "A",
-                    Explanation = "عندما يكون الجسم على وشك الانزلاق تحت تأثير وزنه فقط على مستوى مائل خشن، فإن زاوية ميل المستوى هـ تساوي زاوية الاحتكاك ل تماماً.",
-                    TargetedLearningOutcome = "تحليل شروط اتزان جسم على مستوى مائل خشن"
+                    return false;
                 }
-            };
+
+                var optionKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var option in question.Options)
+                {
+                    if (option == null ||
+                        string.IsNullOrWhiteSpace(option.Key) ||
+                        string.IsNullOrWhiteSpace(option.Text) ||
+                        !allowedOptionKeys.Contains(option.Key.Trim()) ||
+                        !optionKeys.Add(option.Key.Trim()))
+                    {
+                        return false;
+                    }
+                }
+
+                var correctOptionKey = question.CorrectOptionKey?.Trim() ?? string.Empty;
+                if (!allowedOptionKeys.Contains(correctOptionKey) || !optionKeys.Contains(correctOptionKey))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

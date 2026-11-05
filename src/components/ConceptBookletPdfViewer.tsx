@@ -36,7 +36,7 @@ import {
   BookletPageData,
   HighlightRect
 } from '../types/bookletAnnotations';
-import { OFFICIAL_BOOKLET_PAGES, INITIAL_BOOKLET_ANNOTATIONS } from '../data/conceptBookletPages';
+import { TRAINING_BOOKLET_PAGES, INITIAL_BOOKLET_ANNOTATIONS } from '../data/conceptBookletPages';
 
 interface ConceptBookletPdfViewerProps {
   onFormulaSelect?: (formula: string) => void;
@@ -126,7 +126,7 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
   }, [highlights, stickyNotes]);
 
   // Current page data
-  const pageData = OFFICIAL_BOOKLET_PAGES.find((p) => p.pageNumber === currentPage) || OFFICIAL_BOOKLET_PAGES[0];
+  const pageData = TRAINING_BOOKLET_PAGES.find((p) => p.pageNumber === currentPage) || TRAINING_BOOKLET_PAGES[0];
   const currentPageHighlights = highlights.filter((h) => h.pageNumber === currentPage);
   const currentPageStickyNotes = stickyNotes.filter((s) => s.pageNumber === currentPage);
 
@@ -596,12 +596,12 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
               <div className="px-2 py-0.5 text-center min-w-[70px]">
                 <span className="text-xs font-bold text-white font-mono">{currentPage}</span>
                 <span className="text-[10px] text-slate-500 mx-1">/</span>
-                <span className="text-xs text-slate-400 font-mono">{OFFICIAL_BOOKLET_PAGES.length}</span>
+                <span className="text-xs text-slate-400 font-mono">{TRAINING_BOOKLET_PAGES.length}</span>
               </div>
 
               <button
-                disabled={currentPage >= OFFICIAL_BOOKLET_PAGES.length}
-                onClick={() => setCurrentPage((p) => Math.min(OFFICIAL_BOOKLET_PAGES.length, p + 1))}
+                disabled={currentPage >= TRAINING_BOOKLET_PAGES.length}
+                onClick={() => setCurrentPage((p) => Math.min(TRAINING_BOOKLET_PAGES.length, p + 1))}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                 title="الصفحة التالية"
               >
@@ -615,7 +615,7 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
               onChange={(e) => setCurrentPage(Number(e.target.value))}
               className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer hidden lg:block"
             >
-              {OFFICIAL_BOOKLET_PAGES.map((p) => (
+              {TRAINING_BOOKLET_PAGES.map((p) => (
                 <option key={p.pageNumber} value={p.pageNumber}>
                   ص {p.pageNumber}: {p.subjectNameAr} - {p.branchAr}
                 </option>
@@ -721,35 +721,35 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
           className="relative transition-all duration-200 shadow-2xl rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 max-w-4xl w-full"
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
         >
-          {/* THE AUTHENTIC MINISTRY BOOKLET PAGE (A4 Look) */}
+          {/* TRAINING NOTES PAGE (A4) */}
           <div
             ref={pageContainerRef}
             onClick={handlePageClick}
             onMouseUp={handleMouseUp}
-            className="relative bg-white text-slate-900 p-8 sm:p-12 min-h-[1050px] select-text shadow-inner overflow-hidden font-sans border-t-8 border-t-emerald-700"
+            className="relative bg-white text-slate-900 p-8 sm:p-12 min-h-[1050px] select-text shadow-inner overflow-hidden font-sans border-t-8 border-t-blue-700"
           >
-            {/* Ministry Watermark */}
+            {/* Training-material watermark */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.035] select-none rotate-[-30deg]">
               <div className="text-center space-y-4">
-                <div className="text-7xl font-extrabold font-serif">جمهورية مصر العربية</div>
-                <div className="text-5xl font-bold">وزارة التربية والتعليم والتعليم الفني</div>
-                <div className="text-4xl font-mono">نسخة اختبارات الثانوية العامة الرسمية</div>
+                <div className="text-7xl font-extrabold font-serif">مادة تدريبية داخل التطبيق</div>
+                <div className="text-5xl font-bold">غير صادرة عن وزارة التربية والتعليم</div>
+                <div className="text-4xl font-mono">مسودة مراجعة غير رسمية</div>
               </div>
             </div>
 
-            {/* Official Header */}
-            <div className="border-b-2 border-emerald-900 pb-4 mb-6 flex items-start justify-between gap-4">
+            {/* Training notes header */}
+            <div className="border-b-2 border-blue-800 pb-4 mb-6 flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <div className="text-[11px] font-bold text-emerald-900 tracking-wider">
-                  جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني
+                <div className="text-[11px] font-bold text-blue-900 tracking-wider">
+                  مادة تدريبية داخل التطبيق • غير صادرة عن وزارة التربية والتعليم
                 </div>
                 <div className="text-xs text-slate-600 font-semibold">
-                  مجلد مفاهيم شهادة إتمام الدراسة الثانوية العامة (الصف الثالث الثانوي - شعبة الرياضيات)
+                  مذكرة مراجعة أولية للصف الثالث الثانوي — شعبة الرياضيات
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-slate-950 mt-1">
                   {pageData.title}
                 </h2>
-                <div className="text-xs font-bold text-emerald-800">
+                <div className="text-xs font-bold text-blue-800">
                   {pageData.subtitle}
                 </div>
               </div>
@@ -836,7 +836,7 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
               ))}
             </div>
 
-            {/* Official Footer */}
+            {/* Training-material footer */}
             <div className="mt-12 pt-4 border-t border-slate-300 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <span>{pageData.footerNote}</span>
               <span className="font-mono">صفحة {pageData.pageNumber} من 10</span>
@@ -1217,7 +1217,7 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
               <button
                 onClick={() => {
                   const summaryText = [
-                    '# ملخص ملاحظاتي على كتيب المفاهيم الرسمي 2026/2027',
+                    '# ملخص ملاحظاتي على مذكرة المراجعة التدريبية غير الرسمية',
                     ...stickyNotes.map(
                       (s) => `• [ص ${s.pageNumber}] (${s.tag}): ${s.content}`
                     ),

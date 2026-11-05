@@ -332,7 +332,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     whyItsAwesome: 'تعليم بالممارسة الحقيقية (Learning by doing) مع مشاريع عملية لبناء بورتفوليو حقيقي.',
     difficulty: 'سهل وممتع',
     rating: 5.0,
-    tags: ['تفاعلي 100%', 'مشاريع حقيقية', 'شهادات معتمدة', 'شامل'],
+    tags: ['تمارين تفاعلية', 'مشاريع عملية', 'شهادات إتمام لمسارات محددة', 'مصدر خارجي'],
     isFree: true
   },
   {

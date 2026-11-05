@@ -56,4 +56,3 @@ publish:
   - provider: "github"
     owner: "abueid201224"
     repo: "thanawaya"
-    token: "${GITHUB_TOKEN}"

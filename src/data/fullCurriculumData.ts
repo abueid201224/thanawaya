@@ -16,14 +16,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'تطبيق الاشتقاق الضمني لإيجاد ميل المماس والعمودي',
       'صياغة العلاقات الرياضية للمعدلات الزمنية المرتبطة وحلها بدقة'
     ],
-    status: 'completed',
+    status: 'not_started',
     studyNotesSummary: [
       'مشتقات الدوال المثلثية: [جا س]َ = جتا س ، [جتا س]َ = -جا س ، [ظا س]َ = قا² س ، [ظتا س]َ = -قتا² س ، [قا س]َ = قا س ظا س ، [قتا س]َ = -قتا س ظتا س.',
       'في الاشتقاق الضمني: اشتق الطرفين بالنسبة لـ س مع مراعاة ضرب كل حد يحتوي على ص في (دص/دس).',
       'في المعدلات الزمنية: اكتب العلاقة الهندسية المساعدة (فيثاغورس، تشابه مثلثات، قانون جيب التمام، أو حجم/مساحة)، ثم اشتق الطرفين بالنسبة للزمن ن.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-20',
     practiceQuestions: [
       {
         id: 'pq_calc_1_1',
@@ -87,15 +85,13 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'تطبيق قوانين اشتقاق هـ^د(س) و أ^د(س) واللوغاريتمات',
       'إتقان التكامل بالتجزيء وتكامل الكسور التي بسطها مشتقة مقامها'
     ],
-    status: 'in_progress',
+    status: 'not_started',
     studyNotesSummary: [
       'نهــــا (س -> ٠) [ (١ + س)^(١/س) ] = هـ ، نهــــا (س -> ∞) [ (١ + ١/س)^س ] = هـ.',
       'مشتقة هـ^س = هـ^س ، مشتقة أ^س = أ^س لو_هـ(أ) ، مشتقة لو_هـ(س) = ١/س.',
       'تكامل (دَ(س) / د(س)) دس = لو_هـ |د(س)| + ث.',
       'تكامل بالتجزيء: ∫ ص دع = ص ع - ∫ ع دص.'
     ],
-    localResourcesCount: 3,
-    lastUpdatedDate: '2026-10-22',
     practiceQuestions: [
       {
         id: 'pq_calc_2_1',
@@ -150,8 +146,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'نقاط الانقلاب: دً(س) = ٠ وتغير الدالة تحدبها حول هذه النقطة.',
       'في التطبيقات: اجعل الدالة في متغير واحد، واشتق وسوِّ بالصفر وتحقق باختبار المشتقة الثانية.'
     ],
-    localResourcesCount: 5,
-    lastUpdatedDate: '2026-10-25',
     practiceQuestions: [
       {
         id: 'pq_calc_3_1',
@@ -187,14 +181,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'حساب رد الفعل المحصل وزاوية الاحتكاك ل',
       'تحليل القوى على المستوى المائل وإيجاد القوة التي تجعل الجسم على وشك الحركة لأعلى أو لأسفل'
     ],
-    status: 'completed',
+    status: 'not_started',
     studyNotesSummary: [
       'ح_س = م_س × ر = ظا(ل) × ر.',
       'رد الفعل المحصل: ر_ش = √(ر² + ح_س²) = ر √(١ + م_س²) = ر قا(ل).',
       'على المستوى المائل الخشن: إذا كان الجسم متزناً تحت تأثير وزنه فقط، فإن هـ = ل. إذا هـ > ل ينزلق الجسم، وإذا هـ < ل يكون الجسم مستقراً.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-18',
     practiceQuestions: [
       {
         id: 'pq_stat_1_1',
@@ -226,14 +218,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'حل مسائل السلالم والقضبان المستندة على حوائط رأسية ملساء وأرضيات خشنة',
       'حساب رد فعل المفصل وتحليله إلى مركبتين متعامدتين'
     ],
-    status: 'in_progress',
+    status: 'not_started',
     studyNotesSummary: [
       'شروط الاتزان العام: ١) Σ ق_س = ٠ ، ٢) Σ ق_ص = ٠ ، ٣) Σ العزوم حول أي نقطة = ٠.',
       'رد فعل الحائط الرأسي الأملس يكون عمودياً على الحائط (أفقي).',
       'رد فعل الأرض الخشنة يتكون من مركبتين: رد الفعل العمودي ر_١ وقوة الاحتكاك ح.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-24',
     practiceQuestions: [
       {
         id: 'pq_stat_4_1',
@@ -269,14 +259,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'تطبيق التكامل المحدد لحساب الإزاحة والمسافة الكلية المقطوعة',
       'حساب كمية الحركة وتغيرها Δم = ∫ ق دن'
     ],
-    status: 'completed',
+    status: 'not_started',
     studyNotesSummary: [
       'إذا كانت ع دالة في ن: جـ = دع/دن. إذا كانت ع دالة في س: جـ = ع × (دع/دس).',
       'الإزاحة = ∫ ع دن ، أما المسافة الكلية فتتطلب فحص أصفار السرعة (توقف لحظي) وأخذ القيمة المطلقة.',
       'كمية الحركة: م = ك ع. التغير في كمية الحركة: Δم = ك (ع٢ - ع١).'
     ],
-    localResourcesCount: 3,
-    lastUpdatedDate: '2026-10-15',
     practiceQuestions: [
       {
         id: 'pq_dyn_1_1',
@@ -312,14 +300,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'تطبيق قانون أوم للدائرة المغلقة V = VB - I r',
       'صياغة معادلات كيرشوف الأول (حفظ الشحنة) والثاني (حفظ الطاقة) وحلها'
     ],
-    status: 'in_progress',
+    status: 'not_started',
     studyNotesSummary: [
       'R = ρ_e (L / A). التوصيلية σ = ١ / ρ_e.',
       'قانون أوم للدائرة المغلقة: I = VB / (R_eq + r). فرق الجهد بين قطبي بطارية مفرغة V = VB - Ir ، وفي حالة الشحن V = VB + Ir.',
       'كيرشوف ١: Σ I_in = Σ I_out. كيرشوف ٢: Σ VB = Σ I R في أي مسار مغلق.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-23',
     practiceQuestions: [
       {
         id: 'pq_phys_1_1',
@@ -351,8 +337,7 @@ export const initialMonthlyExams: MonthlyExam[] = [
     title: 'الامتحان التشخيصي لشهر أكتوبر: اشتقاق الدوال المثلثية والاحتكاك والعزوم',
     durationMinutes: 45,
     totalMarks: 20,
-    isCompleted: true,
-    scoreAwarded: 18,
+    isCompleted: false,
     questions: [
       {
         id: 'mq_oct_1',
