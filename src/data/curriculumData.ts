@@ -5,9 +5,29 @@ import {
   SubjectProgress,
   DisciplineMetrics,
   BreakGuidance,
-  ScoutedOfficialResource,
+  ScoutedResourceCandidate,
+  CurriculumSourceReference,
   UserProfile
 } from '../types';
+
+export const curriculumSourceReferences: CurriculumSourceReference[] = [
+  {
+    id: 'ministry_learning_outcomes',
+    title: 'مخرجات التعلم وكيف تذاكر للصف الثالث الثانوي',
+    url: 'https://moe.gov.eg/ar/learning-outcomes/',
+    publisher: 'وزارة التربية والتعليم والتعليم الفني',
+    yearScope: 'الصفحة لا تحدد سنة دراسية للمحتوى المرتبط',
+    limitation: 'بوابة رسمية عامة؛ يجب فحص سنة كل ملف مرتبط بها قبل اعتباره مطابقاً لمنهج 2026/2027.'
+  },
+  {
+    id: 'ministry_e_library_2026_27',
+    title: 'المكتبة الإلكترونية للكتب الدراسية — الثانوي العام',
+    url: 'https://ellibrary.moe.gov.eg/books/Books-sec/',
+    publisher: 'وزارة التربية والتعليم والتعليم الفني',
+    yearScope: 'البوابة معنونة 2026-2027؛ لم يتسنّ التحقق من فهرس مواد الصف الثالث من النص المتاح',
+    limitation: 'صفحة اختيار الصف والمادة؛ تحقّق من الكتاب وفهرسه وسنة طباعته قبل ربط أي موضوع بها.'
+  }
+];
 
 export const initialUser: UserProfile = {
   id: 'local_guest',
@@ -34,7 +54,7 @@ export const initialDailySchedule: DailyScheduleSlot[] = [
     slotType: 'study',
     priority: 'critical',
     isCompleted: false,
-    aiPriorityReason: 'أولوية قصوى: هذا الدرس يشكل 14% من درجات ورقة التفاضل، ووردت منه مسألة مقالية في كل من 2022 و 2024 و 2025.',
+    aiPriorityReason: 'مقترح تدريب عام؛ لم تُحسب أوزان امتحانية أو تكرارات موثقة لهذا الدرس.',
     examEssentialKey: 'ess_calc_1'
   },
   {
@@ -58,7 +78,7 @@ export const initialDailySchedule: DailyScheduleSlot[] = [
     slotType: 'practice',
     priority: 'high',
     isCompleted: false,
-    aiPriorityReason: 'تدريب عملي: حل 6 مسائل وزارية متدرجة الصعوبة لتثبيت معادلات الاتزان وحساب العزوم.',
+    aiPriorityReason: 'مقترح تدريب عام: حل مسائل متنوعة لتثبيت معادلات الاتزان وحساب العزوم.',
     examEssentialKey: 'ess_stat_1'
   },
   {
@@ -95,7 +115,7 @@ export const initialDailySchedule: DailyScheduleSlot[] = [
     slotType: 'revision',
     priority: 'critical',
     isCompleted: false,
-    aiPriorityReason: 'مراجعة ختامية سريعة: نقطة لا يخلو منها الامتحان الرسمي (مسألة بكرات ومصاعد مؤكدة).',
+    aiPriorityReason: 'مراجعة تدريبية عامة؛ لا توجد هنا بيانات موثقة عن تكرار هذا الموضوع في الامتحانات.',
     examEssentialKey: 'ess_dyn_1'
   }
 ];
@@ -106,8 +126,8 @@ export const initialExamEssentials: ExamEssential[] = [
     subjectCode: 'CALCULUS',
     subjectNameAr: 'التفاضل والتكامل',
     topic: 'المعدلات الزمنية المرتبطة وتطبيقات القيم العظمى والصغرى',
-    importanceRating: 100,
-    pastExamOccurrences: ['دور أول 2021', 'دور أول 2022', 'دور ثان 2023', 'دور أول 2024', 'تجريبي 2025'],
+    importanceRating: 0,
+    pastExamOccurrences: [],
     coreConcept: 'عند إيجاد أكبر مساحة أو أصغر تكلفة، اجعل الدالة في متغير واحد فقط باستخدام العلاقة المساعدة، ثم ساوي المشتقة الأولى بالصفر (دَ(س) = 0)، وتأكد باختبار المشتقة الثانية أن دً(س) < 0 للعظمى و دً(س) > 0 للصغرى.',
     examTrapWarning: 'فخ شهير: ينسى الطالب التحقق من مجال المسألة الهندسي (س > 0 ومحدود بأبعاد الشكل)، مما يؤدي لاختيار نقطة حرجة خارج النطاق الفعلي!',
     sampleExamQuestion: 'نافذة على شكل مستطيل يعلوه نصف دائرة ينطبق قطرها على أحد أبعاده، فإذا كان محيط النافذة الكلي ٦ أمتار، أوجد أبعاد المستطيل التي تجعل مساحة سطح النافذة أكبر ما يمكن.',
@@ -118,8 +138,8 @@ export const initialExamEssentials: ExamEssential[] = [
     subjectCode: 'STATICS',
     subjectNameAr: 'الاستاتيكا',
     topic: 'اتزان قضيب أو سلم منتظم مستند على حائط رأسي أملس وأرض أفقية خشنة',
-    importanceRating: 98,
-    pastExamOccurrences: ['دور أول 2021', 'دور ثان 2022', 'دور أول 2023', 'دور أول 2024'],
+    importanceRating: 0,
+    pastExamOccurrences: [],
     coreConcept: 'شروط الاتزان العام: مجموع القوى الأفقية = 0 (س = 0)، مجموع القوى الرأسية = 0 (ص = 0)، ومجموع العزوم حول أي نقطة (يُفضل نقطة الاتصال مع الأرض لإلغاء رد الفعل وقوة الاحتكاك) = 0.',
     examTrapWarning: 'فخ شهير: عدم الانتباه لما إذا كان السلم "على وشك الانزلاق" (استخدام ح = م_س × ر) أو "متزناً فقط" (ح ≤ م_س × ر)، كما يخطئ الطلاب في إشارات العزوم بالنسبة لاتجاه دوران عقارب الساعة.',
     sampleExamQuestion: 'سلم منتظم وزنه ٢٠ ثقل كجم يستند بطرفه العلوي على حائط رأسي أملس وبطرفه السفلي على أرض أفقية خشنة معامل الاحتكاك بينها وبين السلم ٠٫٥. إذا كان السلم يميل بزاوية ٤٥° على الأفقي، أثبت أن رجلاً وزنه ٦٠ ث.كجم لا يمكنه الصعود لأعلى قمة السلم دون أن ينزلق.',
@@ -130,8 +150,8 @@ export const initialExamEssentials: ExamEssential[] = [
     subjectCode: 'PHYSICS',
     subjectNameAr: 'الفيزياء',
     topic: 'قوانين كيرشوف وحساب القوة الدافعة الكهربية وفرق الجهد بين نقطتين',
-    importanceRating: 95,
-    pastExamOccurrences: ['دور أول 2021', 'دور ثان 2021', 'دور أول 2022', 'دور أول 2023', 'دور أول 2024'],
+    importanceRating: 0,
+    pastExamOccurrences: [],
     coreConcept: 'القانون الأول (حفظ الشحنة): مجموع التيارات الداخلة = مجموع التيارات الخارجة عند أي عقدة. القانون الثاني (حفظ الطاقة): المجموع الجبري للقوى الدافعة الكهربية في أي مسار مغلق = المجموع الجبري لفروق الجهد (ΣVB = ΣIR).',
     examTrapWarning: 'فخ شهير: إهمال المقاومة الداخلية للبطارية (r)، أو الخلط في إشارة الجهد عند الانتقال بين نقطتين مفتوحتين (مسار مفتوح V_A - V_B).',
     sampleExamQuestion: 'في دائرة كيرشوف الموضحة، احسب فرق الجهد بين النقطتين أ و ب، والقدرة المستنفذة في الدائرة.',
@@ -142,8 +162,8 @@ export const initialExamEssentials: ExamEssential[] = [
     subjectCode: 'DYNAMICS',
     subjectNameAr: 'الديناميكا',
     topic: 'حركة الأجسام على المستويات المائلة والمصاعد ومبدأ الشغل والطاقة',
-    importanceRating: 96,
-    pastExamOccurrences: ['دور أول 2022', 'دور أول 2023', 'دور ثان 2024'],
+    importanceRating: 0,
+    pastExamOccurrences: [],
     coreConcept: 'مبدأ الشغل والطاقة: التغير في طاقة الحركة = مجموع الشغل المبذول من جميع القوى المؤثرة (ط - ط₀ = ش). في المصاعد: قراءة الميزان (الوزن الظاهري) ر = ك(د + جـ) عند الصعود بعجلة، و ر = ك(د - جـ) عند الهبوط بعجلة.',
     examTrapWarning: 'فخ شهير: نسيان تحويل الكتلة والوزن بين وحدة الكيلوجرام والنيوتن (الضرب في عجلة الجاذبية 9.8 م/ث²).',
     sampleExamQuestion: 'ميزان زنبركي مثبت في سقف مصعد يحمل جسماً كتلته ك كجم، فإذا كانت قراءة الميزان أثناء الصعود بعجلة منتظمة جـ هي ٤٩ نيوتن، وكانت قراءته أثناء الهبوط بنفس العجلة جـ هي ٣٩٫٢ نيوتن، أوجد كتلة الجسم ك والعجلة جـ.',
@@ -152,46 +172,16 @@ export const initialExamEssentials: ExamEssential[] = [
 ];
 
 export const initialMultimediaLibrary: MultimediaLibraryItem[] = [
-  // CALCULUS
-  {
-    id: 'med_calc_01',
-    subjectCode: 'CALCULUS',
-    subjectNameAr: 'التفاضل والتكامل',
-    title: 'فيديو شرح تفصيلي: الاشتقاق الضمني والبارامتري وحل مسائل الامتحانات السابقة',
-    description: 'شرح معتمد من منصة نجوى وبنك المعرفة لجميع حالات الاشتقاق مع فنيات التعامل مع الزوايا المثلثية ومقامات المشتقات.',
-    fileType: 'video',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    sourceName: 'منصة نجوى التعليمية (معتمدة من moe.gov.eg)',
-    rating: 4.9,
-    durationOrPages: '38 دقيقة',
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-15'
-  },
-  {
-    id: 'med_calc_02',
-    subjectCode: 'CALCULUS',
-    subjectNameAr: 'التفاضل والتكامل',
-    title: 'كبسولة صوتية: مراجعة قوانين تفاضل وتكامل الدوال الأسية واللوغاريتمية والعدد e',
-    description: 'تسجيل صوتي استرجاعي يركز على نهايات العدد النيبيري (e) وتكاملات الدوال الكسرية التي بسطها مشتقة مقامها.',
-    fileType: 'audio',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    sourceName: 'تسجيلات الإذاعة التعليمية المصرية',
-    rating: 4.8,
-    durationOrPages: '14 دقيقة',
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-20'
-  },
   {
     id: 'med_calc_03',
     subjectCode: 'CALCULUS',
     subjectNameAr: 'التفاضل والتكامل',
-    title: 'ملخص وقوانين التفاضل والتكامل الشاملة جاهز للطباعة (Cheat Sheet A4)',
-    description: 'وثيقة PDF ملخصة تضم كافة قواعد الاشتقاق، قوانين التكامل، جدول الدوال المثلثية والنيبيرية، وخطوات رسم المنحنيات بصيغة مهيأة للطباعة المباشرة.',
+    title: 'مراجعة أولية: قوانين مختارة في التفاضل والتكامل',
+    description: 'ورقة تدريبية داخل التطبيق. لا تدّعي الشمول أو الاعتماد، ولم تُراجع بعد مقابل منهج 2026/2027.',
     fileType: 'printable_doc',
-    url: 'https://moe.gov.eg/media/calculus_summary_printable.pdf',
-    sourceName: 'كتيب المفاهيم الرسمي الصادر عن وزارة التربية والتعليم',
-    rating: 5.0,
-    durationOrPages: '6 صفحات A4',
+    url: '',
+    sourceName: 'محتوى تدريبي داخلي — المصدر الرسمي غير مرفق',
+    durationOrPages: 'ورقة تدريبية',
     isPrintable: true,
     printableCheatSheet: [
       'قاعدة السلسلة: دص/دس = (دص/دع) × (دع/دس).',
@@ -201,36 +191,18 @@ export const initialMultimediaLibrary: MultimediaLibraryItem[] = [
       'التكامل بالتجزيء: ∫ ص د ع = ص ع - ∫ ع د ص.',
       'حجم الجسم الدوراني حول محور السينات: ح = π ∫ (ص)² دس.'
     ],
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-05'
-  },
-
-  // STATICS
-  {
-    id: 'med_stat_01',
-    subjectCode: 'STATICS',
-    subjectNameAr: 'الاستاتيكا',
-    title: 'فيديو تطبيقي: الاحتكاك والاتزان العام والازدواجات المحصلة',
-    description: 'تحليل مسائل القضبان والسلالم المرتكزة مع توضيح شروط الاتزان العام وإيجاد مركز الثقل بطريقة الكتل الموجبة والسالبة.',
-    fileType: 'video',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    sourceName: 'قناة مدرستنا 3 - وزارة التربية والتعليم',
-    rating: 4.9,
-    durationOrPages: '42 دقيقة',
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-18'
+    sourceStatus: 'unverified'
   },
   {
     id: 'med_stat_02',
     subjectCode: 'STATICS',
     subjectNameAr: 'الاستاتيكا',
-    title: 'ملخص كبسولة قوانين الاستاتيكا الذهبية للطباعة (Cheat Sheet)',
-    description: 'ورقة مفاهيم استاتيكا شاملة وموجزة لكافة وحدات المنهج: الاحتكاك، العزوم في ثنائي وثلاثي الأبعاد، القوى المتوازية، الاتزان العام، والازدواجات.',
+    title: 'مراجعة أولية: قوانين مختارة في الاستاتيكا',
+    description: 'ورقة تدريبية داخل التطبيق. لا تدّعي الشمول أو الاعتماد، ولم تُراجع بعد مقابل منهج 2026/2027.',
     fileType: 'printable_doc',
-    url: 'https://moe.gov.eg/media/statics_formulas_printable.pdf',
-    sourceName: 'إدارة التعليم العام - توجيه الرياضيات',
-    rating: 5.0,
-    durationOrPages: '4 صفحات A4',
+    url: '',
+    sourceName: 'محتوى تدريبي داخلي — المصدر الرسمي غير مرفق',
+    durationOrPages: 'ورقة تدريبية',
     isPrintable: true,
     printableCheatSheet: [
       'قوة الاحتكاك السكوني النهائي: ح_س = م_س × ر ، حيث م_س = ظا(ل) و ل هي زاوية الاحتكاك.',
@@ -240,36 +212,18 @@ export const initialMultimediaLibrary: MultimediaLibraryItem[] = [
       'شروط الاتزان العام: Σ ق_س = 0 ، Σ ق_ص = 0 ، Σ جـ حول أي نقطة = 0.',
       'معيار عزم الازدواج: جـ = ± إحدى القوتين × البعد العمودي بينهما.'
     ],
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-10'
-  },
-
-  // PHYSICS
-  {
-    id: 'med_phys_01',
-    subjectCode: 'PHYSICS',
-    subjectNameAr: 'الفيزياء',
-    title: 'فيديو شرح: قوانين كيرشوف وقانونا فاراداي ولينز في الحث الكهرومغناطيسي',
-    description: 'شرح عملي وحل مباشر لأفكار امتحانات الأعوام 2021 إلى 2025 مع التركيز على اتجاه التيار المستحث وقاعدة اليد اليمنى لفليمنج.',
-    fileType: 'video',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    sourceName: 'بنك المعرفة المصري EKB',
-    rating: 4.9,
-    durationOrPages: '35 دقيقة',
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-22'
+    sourceStatus: 'unverified'
   },
   {
     id: 'med_phys_02',
     subjectCode: 'PHYSICS',
     subjectNameAr: 'الفيزياء',
-    title: 'كتيب مفاهيم وقوانين الفيزياء للثانوية العامة جاهز للطباعة المباشرة',
-    description: 'ملخص شامل لكل فصول الفيزياء: التيار الكهربي، التأثير المغناطيسي، الحث الكهرومغناطيسي، دوائر التيار المتردد، وفصول الفيزياء الحديثة.',
+    title: 'مراجعة أولية: قوانين مختارة في الفيزياء',
+    description: 'ورقة تدريبية داخل التطبيق. لا تدّعي الشمول أو الاعتماد، ولم تُراجع بعد مقابل منهج 2026/2027.',
     fileType: 'printable_doc',
-    url: 'https://moe.gov.eg/media/physics_formula_sheet.pdf',
-    sourceName: 'مستشار مادة الفيزياء بوزارة التربية والتعليم',
-    rating: 5.0,
-    durationOrPages: '8 صفحات A4',
+    url: '',
+    sourceName: 'محتوى تدريبي داخلي — المصدر الرسمي غير مرفق',
+    durationOrPages: 'ورقة تدريبية',
     isPrintable: true,
     printableCheatSheet: [
       'المقاومة النوعية والتوصيلية: R = ρ_e (L / A) ، σ = 1 / ρ_e.',
@@ -279,8 +233,7 @@ export const initialMultimediaLibrary: MultimediaLibraryItem[] = [
       'قانون فاراداي للحث: emf = -N (ΔΦ_m / Δt) ، والدينامو: emf_inst = N B A ω جا(θ).',
       'طاقة الفوتون وظاهرة كومتون: E = h ν = h c / λ ، كمية حركة الفوتون: p_L = h / λ.'
     ],
-    isVerifiedByMinistry: true,
-    uploadDate: '2026-10-12'
+    sourceStatus: 'unverified'
   }
 ];
 
@@ -424,41 +377,4 @@ export const breakGuidances: BreakGuidance[] = [
   }
 ];
 
-export const initialScoutedResources: ScoutedOfficialResource[] = [
-  {
-    id: 'sc_01',
-    title: 'نماذج الوزارة الاسترشادية الرسمية المحدثة 2026/2027 - الرياضيات البحتة والتطبيقية',
-    platform: 'moe.gov.eg',
-    url: 'https://moe.gov.eg/exams2027/math_guidance_models.pdf',
-    summary: 'تم نشر النموذج الرسمي المعتمد من توجيه الرياضيات بالوزارة شاملاً أسئلة البابل شيت والأسئلة المقالية طبقاً لمواصفات الورقة الامتحانية الحديثة.',
-    suggestedSubject: 'التفاضل والتكامل والجبر',
-    ratingScore: 5.0,
-    dateDiscovered: '2026-10-24',
-    status: 'pending',
-    fileType: 'printable_doc'
-  },
-  {
-    id: 'sc_02',
-    title: 'مراجعة نواتج التعلم المركزة والمسائل المتوقعة في الفيزياء الحديثة والكهربية',
-    platform: 'nagwa.com',
-    url: 'https://nagwa.com/ar/egypt/thanaweya/physics_high_yield/',
-    summary: 'مجموعة من 40 تدريباً تفاعلياً مصحوبة بفيديوهات حلول مفصلة تم إعدادها بالتعاون مع المركز القومي للامتحانات.',
-    suggestedSubject: 'الفيزياء',
-    ratingScore: 4.9,
-    dateDiscovered: '2026-10-25',
-    status: 'pending',
-    fileType: 'video'
-  },
-  {
-    id: 'sc_03',
-    title: 'كبسولة قوانين الكيمياء الكهربية والعضوية المعتمدة من بنك المعرفة EKB',
-    platform: 'ekb.eg',
-    url: 'https://ekb.eg/curriculum/chemistry/organic_capsule.pdf',
-    summary: 'مخطط تحويلات المركبات الأليفاتية والأروماتية مع أهم تفاعلات التمييز المخبري ونواتج التحلل المائي للإسترات.',
-    suggestedSubject: 'الكيمياء',
-    ratingScore: 4.9,
-    dateDiscovered: '2026-10-26',
-    status: 'approved',
-    fileType: 'printable_doc'
-  }
-];
+export const initialScoutedResources: ScoutedResourceCandidate[] = [];

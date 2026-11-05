@@ -25,11 +25,12 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { DailyScheduleSlot, ExamEssential } from '../types';
+import { curriculumSourceReferences } from '../data/curriculumData';
 import { MathRenderer, MixedTextRenderer } from './MathRenderer';
 import { MathLatexToolbar } from './MathLatexToolbar';
 import { MathScanOcrModal } from './MathScanOcrModal';
-import { voiceAssistant } from '../services/voiceAssistant';
 import { offlineStorage } from '../services/offlineStorage';
+import { voiceAssistant } from '../services/voiceAssistant';
 
 interface AiTutorScheduleViewProps {
   activeSlot: DailyScheduleSlot | null;
@@ -55,7 +56,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
     priority: 'critical',
     isCompleted: false,
     examEssentialKey: 'ess_calc_1',
-    aiPriorityReason: 'أولوية قصوى: هذا الدرس يشكل 14% من درجات ورقة التفاضل، ووردت منه مسألة مقالية في كل من 2022 و 2024 و 2025.'
+    aiPriorityReason: 'مقترح تدريب عام؛ لم تُحسب أوزان امتحانية أو تكرارات موثقة لهذا الدرس.'
   };
 
   const matchingEssential = examEssentials.find(
@@ -73,7 +74,8 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
 
-  // Offline Caching State for current topic resources
+
+  // Offline Caching State for the current study topic
   const [savedLocally, setSavedLocally] = useState(false);
 
   // Chat State
@@ -87,7 +89,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
   >([
     {
       role: 'assistant',
-      text: `مرحباً يا بطل! 📐 وفقاً لجدولك الدراسي اليوم، حان وقت مذاكرة: "${currentSlot.topic}" (${currentSlot.subjectNameAr}).\n\n🎯 **توجيه الأولوية الذكي:** ${currentSlot.aiPriorityReason || 'حل المسائل النموذجية لتثبيت نواتج التعلم'}.\n\n⚠️ **نقطة لا يخلو منها الامتحان:** وردت في امتحانات الثانوية العامة للأعوام (${matchingEssential?.pastExamOccurrences.join('، ') || '2021 إلى 2025'}).\n\nيمكنك استخدام لوحة الرموز الرياضية $LaTeX$، أو الضغط على زر الميكروفون للتحدث الصوتي، أو التقاط صورة للمسألة عبر Scan & Solve!`,
+      text: `مرحباً! هذه مساحة تدريب أولية لموضوع "${currentSlot.topic}" (${currentSlot.subjectNameAr}).\n\n${currentSlot.aiPriorityReason || 'اختر نقطة تريد مراجعتها وابدأ بمحاولة الحل.'}\n\nالمحتوى والردود هنا لا تُعدّ بيانات امتحانية موثقة، ولا يستخدم هذا الحوار حالياً نموذج ذكاء اصطناعي متصلاً. يمكنك استخدام لوحة الرموز أو إدخال نص المسألة للتدريب.`,
       time: 'الآن'
     }
   ]);
@@ -149,24 +151,15 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
       let links: Array<{ title: string; url: string }> | undefined;
 
       if (text.includes('الخدعة') || text.includes('فخ')) {
-        reply = `⚠️ **الخدعة الامتحانية المتكررة (امتحانات 2021 - 2025):**\n${matchingEssential?.examTrapWarning || 'عدم التحقق من شروط المسألة ومجال المتغيرات الهندسية وملاحظة أن البعد لا يمكن أن يكون سالباً!'}\n\n💡 **القاعدة الذهبية المعتمدة من الوزارة:**\n${matchingEssential?.coreConcept}\n\nجرّب الآن كتابة المعادلة المساعدة لمسألتك مستخدماً لوحة الرموز وسأراجعها معك خطوة بخطوة.`;
+        reply = `⚠️ **ملاحظة تدريبية عامة — لا يوجد توثيق لتكرارها امتحانياً:**\n${matchingEssential?.examTrapWarning || 'تحقق من شروط المسألة ومجال المتغيرات والوحدات قبل إكمال الحل.'}\n\n💡 **مفهوم للتدرب عليه:**\n${matchingEssential?.coreConcept || 'اكتب العلاقة الرياضية أولاً ثم تحقّق من خطوات الاشتقاق أو التعويض.'}\n\nهذه المادة الأولية تحتاج مراجعة معلم أو مصدر موثوق قبل اعتمادها.`;
       } else if (text.includes('امتحان سابق') || text.includes('مسألة مشابهة') || text.includes('وزاري')) {
-        reply = `📝 **مسألة وزارية تكررت في امتحانات الثانوية العامة (${matchingEssential?.pastExamOccurrences.join('، ')}):**\n\n"${matchingEssential?.sampleExamQuestion || 'أوجد أبعاد الشكل التي تجعل المساحة أكبر ما يمكن عندما يكون المحيط ثابتاً.'}"\n\n🔍 **خطوات التفكير السقالي وفق نموذج التصحيح:**\n${matchingEssential?.stepByStepSolution || '1. كتابة دالة الهدف -> 2. اشتقاق ومساواة بالصفر -> 3. اختبار المشتقة الثانية للتأكد من أنها عظمى.'}`;
+        reply = `لا توجد في هذه النسخة أسئلة من امتحانات سابقة موثقة. أستطيع عرض مثال تدريبي داخلي، لكنه غير منسوب إلى امتحان رسمي:\n\n${matchingEssential?.sampleExamQuestion || 'اكتب مسألة تدريبية تريد تحليلها.'}\n\nخطوات الحل المعروضة تدريبية أولية وليست نموذج إجابة رسمي:\n${matchingEssential?.stepByStepSolution || 'ابدأ بكتابة المعطيات والعلاقة المناسبة ثم تحقّق من كل خطوة.'}`;
       } else if (text.includes('Scan') || text.includes('المعادلة المستخرجة')) {
-        reply = `🔍 **تحليل المسألة المصورة بالذكاء الاصطناعي:**\nتم فحص المعطيات بنجاح. وفقاً لمنهجية الوزارة:\n1. ما هي الخطوة الرياضية الأولى التي ستبدأ بها لتبسيط هذا المقدار؟\n2. هل راجعت شروط الاشتقاق أو حدود التكامل؟\nاكتب إجابتك وسأوجهك مباشرة دون إعطاء حل جاهز!`;
+        reply = `هذه المحادثة لا تحلل الصور تلقائياً ولا تتحقق من استخراجها. إذا أُدرج نص المسألة، استخدمه كنقطة بداية ثم راجع المعطيات بنفسك.\n\nما العلاقة أو القانون الذي تظن أنه يناسب المسألة؟`;
       } else if (text.includes('روابط') || text.includes('مستندات') || text.includes('حكومية')) {
-        reply = `تم جلب أهم الوثائق الرسمية والمذكرات المعتمدة ذات التقييم الأعلى لموضوع "${currentSlot.topic}":`;
-        links = [
-          { title: 'نماذج الوزارة الاسترشادية الرسمية (moe.gov.eg)', url: 'https://moe.gov.eg' },
-          { title: 'مذكرة تدريبات منصة نجوى التفاعلية (تقييم 4.9/5)', url: 'https://nagwa.com' },
-          { title: 'مخطط المفاهيم الصادر عن بنك المعرفة المصري EKB', url: 'https://ekb.eg' }
-        ];
+        reply = `لا توجد حالياً روابط مصادر دراسية موثقة لهذا الموضوع داخل التطبيق. أُزيلت الروابط العامة والتجريبية؛ ستُضاف مراجع مباشرة بعد التحقق من مصدرها وارتباطها بالمنهج.`;
       } else {
-        reply = `أحسنت في استفسارك يا بطل! 💡
-لنطبق استراتيجية التوجيه السقالي (Scaffolding):
-1. ما هي العلاقة الأساسية أو الدالة الهدف التي تربط متغيرات المسألة؟
-2. هل يمكنك استخدام لوحة الرموز لكتابة المشتقة الأولى $\\frac{dy}{dx}$ وتحديد نقطة الانعدام؟
-اكتب لي خطوتك الأولى وسأدلك على الصواب فوراً لنبني مهارة الحل الذاتي لديك لاجتياز الامتحان بدرجة كاملة!`;
+        reply = `أستطيع مساعدتك في التفكير خطوة بخطوة، لكن الردود الحالية قوالب تدريبية ثابتة وليست ناتجة عن نموذج ذكاء اصطناعي.\n\nابدأ بكتابة المعطيات والعلاقة التي تربطها، ثم اقترح خطوة أولى. تحقّق من الحل النهائي في مصدر تعليمي موثوق أو معلمك.`;
       }
 
       setChatMessages([
@@ -182,10 +175,6 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
     }, 600);
   };
 
-  const handleSpeakText = (text: string) => {
-    voiceAssistant.speak(text);
-  };
-
   const handleSaveToOfflineCache = async () => {
     await offlineStorage.setItem(`topic_cache_${currentSlot.id}`, {
       slot: currentSlot,
@@ -195,6 +184,12 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
     setSavedLocally(true);
     setTimeout(() => setSavedLocally(false), 3000);
   };
+
+  const handleSpeakText = (text: string) => {
+    voiceAssistant.speak(text);
+  };
+
+
 
   return (
     <div className="space-y-4">
@@ -228,7 +223,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
             }`}
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>بطاقة الدرس والنقاط الامتحانية</span>
+            <span>بطاقة تدريبية</span>
           </button>
 
           <button
@@ -240,7 +235,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            <span>المعلم الذكي والتفاعل</span>
+            <span>مساعد تدريب أولي</span>
           </button>
 
           <button
@@ -252,13 +247,13 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-            <span>المصادر والمراجع الحكومية</span>
+            <span>المصادر الموثقة</span>
           </button>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* TAB 1: بطاقة الدرس والنقاط الامتحانية (Exam Essential Card) */}
+      {/* TAB 1: بطاقة تدريبية (Exam Essential Card) */}
       {/* ============================================================== */}
       {activeTab === 'card' && matchingEssential && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -268,25 +263,29 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
                   <Zap className="w-5 h-5 fill-amber-400" />
-                  <span>الوزن النسبي وأهمية الدرس بالامتحان</span>
+                  <span>ملاحظات تدريبية أولية</span>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold">
-                  تكرار {matchingEssential.importanceRating}%
+                  غير موثّق
                 </span>
               </div>
 
               {/* Past Exam Occurrences */}
               <div className="space-y-1.5">
-                <span className="text-xs text-slate-400">تكرر بالامتحانات الوزارية السابقة:</span>
+                <span className="text-xs text-slate-400">مصادر تكرار الامتحانات: غير موثقة في هذه النسخة</span>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {matchingEssential.pastExamOccurrences.map((occ, i) => (
-                    <span
-                      key={i}
-                      className="text-xs px-3 py-1 rounded-xl bg-slate-800 text-slate-200 border border-slate-700 font-semibold"
-                    >
-                      {occ}
-                    </span>
-                  ))}
+                  {matchingEssential.pastExamOccurrences.length > 0 ? (
+                    matchingEssential.pastExamOccurrences.map((occ, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-3 py-1 rounded-xl bg-slate-800 text-slate-200 border border-slate-700 font-semibold"
+                      >
+                        {occ}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">لا توجد امتحانات موثقة مرتبطة بهذا المثال.</span>
+                  )}
                 </div>
               </div>
 
@@ -294,7 +293,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 space-y-2">
                 <div className="font-bold text-amber-400 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" />
-                  <span>القاعدة الذهبية للحل السريع (كتيب المفاهيم):</span>
+                  <span>مفهوم تدريبي (غير موثق بمصدر رسمي):</span>
                 </div>
                 <MixedTextRenderer text={matchingEssential.coreConcept} className="text-slate-200 text-sm leading-relaxed" />
               </div>
@@ -303,20 +302,20 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
               <div className="p-4 rounded-xl bg-rose-950/25 border border-rose-800/40 text-xs text-rose-200 space-y-1.5">
                 <div className="font-bold text-rose-400 flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4" />
-                  <span>الفخ الامتحاني الشهير الذي يقع فيه أغلب الطلاب:</span>
+                  <span>تنبيه تدريبي محتمل — لا توجد بيانات إحصائية موثقة:</span>
                 </div>
                 <p className="leading-relaxed text-xs">{matchingEssential.examTrapWarning}</p>
               </div>
             </div>
           </div>
 
-          {/* Card Right: Sample Official Question & Scaffolding Breakdown */}
+          {/* Card Right: Internal practice example and solution outline */}
           <div className="space-y-4">
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-xl">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <FileQuestion className="w-4 h-4 text-blue-400" />
-                  <span>نموذج مسألة وزارية واردة في الامتحانات:</span>
+                  <span>مثال تدريبي داخلي — غير منسوب إلى امتحان:</span>
                 </h4>
                 <button
                   onClick={() => handleSpeakText(matchingEssential.sampleExamQuestion)}
@@ -333,7 +332,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
 
               {/* Step by Step Breakdown */}
               <div className="space-y-2">
-                <span className="text-xs font-bold text-blue-400">خطوات الحل المعتمدة في نموذج الإجابة الرسمي:</span>
+                <span className="text-xs font-bold text-blue-400">خطوات حل تدريبية — ليست نموذج إجابة رسمياً:</span>
                 <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
                   <MixedTextRenderer text={matchingEssential.stepByStepSolution} />
                 </div>
@@ -365,7 +364,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* TAB 2: المعلم الذكي والتفاعل السقالي (Conversational Tutor) */}
+      {/* TAB 2: مساعد تدريب أولي السقالي (Conversational Tutor) */}
       {/* ============================================================== */}
       {activeTab === 'tutor' && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 flex flex-col h-[640px] overflow-hidden shadow-2xl">
@@ -461,7 +460,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
                   {msg.links && msg.links.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-1.5">
                       <div className="text-xs font-bold text-emerald-400">
-                        روابط ومذكرات معتمدة متوفرة:
+                        لا توجد مراجع موثقة متاحة حالياً:
                       </div>
                       {msg.links.map((link, lIdx) => (
                         <a
@@ -570,112 +569,35 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* TAB 3: المصادر والمراجع الحكومية المعتمدة (Government Resources) */}
-      {/* ============================================================== */}
+      {/* TAB 3: references awaiting verification */}
       {activeTab === 'resources' && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-purple-800/40 bg-slate-900 p-6 space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
-                  <ShieldCheck className="w-5 h-5 text-purple-400" />
-                  <span>المصادر المعتمدة رسمياً لموضوع: {currentSlot.topic}</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  روابط ومذكرات رقمية مستقاة ومطابقة لنواتج تعلم وزارة التربية والتعليم وبنك المعرفة المصري
-                </p>
-              </div>
-
-              <button
-                onClick={handleSaveToOfflineCache}
-                className="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0"
-              >
-                {savedLocally ? <Check className="w-4 h-4 text-emerald-400" /> : <Download className="w-4 h-4" />}
-                <span>{savedLocally ? 'تم التخزين دون اتصال (IndexedDB)' : 'تخزين المذكرات دون اتصال'}</span>
-              </button>
-            </div>
-
-            {/* Resources List Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              {/* Resource 1: Ministry of Education */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-blue-500/20 text-blue-300">
-                      moe.gov.eg
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-bold">معتمد 100%</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-white">كتيب المفاهيم والنماذج الاسترشادية</h5>
-                  <p className="text-xs text-slate-400">
-                    ملخص القوانين المسموح به في لجان الامتحانات مع نماذج البابل شيت الحديثة.
-                  </p>
-                </div>
+        <div className="rounded-2xl border border-amber-800/40 bg-slate-900 p-6 space-y-3">
+          <div className="flex items-center gap-2 text-amber-300 font-bold">
+            <AlertTriangle className="w-5 h-5" />
+            <span>المصادر قيد التحقق</span>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            الروابط التالية بوابات رسمية عامة، وليست إثباتاً بأن موضوعات التطبيق تطابق منهج 2026/2027. تحقّق من سنة كل كتاب أو ملف قبل الاعتماد عليه.
+          </p>
+          <div className="space-y-3">
+            {curriculumSourceReferences.map((reference) => (
+              <div key={reference.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-2">
                 <a
-                  href="https://moe.gov.eg"
+                  href={reference.url}
                   target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-2 rounded-lg bg-slate-900 hover:bg-blue-600 hover:text-white text-blue-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-blue-300 hover:text-blue-200"
                 >
-                  <span>فتح الرابط الرسمي</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ExternalLink className="w-4 h-4" />
+                  <span>{reference.title}</span>
                 </a>
+                <p className="text-xs text-slate-400">{reference.publisher} • {reference.yearScope}</p>
+                <p className="text-xs text-amber-200/90">{reference.limitation}</p>
               </div>
-
-              {/* Resource 2: EKB */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300">
-                      ekb.eg
-                    </span>
-                    <span className="text-[10px] text-amber-400 font-bold">بنك المعرفة المصري</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-white">بنك أسئلة نواتج التعلم المتقدمة</h5>
-                  <p className="text-xs text-slate-400">
-                    تدريبات تفاعلية على المستويات العليا من التفكير والتطبيقات الرياضية الحياتية.
-                  </p>
-                </div>
-                <a
-                  href="https://ekb.eg"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-2 rounded-lg bg-slate-900 hover:bg-amber-600 hover:text-white text-amber-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
-                >
-                  <span>فتح الرابط الرسمي</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-
-              {/* Resource 3: Nagwa */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-purple-500/20 text-purple-300">
-                      nagwa.com
-                    </span>
-                    <span className="text-[10px] text-purple-400 font-bold">تقييم 4.9 / 5</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-white">أوراق عمل ومسائل تفاعلية خطوة بخطوة</h5>
-                  <p className="text-xs text-slate-400">
-                    تمارين متدرجة من المستوى A إلى C مع شروح تفصيلية بالفيديو والرسوم المتحركة.
-                  </p>
-                </div>
-                <a
-                  href="https://nagwa.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-2 rounded-lg bg-slate-900 hover:bg-purple-600 hover:text-white text-purple-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
-                >
-                  <span>فتح الرابط الرسمي</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
-
       {/* Math Scan & Solve OCR Modal */}
       <MathScanOcrModal
         isOpen={isOcrModalOpen}

@@ -22,7 +22,7 @@ import {
   MultimediaLibraryItem,
   SubjectProgress,
   DisciplineMetrics,
-  ScoutedOfficialResource,
+  ScoutedResourceCandidate,
   CurriculumUnit,
   MonthlyExam
 } from './types';
@@ -83,7 +83,7 @@ export default function App() {
   const [monthlyExams, setMonthlyExams] = useState<MonthlyExam[]>(initialMonthlyExams);
   const [subjectProgressList, setSubjectProgressList] = useState<SubjectProgress[]>(initialSubjectProgress);
   const [disciplineMetrics, setDisciplineMetrics] = useState<DisciplineMetrics>(initialDisciplineMetrics);
-  const [scoutedResources, setScoutedResources] = useState<ScoutedOfficialResource[]>(initialScoutedResources);
+  const [scoutedResources, setScoutedResources] = useState<ScoutedResourceCandidate[]>(initialScoutedResources);
 
   // Skip assessment target
   const [targetSkipUnit, setTargetSkipUnit] = useState<CurriculumUnit | null>(null);
@@ -176,20 +176,7 @@ export default function App() {
     }));
   };
 
-  const handleUpdateUnitResources = (unitId: string) => {
-    // Increment local resources count & sync date
-    setCurriculumUnits((prev) =>
-      prev.map((u) =>
-        u.id === unitId
-          ? {
-              ...u,
-              localResourcesCount: u.localResourcesCount + 2,
-              lastUpdatedDate: new Date().toISOString().split('T')[0]
-            }
-          : u
-      )
-    );
-  };
+
 
   const handleCompleteMonthlyExam = (examId: string, score: number) => {
     setMonthlyExams((prev) =>
@@ -243,15 +230,11 @@ export default function App() {
       fileType: resource.fileType,
       url: resource.url,
       sourceName: resource.platform,
-      rating: resource.ratingScore,
-      durationOrPages: 'معتمد وزارياً',
-      isVerifiedByMinistry: true,
+      durationOrPages: 'غير محددة',
+      sourceStatus: 'unverified',
       uploadDate: new Date().toISOString().split('T')[0],
       isPrintable: resource.fileType === 'printable_doc',
-      printableCheatSheet: [
-        'وثيقة ونماذج امتحانية معتمدة من بوابة وزارة التربية والتعليم.',
-        'نواتج تعلم مطابقة لمواصفات الورقة الامتحانية الحديثة.'
-      ]
+      printableCheatSheet: [resource.summary]
     };
 
     setLibraryItems((prev) => [newItem, ...prev]);
@@ -495,7 +478,6 @@ export default function App() {
             <FullCurriculumExplorer
               units={curriculumUnits}
               onOpenSkipExam={handleOpenSkipExam}
-              onUpdateUnitResources={handleUpdateUnitResources}
             />
           )}
 

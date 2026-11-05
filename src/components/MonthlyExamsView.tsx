@@ -75,7 +75,7 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
               الامتحانات الشهرية والمحاكاة الشاملة لنصف ونهاية العام
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              اختبارات تقييمية شهرية وفق مواصفات الورقة الامتحانية الوزارية
+              اختبارات تدريبية شهرية — ليست نماذج رسمية أو محاكاة معتمدة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
               تقييمات دورية شاملة تغطي مقررات كل شهر من أكتوبر ٢٠٢٦ حتى يوليو ٢٠٢٧. تدرب على التوقيت الزمني الحقيقي وإدارة ورقة البابل شيت لضمان أعلى الدرجات.

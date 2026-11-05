@@ -24,7 +24,7 @@ interface RubricStep {
   awardedMark: number;
   status: 'full' | 'partial' | 'missed';
   studentWorkDetected: string;
-  officialAnswerModel: string;
+  sampleSolution: string;
   remedialComment: string;
 }
 
@@ -56,7 +56,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 1.0,
           status: 'full',
           studentWorkDetected: 'رسم مقطع رأسي للمخروط والأسطوانة وكتابة التناسب: (12 - ع) / 12 = نق / 6 => ع = 12 - 2 نق',
-          officialAnswerModel: '\\frac{12 - h}{12} = \\frac{r}{6} \\implies h = 12 - 2r',
+          sampleSolution: '\\frac{12 - h}{12} = \\frac{r}{6} \\implies h = 12 - 2r',
           remedialComment: 'رسم دقيق وصياغة صحيحة للعلاقة الهندسية المساعدة مع توضيح المتغيرات.'
         },
         {
@@ -65,7 +65,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 1.0,
           status: 'full',
           studentWorkDetected: 'ح = ط نق² ع = ط نق² (12 - 2نق) = ط (12 نق² - 2 نق³). د ح / د نق = ط (24 نق - 6 نق²) = 0',
-          officialAnswerModel: 'V = \\pi r^2 h = \\pi(12r^2 - 2r^3) \\implies \\frac{dV}{dr} = \\pi(24r - 6r^2) = 0 \\implies r = 4',
+          sampleSolution: 'V = \\pi r^2 h = \\pi(12r^2 - 2r^3) \\implies \\frac{dV}{dr} = \\pi(24r - 6r^2) = 0 \\implies r = 4',
           remedialComment: 'اشتقاق سليم واختيار القيمة الموجبة لنصف القطر (نق = 4 سم) واستبعاد (نق = 0).'
         },
         {
@@ -74,7 +74,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 0.5,
           status: 'partial',
           studentWorkDetected: 'ع = 12 - 2(4) = 4 سم. الأبعاد هي: نق = 4 سم، الارتفاع = 4 سم.',
-          officialAnswerModel: '\\frac{d^2V}{dr^2} = \\pi(24 - 12r) = \\pi(24 - 48) = -24\\pi < 0 \\implies \\text{قيمة عظمى}',
+          sampleSolution: '\\frac{d^2V}{dr^2} = \\pi(24 - 12r) = \\pi(24 - 48) = -24\\pi < 0 \\implies \\text{قيمة عظمى}',
           remedialComment: 'لإكمال الحل، وضّح كيف يؤكد اختبار المشتقة الثانية أن الحجم قيمة عظمى.'
         }
       ]
@@ -94,7 +94,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 1.0,
           status: 'full',
           studentWorkDetected: 'طول الخيط = جذر(60² + 80²) = 100 سم. جا هـ = 80/100 = 4/5 ، جتا هـ = 3/5.',
-          officialAnswerModel: '\\text{وتر المثلث القائم} = 100 \\text{ cm}, \\quad \\sin\\theta = \\frac{4}{5}, \\quad \\cos\\theta = \\frac{3}{5}',
+          sampleSolution: '\\text{وتر المثلث القائم} = 100 \\text{ cm}, \\quad \\sin\\theta = \\frac{4}{5}, \\quad \\cos\\theta = \\frac{3}{5}',
           remedialComment: 'استخدام سليم للنسب المثلثية وتحليل قوى الشد ورد الفعل.'
         },
         {
@@ -103,7 +103,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 1.0,
           status: 'full',
           studentWorkDetected: 'العزوم حول أ = 0 => 20 * 40 - (ش * جا هـ) * 60 = 0 => 800 = ش * (4/5) * 60 => ش = 16.67 ث.كجم',
-          officialAnswerModel: '\\sum M_A = 0 \\implies 20 \\times 40 = (T \\sin\\theta) \\times 60 \\implies T = \\frac{50}{3} \\text{ kg.wt}',
+          sampleSolution: '\\sum M_A = 0 \\implies 20 \\times 40 = (T \\sin\\theta) \\times 60 \\implies T = \\frac{50}{3} \\text{ kg.wt}',
           remedialComment: 'تحقق من ذراع القوة واتجاه العزم قبل اعتماد المعادلة.'
         },
         {
@@ -112,7 +112,7 @@ export const HandwrittenEssayGraderView: React.FC = () => {
           awardedMark: 1.0,
           status: 'full',
           studentWorkDetected: 'س = ش جتا هـ = 10 ، ص = 20 - ش جا هـ = 20/3. ر = جذر(س² + ص²) = 12.02 ث.كجم',
-          officialAnswerModel: 'R_x = T\\cos\\theta = 10, \\quad R_y = 20 - T\\sin\\theta = \\frac{20}{3} \\implies R = \\sqrt{R_x^2 + R_y^2}',
+          sampleSolution: 'R_x = T\\cos\\theta = 10, \\quad R_y = 20 - T\\sin\\theta = \\frac{20}{3} \\implies R = \\sqrt{R_x^2 + R_y^2}',
           remedialComment: 'استخراج رد الفعل مع الوحدة الدقيقة ث.كجم.'
         }
       ]
@@ -275,11 +275,11 @@ export const HandwrittenEssayGraderView: React.FC = () => {
                     <div className="text-slate-200 leading-relaxed font-mono text-[11px]">{step.studentWorkDetected}</div>
                   </div>
 
-                  {/* Official Model Answer Formula */}
+                  {/* Example solution formula for this training sample */}
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-blue-900/30 space-y-1 text-xs">
                     <div className="text-[11px] text-blue-400 font-semibold">حل مرجعي توضيحي:</div>
                     <div className="text-center py-1">
-                      <MathRenderer latex={step.officialAnswerModel} block={true} className="text-sm text-cyan-300" />
+                      <MathRenderer latex={step.sampleSolution} block={true} className="text-sm text-cyan-300" />
                     </div>
                   </div>
 

@@ -33,7 +33,7 @@ interface ConceptEntry {
   title: string;
   latexFormula: string;
   explanation: string;
-  examFrequency: string; // e.g. "تكرر في 2021، 2023، 2024"
+  sourceStatus: string;
   examTip: string;
 }
 
@@ -55,8 +55,7 @@ export const OfficialConceptBookletView: React.FC = () => {
     includeStudentInfo: true,
     studentName: '',
     seatingNumber: '',
-    schoolName: '',
-    includeOfficialSeal: true
+    schoolName: ''
   });
 
   const getStoredAnnotations = (): {
@@ -121,8 +120,8 @@ export const OfficialConceptBookletView: React.FC = () => {
 
           await documentExportService.exportElementToPdf(
             container,
-            `official_concept_booklet_page_${newSettings.currentPageNumber}.pdf`,
-            { title: 'كتيب المفاهيم الرسمي A4', scale: 2 }
+            `training_notes_page_${newSettings.currentPageNumber}.pdf`,
+            { title: 'مذكرة تدريبية غير رسمية A4', scale: 2 }
           );
 
           container.style.display = prevDisplay;
@@ -148,7 +147,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'مشتقات الدوال المثلثية والقواطع',
       latexFormula: '\\frac{d}{dx}(\\tan u) = \\sec^2 u \\cdot \\frac{du}{dx}, \\quad \\frac{d}{dx}(\\sec u) = \\sec u \\tan u \\cdot \\frac{du}{dx}',
       explanation: 'تذكر دائماً ضرب الناتج في مشتقة الزاوية du/dx. وإذا كانت الدالة تبدأ بحرف التاء (جتا، ظتا، قتا) فإن مشتقتها سالبة.',
-      examFrequency: 'أساسي في السؤال 1 أو 2 بكل الامتحانات',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'في حالة المشتقات العليا للظا أو القا، استخدم المتطابقة: $\\sec^2 u = 1 + \\tan^2 u$ لتبسيط الناتج.'
     },
     {
@@ -159,7 +158,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'تحديد فترات التزايد والتناقص والنقاط الحرجة',
       latexFormula: 'f\'(x) = 0 \\quad \\text{أو} \\quad f\'(x) \\text{ غير معرفة بشرط } x \\in \\text{مجال } f',
       explanation: 'النقطة الحرجة تتطلب أولاً أن تنتمي إلى مجال الدالة الأصلي. فحص الإشارة على خط أعداد المشتقة الأولى يحدد العظمى والصغرى.',
-      examFrequency: 'مسألة مقالية مؤكدة (3 درجات)',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'فخ امتحاني: لا تنسَ فحص أطراف الفترة المغلقة $[a, b]$ عند طلب القيم القصوى المطلقة.'
     },
     {
@@ -170,7 +169,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'حجم الجسم الدوراني حول محور السينات والصادات',
       latexFormula: 'V_x = \\pi \\int_{a}^{b} [y_1^2 - y_2^2] \\, dx, \\qquad V_y = \\pi \\int_{c}^{d} [x_1^2 - x_2^2] \\, dy',
       explanation: 'الحجم الدوراني يتطلب ضرب التكامل في الثابت $\\pi$. تأكد من تربيع كل دالة على حدة وليس تربيع الفرق بينهما.',
-      examFrequency: 'امتحانات 2021، 2022، 2024 دور أول',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'خطأ شائع: نسيان معامل $\\pi$ في بداية القانون يضيع درجة السؤال في نموذج الإجابة.'
     },
     // STATICS
@@ -182,7 +181,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'قوة الاحتكاك النهائي وشروط وشك الانزلاق',
       latexFormula: 'F_s = \\mu_s R, \\quad \\lambda = \\text{زاوية الاحتكاك}, \\quad \\mu_s = \\tan \\lambda',
       explanation: 'إذا كان الجسم متزناً على وشك الانزلاق تحت تأثير وزنه فقط على مستوى مائل فإن زاوية ميل المستوى $\\theta = \\lambda$.',
-      examFrequency: 'تكرر في جميع امتحانات الثانوية العامة دون استثناء',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'قوة الاحتكاك $F$ تكون دائماً في عكس اتجاه الحركة المحتملة أو وشك الحركة.'
     },
     {
@@ -193,7 +192,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'عزم قوة حول نقطة باستخدام الضرب الاتجاهي',
       latexFormula: '\\vec{M}_O = \\vec{r} \\times \\vec{F} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ x & y & z \\\\ F_x & F_y & F_z \\end{vmatrix}',
       explanation: 'متجه الموضع $\\vec{r}$ يبدأ من النقطة المراد أخذ العزم حولها إلى أي نقطة تقع على خط عمل القوة (نقطة التأثير - نقطة العزم).',
-      examFrequency: 'امتحانات 2022، 2023، 2025 تجريبي',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'طول العمود الساقط من النقطة على خط عمل القوة = $|\\vec{M}_O| / |\\vec{F}|$.'
     },
     {
@@ -204,7 +203,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'إحداثيات مركز الثقل لمجموعة كتل نقطية وصفائح',
       latexFormula: 'X_{G} = \\frac{\\sum m_i x_i}{\\sum m_i}, \\qquad Y_{G} = \\frac{\\sum m_i y_i}{\\sum m_i}',
       explanation: 'عند اقتطاع جزء من صفيحة منتظمة (مثل قرص أو مربع)، تعامل مساحة الجزء المقتطع ككتلة سالبة في المعادلة.',
-      examFrequency: 'مسألة ثابتة في نهاية ورقة الاستاتيكا',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'اختر نقطة الأصل (0, 0) عند أحد رؤوس الصفيحة لتسهيل حساب الإحداثيات الموجبة.'
     },
     // DYNAMICS
@@ -216,7 +215,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'العجلة كدالة في الموضع أو الزمن',
       latexFormula: 'a = \\frac{dv}{dt}, \\qquad a = v \\frac{dv}{dx} \\quad (\\text{عندما تكون السرعة دالة في } x)',
       explanation: 'عندما تعطى السرعة $v$ كدالة في المسافة $x$، يجب استخدام الصورة $a = v \\frac{dv}{dx}$ وليس التفاضل بالنسبة للزمن مباشرة.',
-      examFrequency: 'امتحانات 2021 دور أول، 2023 دور ثان، 2024 دور أول',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'التكامل المماثل: $\\int_{x_0}^{x} a \\, dx = \\int_{v_0}^{v} v \\, dv = \\frac{1}{2}(v^2 - v_0^2)$.'
     },
     {
@@ -227,7 +226,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'الوزن الظاهري وضغط الجسم على أرضية المصعد',
       latexFormula: 'N = m(g + a) \\quad (\\text{صاعد بعجلة }), \\qquad N = m(g - a) \\quad (\\text{هابط بعجلة })',
       explanation: 'إذا كان الوزن الظاهري $N > mg$ فالحركة صاعدة بتسارع أو هابطة بتقصير. انتبه إلى ضبط وحدات الكتلة (كجم) والعجلة ($m/s^2$).',
-      examFrequency: 'تكرر بنسبة 100% في جميع دورات الامتحانات',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'إذا كان المطلوب قراءة الميزان بالثقل كيلوجرام (ث.كجم): اقسم الناتج بالنيوتن على 9.8.'
     },
     // ALGEBRA & SOLID GEOMETRY
@@ -239,7 +238,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'خواص الجذور التكعيبية للواحد الصحيح (أوميجا)',
       latexFormula: '1 + \\omega + \\omega^2 = 0, \\quad \\omega^3 = 1, \\quad \\omega - \\omega^2 = \\pm \\sqrt{3}i',
       explanation: 'أي مجموع لحدين يساوي سالب الحد الثالث: $1 + \\omega = -\\omega^2$. واستخدم $\\omega^4 = \\omega$ و $\\omega^5 = \\omega^2$.',
-      examFrequency: 'امتحانات 2021، 2023، 2024 دور أول',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'في الكسور المتماثلة، اضرب الحد المطلق في البسط في $\\omega^3$ لأخذ عامل مشترك والاختصار السريع.'
     },
     {
@@ -250,7 +249,7 @@ export const OfficialConceptBookletView: React.FC = () => {
       title: 'معادلة المستوى والبعد العمودي لنقطة عن مستوى',
       latexFormula: '\\vec{n} \\cdot \\vec{r} = \\vec{n} \\cdot \\vec{A} = d, \\qquad D = \\frac{|a x_1 + b y_1 + c z_1 + d|}{\\sqrt{a^2 + b^2 + c^2}}',
       explanation: '$\\vec{n} = (a, b, c)$ هو متجه الاتجاه العمودي على المستوى. البعد $D$ يعطي دائماً قيمة موجبة بفضل القيمة المطلقة.',
-      examFrequency: 'مسألة مقالية أو بابل شيت مؤكدة في كل نموذج',
+      sourceStatus: 'لم يُتحقق من مصدر امتحاني',
       examTip: 'لإيجاد قياس الزاوية بين مستقيم ومستوى: استخدم قانون الجيب $\\sin\\theta = \\frac{|\\vec{d} \\cdot \\vec{n}|}{|\\vec{d}| |\\vec{n}|}$.'
     }
   ];
@@ -286,13 +285,13 @@ export const OfficialConceptBookletView: React.FC = () => {
             <div className="space-y-2 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
                 <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                كتيب المفاهيم الرسمي التفاعلي لوزارة التربية والتعليم
+                مذكرة مراجعة تدريبية تفاعلية — غير رسمية
               </div>
               <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                القوانين والمتطابقات الرسمية المعتمدة في لجان الامتحان
+                ملخصات وقوانين للمراجعة الذاتية
               </h2>
               <p className="text-slate-300 text-sm leading-relaxed">
-                مرجع شامل مصنف حسب فروع الرياضيات الأربعة (التفاضل، الجبر والفراغية، الاستاتيكا، والديناميكا) مع تحليل أماكن ورودها في امتحانات الثانوية العامة السابقة ونصائح الموجهين.
+                محتوى تدريبي أولي منظم حسب فروع الرياضيات. لم يُراجع بعد مقابل مصادر السنة الحالية، كما أن نسبة أي سؤال إلى امتحان سابق غير موثقة هنا.
               </p>
             </div>
 
@@ -330,7 +329,7 @@ export const OfficialConceptBookletView: React.FC = () => {
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>عرض وثيقة الكتيب الرسمي A4 (مع طبقة التظليل والملاحظات)</span>
+              <span>عرض مذكرة مراجعة تدريبية A4 (مع طبقة التظليل والملاحظات)</span>
               <span className="px-1.5 py-0.2 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-mono">
                 تفاعلي
               </span>
@@ -468,11 +467,11 @@ export const OfficialConceptBookletView: React.FC = () => {
                     {/* Exam frequency & Tip footer */}
                     <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400">التكرار في الامتحانات:</span>
-                        <span className="text-amber-300 font-semibold">{item.examFrequency}</span>
+                        <span className="text-slate-400">حالة توثيق مصدر السؤال:</span>
+                        <span className="text-amber-300 font-semibold">{item.sourceStatus}</span>
                       </div>
                       <div className="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-800/30 text-[11px] text-emerald-200">
-                        <span className="font-bold text-emerald-400">نصيحة الموجه: </span>
+                        <span className="font-bold text-emerald-400">ملاحظة تدريبية: </span>
                         <MixedTextRenderer text={item.examTip} className="inline" />
                       </div>
                     </div>

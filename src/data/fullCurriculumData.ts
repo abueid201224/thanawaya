@@ -22,8 +22,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'في الاشتقاق الضمني: اشتق الطرفين بالنسبة لـ س مع مراعاة ضرب كل حد يحتوي على ص في (دص/دس).',
       'في المعدلات الزمنية: اكتب العلاقة الهندسية المساعدة (فيثاغورس، تشابه مثلثات، قانون جيب التمام، أو حجم/مساحة)، ثم اشتق الطرفين بالنسبة للزمن ن.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-20',
     practiceQuestions: [
       {
         id: 'pq_calc_1_1',
@@ -94,8 +92,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'تكامل (دَ(س) / د(س)) دس = لو_هـ |د(س)| + ث.',
       'تكامل بالتجزيء: ∫ ص دع = ص ع - ∫ ع دص.'
     ],
-    localResourcesCount: 3,
-    lastUpdatedDate: '2026-10-22',
     practiceQuestions: [
       {
         id: 'pq_calc_2_1',
@@ -150,8 +146,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'نقاط الانقلاب: دً(س) = ٠ وتغير الدالة تحدبها حول هذه النقطة.',
       'في التطبيقات: اجعل الدالة في متغير واحد، واشتق وسوِّ بالصفر وتحقق باختبار المشتقة الثانية.'
     ],
-    localResourcesCount: 5,
-    lastUpdatedDate: '2026-10-25',
     practiceQuestions: [
       {
         id: 'pq_calc_3_1',
@@ -193,8 +187,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'رد الفعل المحصل: ر_ش = √(ر² + ح_س²) = ر √(١ + م_س²) = ر قا(ل).',
       'على المستوى المائل الخشن: إذا كان الجسم متزناً تحت تأثير وزنه فقط، فإن هـ = ل. إذا هـ > ل ينزلق الجسم، وإذا هـ < ل يكون الجسم مستقراً.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-18',
     practiceQuestions: [
       {
         id: 'pq_stat_1_1',
@@ -232,8 +224,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'رد فعل الحائط الرأسي الأملس يكون عمودياً على الحائط (أفقي).',
       'رد فعل الأرض الخشنة يتكون من مركبتين: رد الفعل العمودي ر_١ وقوة الاحتكاك ح.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-24',
     practiceQuestions: [
       {
         id: 'pq_stat_4_1',
@@ -275,8 +265,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'الإزاحة = ∫ ع دن ، أما المسافة الكلية فتتطلب فحص أصفار السرعة (توقف لحظي) وأخذ القيمة المطلقة.',
       'كمية الحركة: م = ك ع. التغير في كمية الحركة: Δم = ك (ع٢ - ع١).'
     ],
-    localResourcesCount: 3,
-    lastUpdatedDate: '2026-10-15',
     practiceQuestions: [
       {
         id: 'pq_dyn_1_1',
@@ -318,8 +306,6 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       'قانون أوم للدائرة المغلقة: I = VB / (R_eq + r). فرق الجهد بين قطبي بطارية مفرغة V = VB - Ir ، وفي حالة الشحن V = VB + Ir.',
       'كيرشوف ١: Σ I_in = Σ I_out. كيرشوف ٢: Σ VB = Σ I R في أي مسار مغلق.'
     ],
-    localResourcesCount: 4,
-    lastUpdatedDate: '2026-10-23',
     practiceQuestions: [
       {
         id: 'pq_phys_1_1',

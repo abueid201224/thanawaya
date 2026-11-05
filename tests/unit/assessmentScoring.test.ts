@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateProportionalScore, canApproveUnitSkip } from '../../src/lib/assessmentScoring.ts';
-import { initialUser, initialDailySchedule, initialSubjectProgress, initialDisciplineMetrics } from '../../src/data/curriculumData.ts';
+import { initialUser, initialDailySchedule, initialSubjectProgress, initialDisciplineMetrics, initialMultimediaLibrary, initialScoutedResources, initialExamEssentials, curriculumSourceReferences } from '../../src/data/curriculumData.ts';
 import { initialCurriculumUnits, initialMonthlyExams } from '../../src/data/fullCurriculumData.ts';
 
 test('preserves a genuine zero score', () => {
@@ -51,4 +51,29 @@ test('fresh learning state contains no pre-completed sessions, units, or exams',
   assert.equal(initialDisciplineMetrics.totalStudyMinutesToday, 0);
   assert.equal(initialDisciplineMetrics.currentStreakDays, 0);
   assert.equal(initialDisciplineMetrics.badgesEarned.length, 0);
+});
+
+test('training library seeds do not imply official approval or exam-frequency evidence', () => {
+  assert.equal(initialScoutedResources.length, 0);
+  assert.ok(initialMultimediaLibrary.every((item) =>
+    item.sourceStatus === 'unverified' &&
+    item.url === '' &&
+    item.rating === undefined
+  ));
+  assert.ok(initialExamEssentials.every((essential) =>
+    essential.importanceRating === 0 &&
+    essential.pastExamOccurrences.length === 0
+  ));
+});
+
+test('curriculum source links are real ministry portals and disclose their year/content limits', () => {
+  assert.ok(curriculumSourceReferences.length >= 2);
+  assert.ok(curriculumSourceReferences.some((reference) => reference.url === 'https://moe.gov.eg/ar/learning-outcomes/'));
+  assert.ok(curriculumSourceReferences.some((reference) => reference.url === 'https://ellibrary.moe.gov.eg/books/Books-sec/'));
+  assert.ok(curriculumSourceReferences.every((reference) => {
+    const host = new URL(reference.url).hostname;
+    return (host === 'moe.gov.eg' || host.endsWith('.moe.gov.eg')) &&
+      reference.limitation.length > 20 &&
+      /سنة|2026|تحقّق/.test(reference.yearScope + reference.limitation);
+  }));
 });

@@ -101,11 +101,11 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
 
     if (canApproveUnitSkip(activeUnit.skipAssessmentReady === true, percentage)) {
       verdict = 'mastered_skip_approved';
-      verdictTitle = 'مستوى متميز: تم إثبات الإتقان وتخطي دراسة الوحدة بنجاح! 🏆';
+      verdictTitle = 'اجتياز الاختبار المُراجع — يمكن تخطي الوحدة وفق إعداد المدرس';
       tailoredAdvice =
-        'مبارك يا بطل! إجاباتك تبرهن على فهم متين وعميق لنواتج التعلم الوزارية. تم تخطي هذه الوحدة من جدولك الدراسي اليومي وإضافتها لسجل إنجازاتك كـ "متقنة مسبقاً"، ويمكنك استثمار هذا الوقت في المواد الأكثر احتياجاً.';
+        'اجتزت الاختبار الذي أُشير إلى أنه مراجع من المدرس. النتيجة تخص الأسئلة الموجودة في هذا الاختبار ولا تثبت وحدها إتقان كل موضوعات الوحدة؛ راجع أي نقاط غير مؤكدة مع معلمك.';
       nextRecommendedAction =
-        'التوجه للوحدة التالية مباشرة أو حل نماذج الامتحانات الشاملة للمحافظة على هذا المستوى المتقدم.';
+        'يمكنك متابعة الخطة وفق قرار المدرس، مع مراجعة الإجابات غير المؤكدة قبل الانتقال النهائي.';
 
       // Confirm skip in parent
       onConfirmSkipUnit(activeUnit.id, percentage);
@@ -118,18 +118,18 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
         'راجع نواتج التعلم والأسئلة التي أخطأت فيها، ثم تابع خطة دراسة الوحدة إلى أن يعتمد مدرس اختبارها التشخيصي.';
     } else if (percentage >= 50) {
       verdict = 'partial_mastery_review_weak_points';
-      verdictTitle = 'مستوى متوسط: إتقان جزئي جيد (لا داعي لدراسة الوحدة كاملة) ⚡';
+      verdictTitle = 'نتيجة جزئية — واصل دراسة الوحدة وراجع نقاط الضعف';
       tailoredAdvice =
-        'لديك أساسيات جيدة جداً في أغلب نواتج التعلم، ولكن ظهرت بعض الثغرات الدقيقة في الأفكار المركبة. لتوفير وقتك: لن تحتاج لدراسة الوحدة بالكامل من البداية، بل خصص 30 دقيقة فقط لمراجعة نقاط الضعف المحددة بالأسفل.';
+        'أجبت عن بعض أسئلة الاختبار بصورة صحيحة، لكن هذه النتيجة لا تكفي لتجاوز الوحدة. راجع نقاط الضعف المحددة، وأكمل دراسة بقية الموضوعات وفق خطتك أو معلمك.';
       nextRecommendedAction =
-        'مراجعة كبسولة القوانين الخاصة بنقاط الضعف، ثم إعادة حل المسائل المشابهة لها.';
+        'راجع نقاط الضعف من مصدر موثوق أو معلم، ثم أعد التدريب على مسائل مشابهة.';
     } else {
       verdict = 'needs_full_study';
       verdictTitle = 'مستوى يحتاج تأسيس: يُنصح بدراسة الوحدة وفق المخطط الدراسي 📖';
       tailoredAdvice =
-        'اختبار التخطي كشف عن فجوات مفاهيمية في القواعد الأساسية لهذه الوحدة. تخطي هذه الوحدة الآن يشكل خطورة على درجاتك في امتحان نهاية العام. ننصحك بالبدء في دراستها خطوة بخطوة مع المعلم الذكي.';
+        'تشير إجاباتك في هذه المجموعة إلى موضوعات تحتاج مراجعة؛ لا تستخدم هذه النتيجة وحدها للحكم على مستواك أو درجتك المتوقعة. راجع الوحدة مع معلمك أو مصدر موثوق.';
       nextRecommendedAction =
-        'جدولة هذه الوحدة في خطتك اليومية ومشاهدة فيديو الشرح المعتمد من المكتبة.';
+        'أضف وقتاً لمراجعة الوحدة، واستخدم مرجعاً أو مادة تعليمية تم التحقق من مصدرها إن توفرت.';
     }
 
     setEvaluationResult({
@@ -161,7 +161,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/30">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              محرك التخطي الذكي والإتقان المسبق (Fast-Track Diagnostic Engine)
+              اختبار تشخيصي لتحديد ما يحتاج إلى مراجعة
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
               اختبار تشخيصي لتحديد ما يحتاج إلى مراجعة
@@ -177,12 +177,12 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               <span className="font-bold text-emerald-400 font-mono">≥ 80%</span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>التشخيص الذكي:</span>
-              <span className="font-bold text-amber-400 font-mono">تحليل نقاط الضعف والقوة</span>
+              <span>تحليل الإجابات:</span>
+              <span className="font-bold text-amber-400 font-mono">مقارنة الإجابات بالأسئلة</span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>التأثير على الخطة:</span>
-              <span className="font-bold text-blue-400 font-mono">تحديث آلي لنسبة الإنجاز</span>
+              <span>تأثير النتيجة:</span>
+              <span className="font-bold text-blue-400 font-mono">بعد استيفاء شرط مراجعة الاختبار</span>
             </div>
           </div>
         </div>
