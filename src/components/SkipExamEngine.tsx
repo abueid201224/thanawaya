@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { CurriculumUnit, SkipEvaluationResult, PracticeQuestion } from '../types';
 import { MixedTextRenderer } from './MathRenderer';
-import { canApproveUnitSkip } from '../lib/assessmentScoring';
+import { canApproveUnitSkip, hasReviewedOutcomeCoverage } from '../lib/assessmentScoring';
 
 interface SkipExamEngineProps {
   units: CurriculumUnit[];
@@ -48,6 +48,10 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
 
   // A diagnostic must use questions authored for this unit; never substitute unrelated generic items.
   const testQuestions: PracticeQuestion[] = activeUnit?.practiceQuestions ?? [];
+  const assessmentReady = Boolean(
+    activeUnit?.skipAssessmentReady === true &&
+    hasReviewedOutcomeCoverage(activeUnit.learningOutcomes, testQuestions)
+  );
 
   // Timer countdown
   React.useEffect(() => {
@@ -78,16 +82,16 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
   const handleSubmitExam = () => {
     if (!activeUnit || testQuestions.length === 0) return;
     let score = 0;
-    const weakPoints: string[] = [];
-    const masteredPoints: string[] = [];
+    const topicsToReview = new Set<string>();
+    const correctlyAnsweredTopics = new Set<string>();
 
     testQuestions.forEach((q) => {
       const studentKey = userAnswers[q.id];
       if (studentKey === q.correctKey) {
         score += 1;
-        masteredPoints.push(q.targetedLearningOutcome);
+        correctlyAnsweredTopics.add(q.targetedLearningOutcome);
       } else {
-        weakPoints.push(q.targetedLearningOutcome);
+        topicsToReview.add(q.targetedLearningOutcome);
       }
     });
 
@@ -99,7 +103,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
     let tailoredAdvice: string;
     let nextRecommendedAction: string;
 
-    if (canApproveUnitSkip(activeUnit.skipAssessmentReady === true, percentage)) {
+    if (canApproveUnitSkip(assessmentReady, percentage)) {
       verdict = 'mastered_skip_approved';
       verdictTitle = 'اجتياز الاختبار المُراجع — يمكن تخطي الوحدة وفق إعداد المدرس';
       tailoredAdvice =
@@ -109,7 +113,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
 
       // Confirm skip in parent
       onConfirmSkipUnit(activeUnit.id, percentage);
-    } else if (activeUnit.skipAssessmentReady !== true) {
+    } else if (!assessmentReady) {
       verdict = 'diagnostic_only';
       verdictTitle = 'نتيجة تشخيصية فقط — لم يُعتمد اختبار التخطي لهذه الوحدة';
       tailoredAdvice =
@@ -140,8 +144,8 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
       percentage,
       verdict,
       verdictTitle,
-      weakTopics: weakPoints,
-      masteredTopics: masteredPoints,
+      weakTopics: [...topicsToReview],
+      correctlyAnsweredTopics: [...correctlyAnsweredTopics],
       tailoredAdvice,
       nextRecommendedAction
     });
@@ -193,7 +197,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
         <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-base font-bold text-white">اختر الوحدة التي تريد إثبات إتقانها وتخطيها:</h3>
+              <h3 className="text-base font-bold text-white">اختر وحدة لإجراء اختبار تشخيصي:</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 يمكنك اختيار أي وحدة من مواد شعبة علمي رياضة لإجراء الاختبار التشخيصي.
               </p>
@@ -231,7 +235,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
             <p className="text-xs text-slate-300 leading-relaxed">{activeUnit.description}</p>
 
             <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
-              <span className="font-semibold text-slate-300">نواتج التعلم التي سيتم اختبارك فيها:</span>
+              <span className="font-semibold text-slate-300">نواتج تعلم الوحدة — يلزم ربط الأسئلة بها قبل اعتماد اختبار التخطي:</span>
               {activeUnit.learningOutcomes.map((lo, i) => (
                 <span key={i} className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                   {lo}
@@ -239,9 +243,9 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               ))}
             </div>
 
-              {!activeUnit.skipAssessmentReady && testQuestions.length > 0 && (
+              {!assessmentReady && testQuestions.length > 0 && (
                 <p className="text-xs text-amber-300" role="note">
-                  هذا تشخيص تدريبي فقط؛ تجاوز الوحدة غير متاح قبل مراجعة الاختبار واعتماده.
+                  هذه نتيجة تشخيصية فقط؛ التخطي يتطلب مراجعة كل سؤال وربطه بكل نواتج الوحدة ثم اعتماد المخطط من مدرس.
                 </p>
               )}
 
@@ -266,7 +270,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
             <div>
               <span className="text-xs text-amber-400 font-bold font-mono">
-                اختبار تخطي: {activeUnit.title}
+                اختبار تشخيصي: {activeUnit.title}
               </span>
               <div className="text-sm font-bold text-white mt-1">
                 السؤال {currentQuestionIndex + 1} من {testQuestions.length}
@@ -391,30 +395,30 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
             </p>
           </div>
 
-          {/* Analysis: Mastered vs Weak Points */}
+          {/* Analysis: observed answers from this question sample */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            {/* Mastered */}
+            {/* Correctly answered in sample */}
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
               <div className="text-emerald-400 font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>الأسئلة التي أجبت عنها بشكل صحيح:</span>
+                <span>موضوعات ارتبطت بإجابات صحيحة في هذه العينة:</span>
               </div>
-              {evaluationResult.masteredTopics.length > 0 ? (
+              {evaluationResult.correctlyAnsweredTopics.length > 0 ? (
                 <ul className="space-y-1 list-disc list-inside text-slate-300">
-                  {evaluationResult.masteredTopics.map((m, i) => (
+                  {evaluationResult.correctlyAnsweredTopics.map((m, i) => (
                     <li key={i}>{m}</li>
                   ))}
                 </ul>
               ) : (
-                <div className="text-slate-500">لم يتم إتقان أي ناتج تعلم بنجاح كافٍ.</div>
+                <div className="text-slate-500">لا توجد إجابات صحيحة في أسئلة هذه العينة.</div>
               )}
             </div>
 
-            {/* Weak points */}
+            {/* Topics to review */}
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
               <div className="text-amber-400 font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4" />
-                <span>نقاط الضعف التي تحتاج لتركيز خاص:</span>
+                <span>موضوعات ظهرت فيها إجابات خاطئة في هذه العينة:</span>
               </div>
               {evaluationResult.weakTopics.length > 0 ? (
                 <ul className="space-y-1 list-disc list-inside text-slate-300">

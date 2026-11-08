@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateProportionalScore, canApproveUnitSkip } from '../../src/lib/assessmentScoring.ts';
+import { calculateProportionalScore, canApproveUnitSkip, hasReviewedOutcomeCoverage, recordSkippedUnitProgress } from '../../src/lib/assessmentScoring.ts';
 import { initialUser, initialDailySchedule, initialSubjectProgress, initialDisciplineMetrics, initialMultimediaLibrary, initialScoutedResources, initialExamEssentials, curriculumSourceReferences } from '../../src/data/curriculumData.ts';
 import { initialCurriculumUnits, initialMonthlyExams } from '../../src/data/fullCurriculumData.ts';
 
@@ -28,6 +28,38 @@ test('requires a reviewed assessment blueprint before approving unit skip', () =
   assert.equal(canApproveUnitSkip(true, 79), false);
   assert.equal(canApproveUnitSkip(true, 80), true);
   assert.equal(canApproveUnitSkip(true, Number.NaN), false);
+});
+
+test('unit skip requires reviewed questions with exact coverage of every learning outcome', () => {
+  const outcomes = ['outcome A', 'outcome B'];
+  const reviewedQuestions = [
+    { targetedLearningOutcome: 'outcome A', reviewStatus: 'reviewed' as const },
+    { targetedLearningOutcome: 'outcome B', reviewStatus: 'reviewed' as const }
+  ];
+
+  assert.equal(hasReviewedOutcomeCoverage(outcomes, reviewedQuestions), true);
+  assert.equal(canApproveUnitSkip(hasReviewedOutcomeCoverage(outcomes, reviewedQuestions), 100), true);
+  assert.equal(hasReviewedOutcomeCoverage(outcomes, reviewedQuestions.slice(0, 1)), false);
+  assert.equal(canApproveUnitSkip(hasReviewedOutcomeCoverage(outcomes, reviewedQuestions.slice(0, 1)), 100), false);
+  assert.equal(hasReviewedOutcomeCoverage(outcomes, [{ ...reviewedQuestions[0], reviewStatus: 'unreviewed' }]), false);
+  assert.equal(hasReviewedOutcomeCoverage(outcomes, [...reviewedQuestions, { targetedLearningOutcome: 'unmapped extra', reviewStatus: 'reviewed' }]), false);
+  assert.equal(hasReviewedOutcomeCoverage([], reviewedQuestions), false);
+  assert.equal(hasReviewedOutcomeCoverage(outcomes, []), false);
+});
+
+test('skipped chapter completion does not fabricate learning outcome mastery', () => {
+  const original = {
+    ...initialSubjectProgress[0],
+    totalChapters: 4,
+    completedChapters: 1,
+    learningOutcomesMastered: 2
+  };
+
+  const updated = recordSkippedUnitProgress(original);
+
+  assert.equal(updated.completedChapters, 2);
+  assert.equal(updated.masteryPercentage, 50);
+  assert.equal(updated.learningOutcomesMastered, original.learningOutcomesMastered);
 });
 
 test('new local profile has no privileged role or invented personal scores', () => {

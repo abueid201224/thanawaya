@@ -153,7 +153,7 @@ export interface CurriculumUnit {
   learningOutcomes: string[];
   status: UnitStudyStatus;
   skipExamScore?: number; // Score achieved in skip assessment if taken
-  skipAssessmentReady?: boolean; // Set only after teacher review confirms sufficient topic coverage
+  skipAssessmentReady?: boolean; // Requires teacher review, reviewed questions, and exact coverage of every unit outcome.
   lastAssessmentDate?: string;
   practiceQuestions: PracticeQuestion[];
   studyNotesSummary: string[];
@@ -182,7 +182,7 @@ export interface SkipEvaluationResult {
   verdict: 'mastered_skip_approved' | 'partial_mastery_review_weak_points' | 'needs_full_study' | 'diagnostic_only';
   verdictTitle: string;
   weakTopics: string[];
-  masteredTopics: string[];
+  correctlyAnsweredTopics: string[];
   tailoredAdvice: string;
   nextRecommendedAction: string;
 }

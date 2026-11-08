@@ -68,6 +68,7 @@ const SecureApiKeyModal = React.lazy(() => import('./components/SecureApiKeyModa
 import { SplashLoader } from './components/SplashLoader';
 import { nativeDesktop } from './services/nativeDesktopBridge';
 import { authService } from './services/authService';
+import { recordSkippedUnitProgress } from './lib/assessmentScoring';
 
 export default function App() {
   // Navigation: Active Service Only (No clutter)
@@ -144,19 +145,9 @@ export default function App() {
     if (skippedUnit) {
       setSubjectProgressList((prev) =>
         prev.map((sub) => {
-          if (sub.subjectCode === skippedUnit.subjectCode) {
-            const nextCompleted = Math.min(sub.totalChapters, sub.completedChapters + 1);
-            return {
-              ...sub,
-              completedChapters: nextCompleted,
-              masteryPercentage: Math.round((nextCompleted / sub.totalChapters) * 100),
-              learningOutcomesMastered: Math.min(
-                sub.learningOutcomesTotal,
-                sub.learningOutcomesMastered + 3
-              )
-            };
-          }
-          return sub;
+          return sub.subjectCode === skippedUnit.subjectCode
+            ? recordSkippedUnitProgress(sub)
+            : sub;
         })
       );
     }
