@@ -125,10 +125,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       id: 'concepts_booklet' as ActiveNavService,
       label: 'كتيب المفاهيم والقوانين',
       icon: Layers,
-      badge: 'وزاري',
+      badge: 'تدريبي',
       highlight: true,
       badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-      desc: 'القوانين الرسمية المعتمدة في اللجان'
+      desc: 'مذكرة مراجعة أولية غير موثقة رسمياً'
     },
     {
       id: 'essay_grader' as ActiveNavService,
@@ -137,7 +137,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       badge: 'Vision',
       highlight: true,
       badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-      desc: 'تصحيح خطوات الأسئلة المقالية وباريم الوزارة'
+      desc: 'أمثلة ثابتة للتدريب الذاتي وليست تصحيحاً رسمياً'
     },
     {
       id: 'grapher' as ActiveNavService,
@@ -173,10 +173,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     },
     {
       id: 'tutor' as ActiveNavService,
-      label: 'المعلم الذكي ونقاط الامتحان',
+      label: 'مساعد تدريب أولي',
       icon: MessageSquare,
-      badge: 'AI',
-      desc: 'توجيه سقالي وأسئلة وزارية مكررة'
+      badge: 'تدريبي',
+      desc: 'قوالب تدريبية؛ لا توجد أسئلة سابقة موثقة'
     },
     {
       id: 'progress' as ActiveNavService,
@@ -187,11 +187,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     },
     {
       id: 'admin' as ActiveNavService,
-      label: 'كشاف المواقع ولوحة المشرف',
+      label: 'إدارة مواد المكتبة',
       icon: ShieldCheck,
-      badge: pendingScoutCount > 0 ? `${pendingScoutCount}` : 'RBAC',
+      badge: pendingScoutCount > 0 ? `${pendingScoutCount}` : 'إدارة',
       badgeColor: pendingScoutCount > 0 ? 'bg-amber-500 text-black' : 'bg-purple-500/20 text-purple-300',
-      desc: 'اعتماد روابط moe.gov.eg و ekb.eg'
+      desc: 'إضافة ومراجعة مواد؛ لا يعمل كشاف مواقع آلي'
     }
   ];
 

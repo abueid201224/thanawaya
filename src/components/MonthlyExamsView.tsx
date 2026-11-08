@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { MonthlyExam, PracticeQuestion } from '../types';
 import { MixedTextRenderer } from './MathRenderer';
+import { calculateProportionalScore } from '../lib/assessmentScoring';
 
 interface MonthlyExamsViewProps {
   exams: MonthlyExam[];
@@ -43,7 +44,7 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!activeExam) return;
+    if (!activeExam || activeExam.questions.length === 0) return;
 
     let total = 0;
     activeExam.questions.forEach((q) => {
@@ -52,7 +53,12 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
       }
     });
 
-    const scoreAwarded = Math.round((total / (activeExam.questions.length || 1)) * activeExam.totalMarks);
+    const scoreAwarded = calculateProportionalScore(
+      total,
+      activeExam.questions.length,
+      activeExam.totalMarks
+    );
+    if (scoreAwarded === null) return;
     setScoreResult(scoreAwarded);
     setExamSubmitted(true);
     onCompleteExam(activeExam.id, scoreAwarded);
@@ -66,13 +72,13 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30">
               <FileCheck2 className="w-3.5 h-3.5 text-purple-400" />
-              الامتحانات الشهرية والمحاكاة الشاملة لنصف ونهاية العام
+              تقييمات ذاتية تدريبية — محتوى أولي غير مراجَع
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              اختبارات تقييمية شهرية وفق مواصفات الورقة الامتحانية الوزارية
+              اختبارات تدريبية شهرية — ليست نماذج رسمية أو محاكاة معتمدة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              تقييمات دورية شاملة تغطي مقررات كل شهر من أكتوبر ٢٠٢٦ حتى يوليو ٢٠٢٧. تدرب على التوقيت الزمني الحقيقي وإدارة ورقة البابل شيت لضمان أعلى الدرجات.
+              الأسئلة الحالية أولية وغير مراجعة، ولم تُطابق بمصدر رسمي لمنهج 2026/2027. الزمن والموضوعات لا تمثل مواصفة الوزارة، ولا تضمن هذه التدريبات نتيجة أو درجة.
             </p>
           </div>
 
@@ -113,7 +119,7 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
 
                 <h4 className="text-base font-bold text-white leading-snug">{exam.title}</h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  يحتوي على {exam.questions.length} أسئلة استرشادية تقيس نواتج التعلم لنهاية الشهر.
+                  يحتوي على {exam.questions.length} أسئلة تدريبية أولية؛ مراجعة المحتوى ونسبته إلى المنهج لم تكتمل.
                 </p>
 
                 <div className="flex items-center justify-between pt-1 text-xs">
@@ -126,18 +132,29 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
                 {exam.isCompleted ? (
                   <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>تم الاجتياز ({exam.scoreAwarded || exam.totalMarks}/{exam.totalMarks})</span>
+                    <span>
+                      {exam.scoreAwarded !== undefined
+                        ? `مكتمل (${exam.scoreAwarded}/${exam.totalMarks})`
+                        : 'مكتمل — لا توجد درجة محفوظة'}
+                    </span>
                   </div>
                 ) : (
                   <span className="text-xs text-slate-400">لم يؤدَ بعد</span>
                 )}
 
                 <button
+                  disabled={exam.questions.length === 0}
                   onClick={() => handleStartExam(exam)}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-md shadow-blue-600/20"
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-md shadow-blue-600/20"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span>{exam.isCompleted ? 'إعادة الاختبار' : 'بدء الامتحان'}</span>
+                  <span>
+                    {exam.questions.length === 0
+                      ? 'لا توجد أسئلة بعد'
+                      : exam.isCompleted
+                      ? 'إعادة الاختبار'
+                      : 'بدء الامتحان'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -172,9 +189,9 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
 
               return (
                 <div key={q.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-400">
                     <span className="font-bold text-blue-400">سؤال {idx + 1}</span>
-                    <span>{q.targetedLearningOutcome}</span>
+                    <span className="max-w-full break-words text-right text-amber-300 sm:max-w-[72%]">{q.reviewStatus === 'unreviewed' ? 'غير مراجَع' : 'مراجَع — ليس اعتماداً رسمياً'} · {q.targetedLearningOutcome}</span>
                   </div>
 
                   <div className="text-sm font-semibold text-white leading-relaxed">
@@ -227,10 +244,12 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
             {examSubmitted && scoreResult !== null ? (
               <div className="text-sm font-bold text-emerald-400">
                 درجتك في الامتحان: {scoreResult} من {activeExam.totalMarks} درجة (
-                {Math.round((scoreResult / activeExam.totalMarks) * 100)}%)
+                {activeExam.totalMarks > 0
+                  ? `${Math.round((scoreResult / activeExam.totalMarks) * 100)}%`
+                  : 'لا تتوفر نسبة'})
               </div>
             ) : (
-              <div className="text-xs text-slate-400">تأكد من إجابة كافة الأسئلة قبل التسليم.</div>
+              <div className="text-xs text-slate-400">راجع إجاباتك؛ يمكنك ترك السؤال الذي لا تعرفه فارغاً.</div>
             )}
 
             {!examSubmitted ? (

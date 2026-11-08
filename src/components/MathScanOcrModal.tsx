@@ -37,50 +37,50 @@ interface ExamPreset {
   id: string;
   title: string;
   branch: string;
-  imageUrl: string;
   latex: string;
   plainText: string;
-  confidence: number;
   scaffoldingSteps: Array<{
     stepNumber: number;
     title: string;
     guidingQuestion: string;
     hintFormulaLatex: string;
-    officialMinistryRule: string;
+    learningHint: string;
   }>;
   finalAnswerVerification: string;
 }
+
+const PRESET_PREVIEW_IMAGE = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><rect width="960" height="540" fill="#0f172a"/><path d="M80 120h800M80 200h620M80 280h760M80 360h540" stroke="#334155" stroke-width="8" stroke-linecap="round"/><text x="480" y="470" text-anchor="middle" fill="#67e8f9" font-family="sans-serif" font-size="34">مثال تدريبي ثابت — لا يمثل نتيجة OCR</text></svg>'
+)}`;
 
 const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_calc_1',
     title: 'تكامل كسري لوغاريتمي',
-    branch: 'تفاضل وتكامل (2024 دور أول)',
-    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&auto=format&fit=crop&q=80',
+    branch: 'تفاضل وتكامل — مثال تدريبي',
     latex: '\\int \\frac{2x + 3}{x^2 + 3x + 5} \\, dx',
     plainText: 'تكامل دالة كسرية حيث مشتقة المقام موجودة في البسط: (٢س + ٣) / (س² + ٣س + ٥)',
-    confidence: 99.4,
     scaffoldingSteps: [
       {
         stepNumber: 1,
         title: 'التعرف على نمط المسألة',
         guidingQuestion: 'افحص المقام جيداً: ما هي مشتقة المقدار (س² + ٣س + ٥) بالنسبة إلى س؟',
         hintFormulaLatex: '\\frac{d}{dx}(x^2 + 3x + 5) = 2x + 3',
-        officialMinistryRule: 'إذا كان البسط مشتقة للمقام: فإن ناتج التكامل = لو_هـ |المقام| + ث'
+        learningHint: 'إذا كان البسط مشتقة المقام، يظهر نمط لو_هـ |المقام| + ث؛ راجع المجال.'
       },
       {
         stepNumber: 2,
         title: 'كتابة الصورة القياسية',
         guidingQuestion: 'هل يحتاج البسط إلى ضرب في ثابت موازنة أم أنه يمثل المشتقة تماماً دون نقص؟',
         hintFormulaLatex: '\\int \\frac{f\'(x)}{f(x)} \\, dx = \\ln|f(x)| + c',
-        officialMinistryRule: 'تحقق من عدم نسيان مقياس القيمة المطلقة وثابت التكامل (ث).'
+        learningHint: 'تحقق من القيمة المطلقة وثابت التكامل (ث).'
       },
       {
         stepNumber: 3,
         title: 'التحقق والمراجعة الذاتية',
         guidingQuestion: 'اشتق الناتج للتأكد: هل اشتقاق الدالة اللوغاريتمية يعيد لك الكسر الأصلي تماماً؟',
         hintFormulaLatex: '\\frac{d}{dx}(\\ln|x^2 + 3x + 5| + c) = \\frac{2x + 3}{x^2 + 3x + 5}',
-        officialMinistryRule: 'سؤال أساسي في كل امتحان ثانوية عامة (درجتان في بابل شيت).'
+        learningHint: 'تحقق من الناتج باشتقاقه ومقارنته بالتكامل الأصلي.'
       }
     ],
     finalAnswerVerification: '\\ln|x^2 + 3x + 5| + c'
@@ -88,25 +88,23 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_trig_2',
     title: 'نهاية دالة مثلثية',
-    branch: 'تفاضل وتكامل (2023 تجريبي)',
-    imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80',
+    branch: 'تفاضل وتكامل — مثال تدريبي',
     latex: '\\lim_{x \\to 0} \\frac{\\sin(5x)}{\\tan(3x)}',
     plainText: 'نهاية دالة مثلثية عند اقتراب س من الصفر: نها [جا(٥س) / ظا(٣س)] عندما س تقترب من ٠',
-    confidence: 98.8,
     scaffoldingSteps: [
       {
         stepNumber: 1,
         title: 'التعويض المباشر',
         guidingQuestion: 'ما ناتج التعويض المباشر عند س = ٠؟ وهل يمثل كمية غير معينة؟',
         hintFormulaLatex: '\\frac{\\sin(0)}{\\tan(0)} = \\frac{0}{0}',
-        officialMinistryRule: 'ظهور صفر على صفر يستدعي استخدام نظريات النهايات أو قاعدة لوبيتال.'
+        learningHint: 'ظهور ٠/٠ حالة غير معينة؛ جرّب قواعد النهايات المثلثية القياسية أو تحليلاً جبرياً مناسباً.'
       },
       {
         stepNumber: 2,
         title: 'القسمة على س في البسط والمقام',
         guidingQuestion: 'إذا قسمت كل من البسط والمقام على س، ما هي القيمة التي تؤول إليها كل نهاية مستقلة؟',
         hintFormulaLatex: '\\lim_{x \\to 0} \\frac{\\frac{\\sin(5x)}{x}}{\\frac{\\tan(3x)}{x}} = \\frac{5}{3}',
-        officialMinistryRule: 'نظرية الكتاب الوزاري: نها جا(أ س)/س = أ ، نها ظا(ب س)/س = ب.'
+        learningHint: 'استخدم النهايات المثلثية القياسية بعد فصل الثوابت ومراجعة الوحدات والزوايا.'
       }
     ],
     finalAnswerVerification: '\\frac{5}{3}'
@@ -114,25 +112,23 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_statics_3',
     title: 'معادلات اتزان جسم جاسئ',
-    branch: 'استاتيكا (2024 دور أول)',
-    imageUrl: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80',
+    branch: 'استاتيكا — مثال تدريبي',
     latex: '\\sum F_x = 0, \\quad \\sum F_y = 0, \\quad \\sum M_A = 0',
     plainText: 'شروط الاتزان العام لقضيب منتظم يرتكز على حائط رأسي أملس وأرضية خشنة',
-    confidence: 97.9,
     scaffoldingSteps: [
       {
         stepNumber: 1,
         title: 'رسم مخطط الجسم الحر (Free Body Diagram)',
         guidingQuestion: 'حدد جميع القوى المؤثرة: الوزن عند المنتصف، رد فعل الحائط، وقوى الاحتكاك عند الأرض.',
         hintFormulaLatex: 'R_1 - W = 0, \\quad R_2 - f_s = 0',
-        officialMinistryRule: 'رد فعل المستوى الأملس دائماً عمودي عليه، بينما الخشن يحلل إلى رد فعل عمودي واحتكاك.'
+        learningHint: 'رد الفعل على المستوى الأملس عمودي عليه؛ أما المستوى الخشن فتؤخذ قوة الاحتكاك في الحسبان.'
       },
       {
         stepNumber: 2,
         title: 'أخذ العزوم حول نقطة الارتكاز',
         guidingQuestion: 'لماذا يُفضل أخذ العزوم حول النقطة (أ) التي تتلاقى عندها أكثر القوى المجهولة؟',
         hintFormulaLatex: '\\sum M_A = -W \\cdot \\frac{L}{2}\\cos\\theta + R_2 \\cdot L\\sin\\theta = 0',
-        officialMinistryRule: 'اختيار نقطة تلاشي المجاهيل يقلل معادلات الحل إلى مجهول واحد فقط.'
+        learningHint: 'اختيار محور يمر بقوى مجهولة قد يقلل عدد المجاهيل في معادلة العزوم.'
       }
     ],
     finalAnswerVerification: '\\tan\\theta = \\frac{1}{2\\mu_s}'
@@ -140,25 +136,23 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_algebra_4',
     title: 'الصورة المثلثية للعدد المركب',
-    branch: 'جبر وهندسة فراغية (2025 استرشادي)',
-    imageUrl: 'https://images.unsplash.com/photo-1509869175650-a1c97972541a?w=600&auto=format&fit=crop&q=80',
+    branch: 'جبر وهندسة فراغية — مثال تدريبي',
     latex: 'z = 2\\left(\\cos \\frac{\\pi}{3} + i \\sin \\frac{\\pi}{3}\\right)',
     plainText: 'تحويل العدد المركب ع = ١ + جذر ٣ ت إلى الصورة المثلثية وحساب الجذور التكعيبية بديموافر',
-    confidence: 99.1,
     scaffoldingSteps: [
       {
         stepNumber: 1,
         title: 'إيجاد المقياس والسعة الأساسية',
         guidingQuestion: 'احسب المقياس r = جذر(س² + ص²)، ثم حدد الربع الذي يقع فيه العدد لإيجاد السعة ثيتا.',
         hintFormulaLatex: 'r = \\sqrt{1^2 + (\\sqrt{3})^2} = 2, \\quad \\theta = \\tan^{-1}(\\sqrt{3}) = \\frac{\\pi}{3}',
-        officialMinistryRule: 'تأكد من أن السعة الأساسية تنتمي للفترة (-ط ، ط].'
+        learningHint: 'حدد الربع أولاً، ثم عبّر عن السعة الأساسية وفق اصطلاح المقرر.'
       },
       {
         stepNumber: 2,
         title: 'تطبيق نظرية ديموافر',
         guidingQuestion: 'عند رفع العدد للقوة ن، كيف تتصرف في المقياس والسعة؟',
         hintFormulaLatex: 'z^n = r^n \\left(\\cos(n\\theta) + i\\sin(n\\theta)\\right)',
-        officialMinistryRule: 'تطبيق ديموافر هو مفتاح حل أسئلة الجذور النونية في الامتحان النهائي.'
+        learningHint: 'عند استخدام نظرية ديموافر، ارفع المقياس للأس، واضرب السعة في الأس.'
       }
     ],
     finalAnswerVerification: 'z^3 = -8'
@@ -183,6 +177,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
 
   // Captured / Selected Image
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [isPresetExample, setIsPresetExample] = useState(false);
 
   // OCR Processing State
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
@@ -195,7 +190,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
   const [extractedLatex, setExtractedLatex] = useState<string>(PRESET_EXAM_PROBLEMS[0].latex);
   const [plainText, setPlainText] = useState<string>(PRESET_EXAM_PROBLEMS[0].plainText);
   const [identifiedTopic, setIdentifiedTopic] = useState<string>(PRESET_EXAM_PROBLEMS[0].branch);
-  const [confidence, setConfidence] = useState<number>(PRESET_EXAM_PROBLEMS[0].confidence);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [scaffoldingSteps, setScaffoldingSteps] = useState(PRESET_EXAM_PROBLEMS[0].scaffoldingSteps);
   const [finalVerification, setFinalVerification] = useState<string>(PRESET_EXAM_PROBLEMS[0].finalAnswerVerification);
 
@@ -303,25 +298,23 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
 
   // Select Preset Exam Problem
   const handleSelectPreset = (preset: ExamPreset) => {
-    setCapturedImage(preset.imageUrl);
+    setCapturedImage(PRESET_PREVIEW_IMAGE);
+    setIsPresetExample(true);
     setOcrError(null);
-    setIsProcessingOcr(true);
-    setOcrProgressStep('جاري قراءة الرموز والمعادلات الرياضية من النموذج الوزاري...');
-
-    setTimeout(() => {
-      setExtractedLatex(preset.latex);
-      setPlainText(preset.plainText);
-      setIdentifiedTopic(preset.branch);
-      setConfidence(preset.confidence);
-      setScaffoldingSteps(preset.scaffoldingSteps);
-      setFinalVerification(preset.finalAnswerVerification);
-      setRevealedStepIndex(0);
-      setIsProcessingOcr(false);
-    }, 700);
+    setIsProcessingOcr(false);
+    setConfidence(null);
+    setExtractedLatex(preset.latex);
+    setPlainText(preset.plainText);
+    setIdentifiedTopic(preset.branch);
+    setScaffoldingSteps(preset.scaffoldingSteps);
+    setFinalVerification(preset.finalAnswerVerification);
+    setRevealedStepIndex(0);
   };
 
   // Real OCR Analysis Pipeline (Strict Honest Error Handling & >=30s Timeout)
   const runOcrAnalysis = async (imageSrc: string) => {
+    setIsPresetExample(false);
+    setConfidence(null);
     setIsProcessingOcr(true);
     setOcrError(null);
     setExtractedLatex('');
@@ -345,7 +338,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         },
         body: JSON.stringify({
           imageBase64: imageSrc,
-          mimeType: 'image/jpeg'
+          mimeType: imageSrc.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/)?.[1] ?? 'image/jpeg'
         }),
         signal: controller.signal
       });
@@ -355,13 +348,13 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setOcrProgressStep('3/3 إعداد الخطوات السقالية الوزارية...');
+        setOcrProgressStep('3/3 إعداد تلميحات الحل الأولية...');
 
         setTimeout(() => {
           if (data.latex) setExtractedLatex(data.latex);
           if (data.plainText) setPlainText(data.plainText);
           if (data.topic) setIdentifiedTopic(data.topic);
-          if (data.confidence) setConfidence(data.confidence);
+          if (typeof data.confidence === 'number' && Number.isFinite(data.confidence)) setConfidence(data.confidence);
           if (data.scaffoldingSteps && data.scaffoldingSteps.length > 0) {
             setScaffoldingSteps(data.scaffoldingSteps);
           }
@@ -393,7 +386,9 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
   // Retake / Reset Image
   const handleRetake = () => {
     setCapturedImage(null);
+    setIsPresetExample(false);
     setOcrError(null);
+    setConfidence(null);
     if (activeMode === 'camera') {
       startCamera();
     }
@@ -496,7 +491,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
               }`}
             >
               <FileImage className="w-3.5 h-3.5" />
-              <span>نماذج امتحانية للاختبار السريع</span>
+              <span>أمثلة تدريبية</span>
             </button>
           </div>
 
@@ -645,7 +640,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
           {!capturedImage && activeMode === 'preset' && (
             <div className="space-y-3">
               <div className="text-xs text-slate-400 font-semibold">
-                اضغط على أي مسألة امتحانية أدناه لتجربة التعرف الضوئي التلقائي الفوري:
+                هذه أمثلة نصية ثابتة للتدرب على خطوات الحل؛ لا تختبر دقة التعرف الضوئي ولا تمثل ورقة رسمية:
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PRESET_EXAM_PROBLEMS.map((preset) => (
@@ -654,8 +649,8 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                     onClick={() => handleSelectPreset(preset)}
                     className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group flex items-start gap-3 hover:bg-slate-900/80"
                   >
-                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-700 bg-black">
-                      <img src={preset.imageUrl} alt={preset.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
+                      <FileImage className="w-7 h-7 text-cyan-400" aria-hidden="true" />
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -663,7 +658,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                           {preset.title}
                         </h5>
                         <span className="text-[10px] text-cyan-400 font-mono">
-                          {preset.confidence}%
+                          مثال
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400 truncate">{preset.branch}</p>
@@ -708,7 +703,13 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                   {!isProcessingOcr && !ocrError && (
                     <div className="absolute top-3 right-3 bg-slate-950/90 border border-emerald-500/40 rounded-xl px-3 py-1 text-[11px] text-emerald-400 flex items-center gap-1.5 shadow-lg backdrop-blur-md">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>تم الاستخراج بنجاح (دقة {confidence}%)</span>
+                      <span>
+                        {isPresetExample
+                          ? 'مثال ثابت — لا توجد نتيجة OCR'
+                          : confidence !== null
+                            ? `تم تحليل الصورة — ثقة تقديرية ${confidence}%؛ راجع المعادلة`
+                            : 'تم تحليل الصورة — راجع النص والمعادلة قبل الاستخدام'}
+                      </span>
                     </div>
                   )}
 
@@ -794,10 +795,10 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                   <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-800/40 space-y-1.5">
                     <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs">
                       <Brain className="w-4 h-4 text-indigo-400" />
-                      <span>خطوات التوجيه السقالي (Scaffolding Steps):</span>
+                      <span>خطوات إرشادية للتفكير:</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      يتم توجيهك خطوة بخطوة وفق معايير ونماذج إجابة وزارة التربية والتعليم للوصول للحل دون تلقين مباشر.
+                      أسئلة وتلميحات تعليمية أولية تساعدك على بناء الحل؛ لا تُعدّ تصحيحاً أو نموذج إجابة رسمياً.
                     </p>
                   </div>
 
@@ -844,7 +845,7 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
                                 <MathRenderer latex={step.hintFormulaLatex} block={true} className="text-xs text-amber-300" />
                               </div>
                               <div className="text-[11px] text-slate-400 bg-blue-950/20 p-2 rounded-lg border border-blue-900/30">
-                                💡 {step.officialMinistryRule}
+                                💡 {step.learningHint}
                               </div>
                             </div>
                           )}

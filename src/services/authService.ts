@@ -24,8 +24,6 @@ export interface AuthActionResult {
   errorMessage?: string;
 }
 
-const MASTER_ADMIN_EMAIL = 'ahmed.hamada.gana.2012@gmail.com';
-
 /**
  * Translates raw Supabase and network errors into clear, student-friendly Arabic text.
  */
@@ -96,22 +94,21 @@ export function normalizePhoneDigits(input: string): string {
 }
 
 /**
- * Builds a default local profile (used for offline guest or master admin fallback)
+ * Builds an unprivileged, empty local profile when no persisted profile is available.
  */
 export function createDefaultProfile(email: string, fullName?: string): UserProfile {
-  const isMaster = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
   return {
-    id: isMaster ? 'master_admin_root' : `student_${Date.now()}`,
-    name: fullName || (isMaster ? 'المهندس أحمد حمادة (مدير المنظومة)' : 'طالب ثانوية عامة'),
+    id: `student_${Date.now()}`,
+    name: fullName?.trim() || 'طالب',
     email: email.trim(),
-    role: isMaster ? 'admin' : 'student',
-    seatingNumber: isMaster ? 'ADMIN-001' : '٤٨١٩٢٠',
-    school: isMaster ? 'الإدارة العامة لمنظومة المناهج' : 'مدرسة المتفوقين الثانوية',
-    governorate: 'القاهرة',
-    targetFaculty: 'كلية الهندسة - جامعة القاهرة',
-    dailyStreak: 1,
-    disciplineScore: 95,
-    preferredStudyHours: 7
+    role: 'student',
+    seatingNumber: '',
+    school: '',
+    governorate: '',
+    targetFaculty: '',
+    dailyStreak: 0,
+    disciplineScore: 0,
+    preferredStudyHours: 2
   };
 }
 
@@ -170,7 +167,6 @@ class AuthService {
    */
   public async fetchStudentProfile(userId: string, email: string): Promise<UserProfile> {
     const supabase = getSupabase();
-    const isMaster = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
     if (!supabase) {
       return createDefaultProfile(email);
@@ -192,16 +188,16 @@ class AuthService {
 
       return {
         id: data.id,
-        name: data.full_name,
+        name: data.full_name || email.split('@')[0] || 'طالب',
         email: data.email,
-        role: isMaster ? 'admin' : ((data.role as UserRole) || 'student'),
-        seatingNumber: data.seating_number || '٤٨١٩٢٠',
-        school: data.school_name || 'مدرسة المتفوقين الثانوية',
-        governorate: data.governorate || 'القاهرة',
-        targetFaculty: data.target_faculty || 'كلية الهندسة',
-        dailyStreak: data.daily_streak || 1,
-        disciplineScore: data.discipline_score || 94,
-        preferredStudyHours: data.preferred_study_hours || 7,
+        role: data.role === 'admin' ? 'admin' : ('student' as UserRole),
+        seatingNumber: data.seating_number ?? '',
+        school: data.school_name ?? '',
+        governorate: data.governorate ?? '',
+        targetFaculty: data.target_faculty ?? '',
+        dailyStreak: data.daily_streak ?? 0,
+        disciplineScore: data.discipline_score ?? 0,
+        preferredStudyHours: data.preferred_study_hours ?? 2,
         avatarUrl: data.avatar_url
       };
     } catch {

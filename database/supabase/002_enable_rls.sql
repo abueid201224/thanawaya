@@ -101,25 +101,33 @@ CREATE OR REPLACE FUNCTION public.enforce_student_security()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
-    -- Only allow admin or system to alter role or email
-    IF (OLD.role <> NEW.role) AND NOT public.is_app_admin() THEN
-        -- Check if it's the registered master admin account
-        IF LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN
-            NEW.role := 'admin';
-        ELSE
-            NEW.role := OLD.role; -- Silently discard unauthorized role tampering
+    IF TG_OP = 'INSERT' THEN
+        IF auth.uid() IS NOT NULL AND NOT public.is_app_admin() THEN
+            NEW.role := 'student';
+            NEW.daily_streak := 0;
+            NEW.discipline_score := 0;
         END IF;
+        NEW.updated_at := NOW();
+        RETURN NEW;
     END IF;
 
-    -- Prevent modifying user id directly
-    IF OLD.id <> NEW.id THEN
+    IF auth.uid() IS NOT NULL AND NOT public.is_app_admin() AND OLD.id IS DISTINCT FROM NEW.id THEN
         RAISE EXCEPTION 'Modification of user ID is prohibited';
     END IF;
-
-    IF OLD.email <> NEW.email THEN
+    IF auth.uid() IS NOT NULL AND NOT public.is_app_admin() AND OLD.email IS DISTINCT FROM NEW.email THEN
         RAISE EXCEPTION 'Modification of profile email must be done via auth service';
+    END IF;
+    IF auth.uid() IS NOT NULL AND NOT public.is_app_admin() AND OLD.role IS DISTINCT FROM NEW.role THEN
+        RAISE EXCEPTION 'Only a trusted administrator may change application roles';
+    END IF;
+    IF auth.uid() IS NOT NULL AND NOT public.is_app_admin() AND (
+        OLD.daily_streak IS DISTINCT FROM NEW.daily_streak OR
+        OLD.discipline_score IS DISTINCT FROM NEW.discipline_score
+    ) THEN
+        RAISE EXCEPTION 'Authoritative progress metrics cannot be changed directly by a student';
     END IF;
 
     NEW.updated_at := NOW();
@@ -129,7 +137,7 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_enforce_student_security ON public.student_profiles;
 CREATE TRIGGER trg_enforce_student_security
-    BEFORE UPDATE ON public.student_profiles
+    BEFORE INSERT OR UPDATE ON public.student_profiles
     FOR EACH ROW
     EXECUTE FUNCTION public.enforce_student_security();
 
@@ -145,19 +153,11 @@ DECLARE
     user_phone TEXT;
     user_school TEXT;
     user_governorate TEXT;
-    user_assigned_role TEXT;
 BEGIN
     user_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1));
     user_phone := COALESCE(NEW.raw_user_meta_data->>'phone_whatsapp', '');
-    user_school := COALESCE(NEW.raw_user_meta_data->>'school_name', 'مدرسة المتفوقين الثانوية');
-    user_governorate := COALESCE(NEW.raw_user_meta_data->>'governorate', 'القاهرة');
-
-    -- Auto-grant admin role if the designated master administrator account signs up
-    IF LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN
-        user_assigned_role := 'admin';
-    ELSE
-        user_assigned_role := 'student';
-    END IF;
+    user_school := NULLIF(BTRIM(NEW.raw_user_meta_data->>'school_name'), '');
+    user_governorate := NULLIF(BTRIM(NEW.raw_user_meta_data->>'governorate'), '');
 
     INSERT INTO public.student_profiles (
         id,
@@ -177,24 +177,19 @@ BEGIN
         user_phone,
         user_school,
         user_governorate,
-        user_assigned_role,
-        1,
-        95,
-        7
-    ) ON CONFLICT (id) DO UPDATE SET
-        role = CASE 
-            WHEN LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN 'admin' 
-            ELSE public.student_profiles.role 
-        END;
+        'student',
+        0,
+        0,
+        2
+    ) ON CONFLICT (id) DO NOTHING;
 
     -- Initialize standard Thanaweya Amma Math Curriculum Subjects
     INSERT INTO public.student_subjects (user_id, subject_code, name_ar, category, total_chapters, completed_chapters, average_score, mastery_percentage, color_hex)
     VALUES
-        (NEW.id, 'CALCULUS', 'التفاضل والتكامل', 'رياضيات بحتة', 10, 4, 88, 40, '#2563EB'),
-        (NEW.id, 'ALGEBRA_SOLID_GEO', 'الجبر والهندسة الفراغية', 'رياضيات بحتة', 8, 3, 91, 38, '#7C3AED'),
-        (NEW.id, 'STATICS', 'الاستاتيكا (توازن الأجسام)', 'رياضيات تطبيقية', 6, 2, 85, 33, '#059669'),
-        (NEW.id, 'DYNAMICS', 'الديناميكا (قوانين الحركة)', 'رياضيات تطبيقية', 7, 2, 82, 29, '#D97706'),
-        (NEW.id, 'PHYSICS', 'الفيزياء للثانوية العامة', 'العلوم الفيزيائية', 12, 5, 87, 42, '#DC2626')
+        (NEW.id, 'CALCULUS', 'التفاضل والتكامل', 'رياضيات بحتة', 0, 0, 0, 0, '#2563EB'),
+        (NEW.id, 'ALGEBRA_SOLID_GEO', 'الجبر والهندسة الفراغية', 'رياضيات بحتة', 0, 0, 0, 0, '#7C3AED'),
+        (NEW.id, 'STATICS', 'الاستاتيكا', 'رياضيات تطبيقية', 0, 0, 0, 0, '#059669'),
+        (NEW.id, 'DYNAMICS', 'الديناميكا', 'رياضيات تطبيقية', 0, 0, 0, 0, '#D97706')
     ON CONFLICT (user_id, subject_code) DO NOTHING;
 
     RETURN NEW;
