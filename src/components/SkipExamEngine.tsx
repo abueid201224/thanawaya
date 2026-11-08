@@ -245,7 +245,7 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
 
               {!assessmentReady && testQuestions.length > 0 && (
                 <p className="text-xs text-amber-300" role="note">
-                  هذه نتيجة تشخيصية فقط؛ التخطي يتطلب مراجعة كل سؤال وربطه بكل نواتج الوحدة ثم اعتماد المخطط من مدرس.
+                  هذه نتيجة تشخيصية فقط؛ التخطي يتطلب مراجعة كل سؤال وربطه بناتج مستهدف، وتغطية كل نواتج الوحدة، ثم اعتماد المخطط من مدرس.
                 </p>
               )}
 
