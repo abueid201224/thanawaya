@@ -72,13 +72,13 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30">
               <FileCheck2 className="w-3.5 h-3.5 text-purple-400" />
-              الامتحانات الشهرية والمحاكاة الشاملة لنصف ونهاية العام
+              تقييمات ذاتية تدريبية — محتوى أولي غير مراجَع
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
               اختبارات تدريبية شهرية — ليست نماذج رسمية أو محاكاة معتمدة
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              تقييمات دورية شاملة تغطي مقررات كل شهر من أكتوبر ٢٠٢٦ حتى يوليو ٢٠٢٧. تدرب على التوقيت الزمني الحقيقي وإدارة ورقة البابل شيت لضمان أعلى الدرجات.
+              الأسئلة الحالية أولية وغير مراجعة، ولم تُطابق بمصدر رسمي لمنهج 2026/2027. الزمن والموضوعات لا تمثل مواصفة الوزارة، ولا تضمن هذه التدريبات نتيجة أو درجة.
             </p>
           </div>
 
@@ -119,7 +119,7 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
 
                 <h4 className="text-base font-bold text-white leading-snug">{exam.title}</h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  يحتوي على {exam.questions.length} أسئلة استرشادية تقيس نواتج التعلم لنهاية الشهر.
+                  يحتوي على {exam.questions.length} أسئلة تدريبية أولية؛ مراجعة المحتوى ونسبته إلى المنهج لم تكتمل.
                 </p>
 
                 <div className="flex items-center justify-between pt-1 text-xs">
@@ -189,9 +189,9 @@ export const MonthlyExamsView: React.FC<MonthlyExamsViewProps> = ({
 
               return (
                 <div key={q.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-400">
                     <span className="font-bold text-blue-400">سؤال {idx + 1}</span>
-                    <span>{q.targetedLearningOutcome}</span>
+                    <span className="max-w-full break-words text-right text-amber-300 sm:max-w-[72%]">{q.reviewStatus === 'unreviewed' ? 'غير مراجَع' : 'مراجَع — ليس اعتماداً رسمياً'} · {q.targetedLearningOutcome}</span>
                   </div>
 
                   <div className="text-sm font-semibold text-white leading-relaxed">

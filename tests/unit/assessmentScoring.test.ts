@@ -53,6 +53,17 @@ test('fresh learning state contains no pre-completed sessions, units, or exams',
   assert.equal(initialDisciplineMetrics.badgesEarned.length, 0);
 });
 
+test('every seeded practice and monthly exam question starts unreviewed', () => {
+  const questions = [
+    ...initialCurriculumUnits.flatMap((unit) => unit.practiceQuestions),
+    ...initialMonthlyExams.flatMap((exam) => exam.questions)
+  ];
+
+  assert.ok(questions.length > 0);
+  assert.ok(questions.every((question) => question.reviewStatus === 'unreviewed'));
+  assert.ok(initialCurriculumUnits.every((unit) => unit.skipAssessmentReady !== true));
+});
+
 test('training library seeds do not imply official approval or exam-frequency evidence', () => {
   assert.equal(initialScoutedResources.length, 0);
   assert.ok(initialMultimediaLibrary.every((item) =>

@@ -25,6 +25,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_calc_1_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'إذا كانت ص = ظتا²(٣س)، فإن دص / دس تساوي:',
         options: [
@@ -41,6 +42,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       },
       {
         id: 'pq_calc_1_2',
+        reviewStatus: 'unreviewed',
         questionNumber: 2,
         questionText: 'سلم طوله ١٠ أمتار يستند بطرفه العلوي على حائط رأسي وبطرفه السفلي على أرض أفقية، فإذا انزلق الطرف السفلي مبتعداً عن الحائط بمعدل ٢ م/ث، فإن معدل انزلاق الطرف العلوي عندما يبعد الطرف السفلي ٦ أمتار عن الحائط يساوي:',
         options: [
@@ -57,6 +59,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       },
       {
         id: 'pq_calc_1_3',
+        reviewStatus: 'unreviewed',
         questionNumber: 3,
         questionText: 'ميل المماس للمنحنى س = ن² - ١ ، ص = ن³ - ٤ عند ن = ٢ يساوي:',
         options: [
@@ -95,6 +98,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_calc_2_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'قيمة التكامل: ∫ (٢س + ٣) / (س² + ٣س + ٥) دس تساوي:',
         options: [
@@ -111,6 +115,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
       },
       {
         id: 'pq_calc_2_2',
+        reviewStatus: 'unreviewed',
         questionNumber: 2,
         questionText: 'تكامل بالتجزيء: ∫ س هـ^س دس يساوي:',
         options: [
@@ -149,6 +154,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_calc_3_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'نقطة الانقلاب للمنحنى ص = س³ - ٣س² + ٥ هي:',
         options: [
@@ -190,6 +196,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_stat_1_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'جسم وزنه ٤٠ نيوتن موضوع على مستوى أفقي خشن معامل الاحتكاك السكوني بينهما ٠٫٢٥. فإن أقل قوة أفقية تجعل الجسم على وشك الحركة تساوي:',
         options: [
@@ -227,6 +234,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_stat_4_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'قضيب منتظم أ ب وزنه و متزن في وضع أفقي على وتدين عند أ و جـ (حيث جـ تبعد مسافة ربع طول القضيب عن ب). فإن النسبة بين رد الفعل عند أ إلى رد الفعل عند جـ تساوي:',
         options: [
@@ -268,6 +276,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_dyn_1_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'جسيم يتحرك في خط مستقيم بحيث كانت سرعته ع تعطى بالعلاقة: ع² = ٩ - س²، فإن عجلته جـ عند س = ٢ تساوي:',
         options: [
@@ -309,6 +318,7 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
     practiceQuestions: [
       {
         id: 'pq_phys_1_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'سحب سلك معدني بانتظام حتى زاد طوله بنسبة ٥٠٪ من طوله الأصلي، فإن مقاومته الكهربية تصبح:',
         options: [
@@ -330,17 +340,18 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
 export const initialMonthlyExams: MonthlyExam[] = [
   {
     id: 'exam_oct_2026',
-    monthName: 'اختبار شهر أكتوبر الموحد ٢٠٢٦',
+    monthName: 'تدريب شهر أكتوبر ٢٠٢٦',
     targetMonth: '2026-10',
     subjectCode: 'CALCULUS',
     subjectNameAr: 'التفاضل والتكامل والاستاتيكا',
-    title: 'الامتحان التشخيصي لشهر أكتوبر: اشتقاق الدوال المثلثية والاحتكاك والعزوم',
+    title: 'تدريب تشخيصي أولي: اشتقاق الدوال المثلثية والاحتكاك والعزوم',
     durationMinutes: 45,
     totalMarks: 20,
     isCompleted: false,
     questions: [
       {
         id: 'mq_oct_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'إذا كانت ص = قا(س) ظا(س)، فإن دص / دس عند س = ٠ تساوي:',
         options: [
@@ -356,6 +367,7 @@ export const initialMonthlyExams: MonthlyExam[] = [
       },
       {
         id: 'mq_oct_2',
+        reviewStatus: 'unreviewed',
         questionNumber: 2,
         questionText: 'جسم وزنه ٦٠ ثقل كجم موضوع على مستوى خشن يميل على الأفقي بزاوية ٣٠°، فإذا كان معامل الاحتكاك السكوني جذر(٣)/٣، فإن القوة الموازية لخط أكبر ميل وتجعل الجسم على وشك الحركة لأعلى تساوي:',
         options: [
@@ -384,6 +396,7 @@ export const initialMonthlyExams: MonthlyExam[] = [
     questions: [
       {
         id: 'mq_nov_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'قطار كتلته ٢٠٠ طن يتحرك على طريق أفقي بسرعة منتظمة قدرها ٧٢ كم/س ضد مقاومات تعادل ٥ ثقل كجم لكل طن من الكتلة، فإن قدرة آلة القطار تساوي:',
         options: [
@@ -401,17 +414,18 @@ export const initialMonthlyExams: MonthlyExam[] = [
   },
   {
     id: 'exam_midyear_2027',
-    monthName: 'امتحان نصف العام الشامل (يناير ٢٠٢٧)',
+    monthName: 'تدريب منتصف العام — يناير ٢٠٢٧',
     targetMonth: '2027-01',
     subjectCode: 'CALCULUS',
     subjectNameAr: 'الرياضيات البحتة والتطبيقية الشاملة',
-    title: 'محاكاة امتحانات نصف العام الوزارية: بابل شيت وأسئلة مقالية',
+    title: 'تدريب منتصف العام: اختيار من متعدد وأسئلة قصيرة (نسخة أولية)',
     durationMinutes: 120,
     totalMarks: 60,
     isCompleted: false,
     questions: [
       {
         id: 'mq_mid_1',
+        reviewStatus: 'unreviewed',
         questionNumber: 1,
         questionText: 'في مفكوك (س + ١/س)^١٠ ، الحد الخالي من س هو الحد رقم:',
         options: [

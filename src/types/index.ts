@@ -137,9 +137,10 @@ export interface PracticeQuestion {
   options: Array<{ key: string; text: string }>;
   correctKey: string;
   explanation: string;
-  difficulty: 'A' | 'B' | 'C'; // المستويات الوزارية
+  difficulty: 'A' | 'B' | 'C'; // تصنيف تدريبي داخلي لا يدل على مستوى وزاري.
   targetedLearningOutcome: string;
-  examSource?: string; // e.g. "ثانوية عامة 2023 دور أول"
+  examSource?: string; // نسبة مصدر نصية غير متحققة؛ يلزم توثيق الورقة والصفحة والإصدار.
+  reviewStatus: 'unreviewed' | 'reviewed'; // حالة مراجعة فقط، لا تثبت اعتماداً رسمياً أو حقوق المصدر.
 }
 
 export interface CurriculumUnit {
