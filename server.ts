@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createExpressApp } from './server/app.ts';
+import { resolveListenHost } from './server/listenHost.ts';
 
 dotenv.config();
 
@@ -33,8 +34,15 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Thanaweya Math Copilot Server listening on port ${PORT}`);
+  const { host: HOST, isLoopback } = resolveListenHost(process.env);
+  if (!isLoopback) {
+    console.warn(
+      `⚠️  HOST=${HOST} exposes this server to the network. The API has no authentication or rate limiting; use only on a trusted network.`
+    );
+  }
+
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Thanaweya Math Copilot Server listening on http://${HOST}:${PORT}`);
   });
 }
 

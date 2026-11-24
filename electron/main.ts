@@ -11,6 +11,7 @@ import {
 } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { evaluatePath } from './pathSandbox';
 import { GoogleGenAI } from '@google/genai';
 import { startEmbeddedServer, RunningEmbeddedServer } from '../server/app';
 import type {
@@ -180,42 +181,26 @@ function storeEncryptedApiKey(rawKey: string): boolean {
 }
 
 /**
- * Path Sandbox Verification:
+ * Path Sandbox Verification (logic lives in ./pathSandbox for unit testing):
  * 1. Blocks executable and script extensions (.exe, .bat, .cmd, .ps1, .vbs, etc.)
- * 2. Restricts operations to authorized directories (userData, documents, downloads, or local Thanaweya project folders)
- * 3. Prevents path traversal (..)
+ * 2. Restricts operations to authorized directories (userData, documents, downloads, or
+ *    local Thanaweya project folders such as D:\ThanaweyaAmma_2027)
+ * 3. Compares real paths (symlinks resolved) with path.relative, so `..` traversal, sibling
+ *    folders with a shared prefix and symlink escapes are rejected. The whole home folder
+ *    is intentionally NOT allowed.
  */
-const FORBIDDEN_EXTENSIONS = new Set([
-  '.exe', '.bat', '.cmd', '.ps1', '.vbs', '.vbe', '.js', '.jse',
-  '.wsf', '.wsh', '.msc', '.msi', '.msp', '.com', '.scr', '.pif',
-  '.reg', '.hta', '.cpl', '.jar', '.dll', '.sys', '.drv'
-]);
-
 function isPathInSandbox(targetPath: string): boolean {
-  if (!targetPath || typeof targetPath !== 'string') return false;
-  if (targetPath.indexOf('\0') !== -1) return false;
-
-  const normalized = path.normalize(path.resolve(targetPath));
-  const ext = path.extname(normalized).toLowerCase();
-
-  if (FORBIDDEN_EXTENSIONS.has(ext)) {
-    console.warn(`[Security Alert] Blocked attempt to access executable extension: ${ext} -> ${normalized}`);
-    return false;
+  const decision = evaluatePath(targetPath, {
+    allowedBases: [
+      app.getPath('userData'),
+      app.getPath('documents'),
+      app.getPath('downloads')
+    ]
+  });
+  if (!decision.allowed && decision.reason === 'forbidden-extension') {
+    console.warn(`[Security Alert] Blocked attempt to access executable extension -> ${String(targetPath)}`);
   }
-
-  // Allowed base directories
-  const allowedBases = [
-    path.normalize(app.getPath('userData')),
-    path.normalize(app.getPath('documents')),
-    path.normalize(app.getPath('downloads')),
-    path.normalize(app.getPath('home'))
-  ];
-
-  // Also authorize drive root Thanaweya project folders (e.g., D:/ThanaweyaAmma_2027/ or C:/ThanaweyaAmma_2027/)
-  const isStudentDriveFolder = /^[a-zA-Z]:[\\\/]ThanaweyaAmma/i.test(normalized);
-  const isUnderAllowedBase = allowedBases.some((base) => normalized.startsWith(base));
-
-  return isUnderAllowedBase || isStudentDriveFolder;
+  return decision.allowed;
 }
 
 /**

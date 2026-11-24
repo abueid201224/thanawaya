@@ -1,0 +1,24 @@
+/**
+ * Decides which network interface the standalone Express server binds to.
+ * Pure (no side effects) so it can be unit tested.
+ *
+ * Default is loopback only. Exposing the server to the network must be an explicit
+ * choice via the HOST environment variable.
+ */
+export const DEFAULT_LISTEN_HOST = '127.0.0.1';
+
+export interface ListenHost {
+  host: string;
+  isLoopback: boolean;
+}
+
+export function isLoopbackHost(host: string): boolean {
+  const h = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  return h === 'localhost' || h === '::1' || /^127(?:\.\d{1,3}){3}$/.test(h);
+}
+
+export function resolveListenHost(env: { HOST?: string | undefined }): ListenHost {
+  const requested = (env.HOST ?? '').trim();
+  const host = requested === '' ? DEFAULT_LISTEN_HOST : requested;
+  return { host, isLoopback: isLoopbackHost(host) };
+}
