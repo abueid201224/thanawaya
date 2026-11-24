@@ -1,0 +1,6 @@
+# Auto-Update Feed Configuration
+# Used by electron-updater for standalone or custom update server distribution
+owner: "abueid201224"
+repo: "thanawaya"
+provider: "github"
+updaterCacheDirName: "thanaweya-math-copilot-updater"
