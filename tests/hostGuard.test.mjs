@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isAllowedHostHeader, isAllowedOrigin } from '../server/hostGuard.ts';
-import { isNetworkBindAllowed } from '../server/listenHost.ts';
+import { isAllowedHostHeader, isAllowedOrigin, isLoopbackHost as guardLoopback } from '../server/hostGuard.ts';
+import { isNetworkBindAllowed, isLoopbackHost } from '../server/listenHost.ts';
 
 test('Host header: loopback names with or without a port are accepted', () => {
   for (const h of ['127.0.0.1:47321', '127.0.0.1', 'localhost:3000', 'LOCALHOST', '[::1]:3000', '[::1]']) {
@@ -32,4 +32,10 @@ test('network bind needs an explicit ALLOW_NETWORK_BIND=1', () => {
   assert.equal(isNetworkBindAllowed({ ALLOW_NETWORK_BIND: 'true' }), false);
   assert.equal(isNetworkBindAllowed({ ALLOW_NETWORK_BIND: '1' }), true);
   assert.equal(isNetworkBindAllowed({ ALLOW_NETWORK_BIND: ' 1 ' }), true);
+});
+
+test('both isLoopbackHost copies agree', () => {
+  for (const h of ['127.0.0.1', '127.1', '::1', '[::1]', 'localhost', 'LOCALHOST', '0.0.0.0', '::', 'example.com', '127.0.0.1.evil.com', '']) {
+    assert.equal(guardLoopback(h), isLoopbackHost(h), h);
+  }
 });
