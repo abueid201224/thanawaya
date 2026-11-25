@@ -95,8 +95,23 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
   const [chatInput, setChatInput] = useState('');
   const [inputNotice, setInputNotice] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -135,6 +150,10 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
   };
 
   const handleSendMessage = (textToSend?: string) => {
+    if (!isOnline) {
+      setInputNotice('أنت في وضع عدم الاتصال: أزرار المساعد التفاعلي معطلة حتى يعود الاتصال.');
+      return;
+    }
     const text = (textToSend || chatInput).trim();
     if (!text) return;
 
@@ -374,16 +393,18 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
             <div className="flex items-center gap-2 overflow-x-auto">
               <span className="text-slate-400 shrink-0 font-medium text-[11px]">مفاتيح تفاعلية:</span>
               <button
+                disabled={!isOnline}
                 onClick={() => handleSendMessage('ما هي الخدعة الامتحانية التي يقع فيها الطلاب في هذا الدرس؟')}
-                className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/20 whitespace-nowrap transition-all cursor-pointer text-[11px]"
+                className="min-h-[36px] px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 whitespace-nowrap transition-all cursor-pointer text-[11px]"
               >
-                ⚠️ الفخ الامتحاني المتكرر
+                الفخ الامتحاني المتكرر
               </button>
               <button
+                disabled={!isOnline}
                 onClick={() => handleSendMessage('هات لي مسألة مشابهة من امتحان سابق مع خطوات الحل')}
-                className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-300 hover:bg-blue-500/20 whitespace-nowrap transition-all cursor-pointer text-[11px]"
+                className="min-h-[36px] px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-300 hover:bg-blue-500/20 disabled:opacity-40 whitespace-nowrap transition-all cursor-pointer text-[11px]"
               >
-                📝 مسألة من امتحانات 2021-2025
+                مسألة من امتحانات سابقة
               </button>
             </div>
 
@@ -524,6 +545,12 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
             </div>
           )}
 
+          {!isOnline && (
+            <div className="px-4 py-2 bg-amber-950/60 border-t border-amber-700/40 text-amber-200 text-xs">
+              أنت في وضع عدم الاتصال: أزرار الإرسال التفاعلي معطلة، يمكنك مراجعة بطاقة الدرس المحفوظة محلياً.
+            </div>
+          )}
+
           {/* Chat Input Box with Camera, Voice Mic & Send */}
           <div className="p-3 border-t border-slate-800 bg-slate-950 flex items-center gap-2">
             {/* Quick Camera OCR button directly in the chat input bar */}
@@ -540,7 +567,7 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
               title={isListening ? 'إيقاف التسجيل' : 'تحدث صوتياً (Voice-to-Text)'}
               className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                 isListening
-                  ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
+                  ? 'bg-rose-600 text-white border-rose-500'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
               }`}
             >
@@ -551,15 +578,20 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
               ref={inputRef}
               type="text"
               value={chatInput}
+              disabled={!isOnline}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="اكتب استفسارك، أو امسح مسألة بالكاميرا، أو استخدم لوحة الرموز..."
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              placeholder={
+                isOnline
+                  ? 'اكتب استفسارك، أو امسح مسألة بالكاميرا، أو استخدم لوحة الرموز...'
+                  : 'الإرسال غير متاح في وضع عدم الاتصال'
+              }
+              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
             />
 
             <button
               onClick={() => handleSendMessage()}
-              disabled={!chatInput.trim()}
+              disabled={!isOnline || !chatInput.trim()}
               className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-blue-600/30"
             >
               <Send className="w-4 h-4" />

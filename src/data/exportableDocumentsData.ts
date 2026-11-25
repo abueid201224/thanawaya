@@ -313,7 +313,7 @@ export const PRESET_EXPORTABLE_DOCUMENTS: ExportableDocumentItem[] = [
     subjectAr: 'التخطيط والالتزام',
     branchAr: 'إدارة الوقت ونظام الفترات الذهبية',
     documentType: 'study_plan',
-    summary: 'مخطط زمني دراسي منظم يوزع المواد بنظام الفترات الذكية وجلسات الاستدعاء النشط مع متابعة الستريك ومعدل إنجاز الواجبات.',
+    summary: 'مخطط زمني دراسي منظم يوزع المواد بنظام الفترات الذكية وجلسات الاستدعاء النشط ومتابعة المحاولات المسجلة.',
     authorOrSource: 'منظومة المخطط الذكي للثانوية العامة',
     pagesCountEstimate: 2,
     sections: [

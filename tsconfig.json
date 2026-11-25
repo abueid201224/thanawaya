@@ -23,5 +23,14 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "tests",
+    "electron",
+    "server",
+    "dist",
+    "dist-electron",
+    "release",
+    "ThanaweyaAmma"
+  ]
 }

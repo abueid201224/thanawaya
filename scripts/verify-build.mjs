@@ -96,13 +96,31 @@ if (fs.existsSync(migrationPath)) {
   assert(mig.includes('ahmed.hamada.gana.2012@gmail.com'), 'Migration configures master admin account ahmed.hamada.gana.2012@gmail.com', 'Master account missing from migration');
 }
 
-// 7b. Verify standalone SQL scripts in database/supabase/
+// 7b. Verify standalone SQL scripts in database/supabase/ & canonical migration 002
+const migration002Path = path.join(rootDir, 'supabase/migrations/002_learning_attempts_and_mistakes.sql');
+assert(fs.existsSync(migration002Path), 'supabase/migrations/002_learning_attempts_and_mistakes.sql exists', '002_learning_attempts_and_mistakes.sql missing');
+
 const dbProfilesPath = path.join(rootDir, 'database/supabase/001_create_student_profiles_table.sql');
 const dbRlsPath = path.join(rootDir, 'database/supabase/002_enable_rls.sql');
 const dbSeedPath = path.join(rootDir, 'database/supabase/003_seed_admin_user.sql');
 assert(fs.existsSync(dbProfilesPath), 'database/supabase/001_create_student_profiles_table.sql exists', '001_create_student_profiles_table.sql missing');
 assert(fs.existsSync(dbRlsPath), 'database/supabase/002_enable_rls.sql exists', '002_enable_rls.sql missing');
 assert(fs.existsSync(dbSeedPath), 'database/supabase/003_seed_admin_user.sql exists', '003_seed_admin_user.sql missing');
+
+// 7b2. Verify zero external images.unsplash.com URLs in src/
+function scanNoUnsplash(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!scanNoUnsplash(full)) return false;
+    } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+      const text = fs.readFileSync(full, 'utf-8');
+      if (text.includes('images.unsplash.com')) return false;
+    }
+  }
+  return true;
+}
+assert(scanNoUnsplash(path.join(rootDir, 'src')), 'Zero external images.unsplash.com URLs in src/', 'Found external images.unsplash.com URL in src/');
 
 // 7c. Verify electron-builder.yml publish configuration
 const builderYmlPath = path.join(rootDir, 'electron-builder.yml');

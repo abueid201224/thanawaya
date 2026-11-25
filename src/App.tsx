@@ -66,9 +66,11 @@ import { ResilientMediaModal } from './components/ResilientMediaModal';
 import { UniversalDocumentExportModal } from './components/UniversalDocumentExportModal';
 import { ServiceDiagnosticsModal } from './components/ServiceDiagnosticsModal';
 import { SecureApiKeyModal } from './components/SecureApiKeyModal';
+import { PracticeAndMistakesView } from './components/PracticeAndMistakesView';
 import { SplashLoader } from './components/SplashLoader';
 import { nativeDesktop } from './services/nativeDesktopBridge';
 import { authService } from './services/authService';
+import { getReviewedExamsForStudent, getReviewedUnitsForStudent } from './services/contentGate';
 
 export default function App() {
   // Navigation: Active Service Only (No clutter)
@@ -107,16 +109,6 @@ export default function App() {
 
   const handleUpdateSchedule = (newSchedule: DailyScheduleSlot[]) => {
     setSchedule(newSchedule);
-
-    // Dynamic discipline calculation
-    const completedCount = newSchedule.filter((s) => s.isCompleted).length;
-    const completionRate = Math.round((completedCount / (newSchedule.length || 1)) * 100);
-    const newScore = Math.min(100, Math.max(70, Math.round(80 + completionRate * 0.2)));
-
-    setDisciplineMetrics((prev) => ({
-      ...prev,
-      disciplineScore: newScore
-    }));
   };
 
   const handleSelectSlotForTutor = (slot: DailyScheduleSlot) => {
@@ -165,20 +157,6 @@ export default function App() {
         })
       );
     }
-
-    // 3. Increment discipline streak & badge
-    setDisciplineMetrics((prev) => ({
-      ...prev,
-      disciplineScore: Math.min(100, prev.disciplineScore + 3),
-      badgesEarned: [
-        ...prev.badgesEarned.filter((b) => b.title !== 'قناص التخطي السريع ⚡'),
-        {
-          title: 'قناص التخطي السريع ⚡',
-          icon: '⚡',
-          desc: `اجتياز اختبار التخطي بنتيجة ${score}% واعتماد الوحدة بنجاح`
-        }
-      ]
-    }));
   };
 
   const handleUpdateUnitResources = (unitId: string) => {
@@ -457,6 +435,7 @@ export default function App() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSwitchRole={handleSwitchRole}
         activeTab={activeService}
+        onOpenPracticeHub={() => setActiveService('practice_hub')}
         onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
         onOpenApiKeySettings={() => setIsApiKeyModalOpen(true)}
         onOpenDocumentExport={() => {
@@ -495,10 +474,15 @@ export default function App() {
             />
           )}
 
+          {/* SERVICE 1.5: PRACTICE LOOP, MISTAKE NOTEBOOK & SPACED REPETITION */}
+          {activeService === 'practice_hub' && (
+            <PracticeAndMistakesView units={curriculumUnits} />
+          )}
+
           {/* SERVICE 2: FULL CURRICULUM & PRACTICE QUESTIONS */}
           {activeService === 'curriculum' && (
             <FullCurriculumExplorer
-              units={curriculumUnits}
+              units={getReviewedUnitsForStudent(curriculumUnits)}
               onOpenSkipExam={handleOpenSkipExam}
               onUpdateUnitResources={handleUpdateUnitResources}
             />
@@ -507,7 +491,7 @@ export default function App() {
           {/* SERVICE 3: SKIP DIAGNOSTIC EXAM ENGINE */}
           {activeService === 'skip_exam' && (
             <SkipExamEngine
-              units={curriculumUnits}
+              units={getReviewedUnitsForStudent(curriculumUnits)}
               initialSelectedUnit={targetSkipUnit}
               onConfirmSkipUnit={handleConfirmSkipUnit}
               onNavigateToSchedule={() => setActiveService('planner')}
@@ -517,7 +501,7 @@ export default function App() {
           {/* SERVICE 4: MONTHLY & MILESTONE EXAMS */}
           {activeService === 'monthly_exams' && (
             <MonthlyExamsView
-              exams={monthlyExams}
+              exams={getReviewedExamsForStudent(monthlyExams)}
               onCompleteExam={handleCompleteMonthlyExam}
             />
           )}

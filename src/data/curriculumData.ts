@@ -10,17 +10,17 @@ import {
 } from '../types';
 
 export const initialUser: UserProfile = {
-  id: 'usr_ahmed_2027',
-  name: 'أحمد محمود القاضي (المشرف العام)',
-  email: 'ahmed.hamada.gana.2012@gmail.com',
-  role: 'admin',
-  seatingNumber: '٤٨١٩٢٠',
-  school: 'مدرسة المتفوقين الثانوية - القاهرة',
+  id: 'usr_student_local',
+  name: 'طالب الثانوية العامة',
+  email: '',
+  role: 'student',
+  seatingNumber: '—',
+  school: 'مدرسة الثانوية العامة',
   governorate: 'القاهرة',
-  targetFaculty: 'كلية الهندسة - جامعة القاهرة (شعبة حاسبات وذكاء اصطناعي)',
-  dailyStreak: 18,
-  disciplineScore: 94,
-  preferredStudyHours: 7,
+  targetFaculty: 'كلية الهندسة',
+  dailyStreak: 0,
+  disciplineScore: 0,
+  preferredStudyHours: 6,
 };
 
 export const initialDailySchedule: DailyScheduleSlot[] = [
@@ -290,115 +290,111 @@ export const initialSubjectProgress: SubjectProgress[] = [
     nameAr: 'التفاضل والتكامل',
     category: 'رياضيات بحتة',
     totalChapters: 4,
-    completedChapters: 2,
-    quizzesTaken: 12,
-    averageScore: 88,
-    masteryPercentage: 82,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#2563EB',
-    lastStudiedDate: 'اليوم',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 24,
-    learningOutcomesMastered: 20
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'ALGEBRA_SOLID_GEO',
     nameAr: 'الجبر والهندسة الفراغية',
     category: 'رياضيات بحتة',
     totalChapters: 4,
-    completedChapters: 1,
-    quizzesTaken: 8,
-    averageScore: 84,
-    masteryPercentage: 70,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#7C3AED',
-    lastStudiedDate: 'أمس',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 22,
-    learningOutcomesMastered: 16
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'STATICS',
     nameAr: 'الاستاتيكا',
     category: 'رياضيات تطبيقية',
     totalChapters: 6,
-    completedChapters: 3,
-    quizzesTaken: 10,
-    averageScore: 91,
-    masteryPercentage: 85,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#D97706',
-    lastStudiedDate: 'اليوم',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 20,
-    learningOutcomesMastered: 17
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'DYNAMICS',
     nameAr: 'الديناميكا',
     category: 'رياضيات تطبيقية',
     totalChapters: 4,
-    completedChapters: 1,
-    quizzesTaken: 7,
-    averageScore: 78,
-    masteryPercentage: 65,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#EA580C',
-    lastStudiedDate: 'منذ يومين',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 22,
-    learningOutcomesMastered: 14
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'PHYSICS',
     nameAr: 'الفيزياء',
     category: 'علوم فيزيائية',
     totalChapters: 8,
-    completedChapters: 3,
-    quizzesTaken: 14,
-    averageScore: 86,
-    masteryPercentage: 75,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#059669',
-    lastStudiedDate: 'اليوم',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 32,
-    learningOutcomesMastered: 24
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'CHEMISTRY',
     nameAr: 'الكيمياء',
     category: 'علوم فيزيائية',
     totalChapters: 5,
-    completedChapters: 2,
-    quizzesTaken: 9,
-    averageScore: 82,
-    masteryPercentage: 68,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#0891B2',
-    lastStudiedDate: 'منذ 3 أيام',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 26,
-    learningOutcomesMastered: 18
+    learningOutcomesMastered: 0
   },
   {
     subjectCode: 'LANGUAGES',
     nameAr: 'اللغات (عربي / إنجليزي)',
     category: 'لغات',
     totalChapters: 6,
-    completedChapters: 3,
-    quizzesTaken: 11,
-    averageScore: 90,
-    masteryPercentage: 80,
+    completedChapters: 0,
+    quizzesTaken: 0,
+    averageScore: 0,
+    masteryPercentage: 0,
     colorHex: '#DC2626',
-    lastStudiedDate: 'أمس',
+    lastStudiedDate: 'لم يبدأ بعد',
     learningOutcomesTotal: 28,
-    learningOutcomesMastered: 23
+    learningOutcomesMastered: 0
   }
 ];
 
 export const initialDisciplineMetrics: DisciplineMetrics = {
-  totalStudyMinutesToday: 320,
-  targetStudyMinutesToday: 420,
-  weeklyAttendancePercent: 96,
-  homeworkCompleted: 27,
-  homeworkTotal: 29,
-  currentStreakDays: 18,
-  bestStreakDays: 24,
-  disciplineScore: 94,
-  badgesEarned: [
-    { title: 'درع الالتزام الحديدي', icon: '🛡️', desc: 'إتمام 18 يوماً متواصلاً دون تفويت أي جلسة مذاكرة' },
-    { title: 'قاهر التفاضل والتكامل', icon: '📐', desc: 'حل أكثر من 150 مسألة معدلات زمنية وقيم عظمى بنجاح' },
-    { title: 'منضبط الواجبات', icon: '📝', desc: 'تسليم 95% من واجبات الأسبوع في الموعد المحدد' }
-  ]
+  totalStudyMinutesToday: 0,
+  targetStudyMinutesToday: 360,
+  weeklyAttendancePercent: 0,
+  homeworkCompleted: 0,
+  homeworkTotal: 0,
+  currentStreakDays: 0,
+  bestStreakDays: 0,
+  disciplineScore: 0,
+  badgesEarned: []
 };
 
 export const breakGuidances: BreakGuidance[] = [

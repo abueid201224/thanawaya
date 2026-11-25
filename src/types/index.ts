@@ -121,16 +121,62 @@ export interface ScoutedOfficialResource {
 
 export type UnitStudyStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped_by_exam';
 
+export type QuestionReviewStatus = 'unreviewed' | 'reviewed';
+export type MistakeErrorType = 'rule' | 'algebra' | 'sign_unit' | 'unjustified_step';
+export type SpacedReviewIntervalDays = 1 | 3 | 7 | 14;
+
 export interface PracticeQuestion {
   id: string;
+  questionVersion: number;
+  reviewStatus: QuestionReviewStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  verifiedBySympy?: boolean;
   questionNumber: number;
   questionText: string;
   options: Array<{ key: string; text: string }>;
   correctKey: string;
   explanation: string;
+  solutionSteps?: string[];
+  hints?: [string, string, string]; // [1: الفكرة، 2: القاعدة، 3: أول خطوة]
   difficulty: 'A' | 'B' | 'C'; // المستويات الوزارية
   targetedLearningOutcome: string;
   examSource?: string; // e.g. "ثانوية عامة 2023 دور أول"
+}
+
+export interface StudyAttempt {
+  id: string;
+  questionId: string;
+  questionVersion: number;
+  unitId: string;
+  subjectCode: string;
+  mode: 'practice' | 'test' | 'spaced_review';
+  selectedKey: string;
+  isCorrect: boolean;
+  hintTierUsed: 0 | 1 | 2 | 3;
+  timestamp: string;
+}
+
+export interface MistakeEntry {
+  id: string;
+  questionId: string;
+  questionVersion: number;
+  unitId: string;
+  subjectCode: string;
+  subjectNameAr: string;
+  questionText: string;
+  selectedKey: string;
+  correctKey: string;
+  explanation: string;
+  solutionSteps?: string[];
+  errorType: MistakeErrorType;
+  studentNote?: string;
+  reviewIntervalDays: SpacedReviewIntervalDays;
+  reviewCount: number;
+  nextReviewAt: string; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+  resolved: boolean;
 }
 
 export interface CurriculumUnit {

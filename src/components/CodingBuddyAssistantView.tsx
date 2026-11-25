@@ -53,12 +53,23 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'tricks' | 'puzzles' | 'sandbox' | 'ai_buddy' | 'materials'>('tricks');
 
-  // Gamification & XP State
-  const [xp, setXp] = useState<number>(() => {
-    return parseInt(localStorage.getItem('thanaweya_coding_xp') || '45', 10);
-  });
-  const [streakDays, setStreakDays] = useState<number>(3);
+  // Online/Offline State & Copy State
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   // Tricks Filter
   const [selectedTrickCategory, setSelectedTrickCategory] = useState<string>('ALL');
@@ -86,11 +97,6 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
   const [materialsFilterLang, setMaterialsFilterLang] = useState<'ALL' | 'AR' | 'EN'>('ALL');
   const [materialsCategory, setMaterialsCategory] = useState<string>('ALL');
 
-  // Persist XP
-  useEffect(() => {
-    localStorage.setItem('thanaweya_coding_xp', xp.toString());
-  }, [xp]);
-
   const currentPuzzle: CodingPuzzle = CODING_PUZZLES[currentPuzzleIndex];
 
   const handleCopyCode = (id: string, text: string) => {
@@ -107,7 +113,6 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
 
     const isCorrect = idx === currentPuzzle.correctIndex;
     if (isCorrect && !puzzleHistory[currentPuzzle.id]) {
-      setXp((prev) => prev + currentPuzzle.xpPoints);
       setPuzzleHistory((prev) => ({ ...prev, [currentPuzzle.id]: true }));
     }
   };
@@ -160,10 +165,14 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
     setSandboxOutput('');
   };
 
-  // Ask AI Coding Buddy (Strict Honest Error Handling)
+  // Ask AI Coding Buddy (Disabled when offline — no fabricated AI responses)
   const handleAskAiBuddy = async (customPrompt?: string) => {
     const question = customPrompt || aiPrompt;
     if (!question.trim()) return;
+    if (!isOnline) {
+      setAiError('المساعد البرمجي عبر الشبكة غير متاح حالياً في وضع عدم الاتصال.');
+      return;
+    }
 
     setIsAiLoading(true);
     setAiResponse(null);
@@ -183,7 +192,6 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
       }
       const data = await res.json();
       setAiResponse(data);
-      setXp((prev) => prev + 10); // Reward for asking
     } catch (err) {
       console.error('AI buddy fetch error:', err);
       setAiError('تعذر الاتصال بخادم الذكاء الاصطناعي المحلي (127.0.0.1). يرجى التأكد من تشغيل التطبيق وإعداد المفتاح.');
@@ -236,26 +244,10 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
             </p>
           </div>
 
-          {/* Gamification Stats Card */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-950/90 border border-slate-800 px-4 py-2.5 rounded-2xl shadow-lg">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                <Flame className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[10px] text-slate-400 font-medium">الستريك اليومي</div>
-                <div className="text-sm font-bold text-white">{streakDays} أيام متتالية 🔥</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-slate-950/90 border border-slate-800 px-4 py-2.5 rounded-2xl shadow-lg">
-              <div className="w-8 h-8 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center font-bold">
-                <Award className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[10px] text-slate-400 font-medium">نقاط الخبرة (XP)</div>
-                <div className="text-sm font-bold text-violet-300 font-mono">{xp} نقطة ✨</div>
-              </div>
+          <div className="bg-slate-950/90 border border-slate-800 px-4 py-3 rounded-2xl text-xs text-slate-300">
+            <div className="font-bold text-white">وضع العمل</div>
+            <div className="mt-0.5 text-slate-400">
+              {isOnline ? 'متصل — التريكات والمحرر المحلي والمساعد متاحون' : 'دون اتصال — التريكات والمحرر المحلي متاحان'}
             </div>
           </div>
         </div>
@@ -287,10 +279,7 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
           }`}
         >
           <Gamepad2 className="w-4 h-4 text-emerald-400" />
-          <span>ألغاز وتحديات الكود الترفيهية</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
-            +XP
-          </span>
+          <span>ألغاز وتحديات الكود</span>
         </button>
 
         <button
@@ -494,10 +483,7 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
                   لغز الكود #{currentPuzzleIndex + 1} من {CODING_PUZZLES.length}
                 </h3>
               </div>
-              <div className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-mono font-bold border border-emerald-500/30">
-                <span>جائزة:</span>
-                <span>+{currentPuzzle.xpPoints} XP</span>
-              </div>
+              <span className="text-xs text-slate-400">تدريب برمجي</span>
             </div>
 
             {/* Question */}
@@ -703,27 +689,34 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
       {/* TAB 4: AI CODE BUDDY CHAT */}
       {activeTab === 'ai_buddy' && (
         <div className="max-w-3xl mx-auto space-y-5">
+          {!isOnline && (
+            <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs font-semibold">
+              أنت حالياً في وضع عدم الاتصال: أزرار المحادثة بالذكاء الاصطناعي معطلة حتى يعود الاتصال بالإنترنت.
+            </div>
+          )}
+
           {/* Quick Prompts Chips */}
           <div className="space-y-2">
             <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-              <span>جرب تسأل كود كوتش عن التريكات دي بضغطة واحدة:</span>
+              <span>أمثلة أسئلة برمجية:</span>
             </span>
             <div className="flex flex-wrap gap-2 text-xs">
               {[
-                '🥙 اشرح لي الدوال Functions كأنها محل شاورما!',
-                '🎯 تريكة سريعة في بايثون للمبتدئين بدون تعقيد',
-                '📐 إزاي أحسب ميل المماس والتفاضل بكود بايثون؟',
-                '🕹️ إزاي أعمل لعبة بسيطة زي التخمين أو حجر ورقة مقص؟',
-                '⚠️ إيه أشهر 3 أخطاء بيقع فيها المبتدئ وإزاي أتفاداها؟'
+                'اشرح لي الدوال Functions بمثال بسيط',
+                'تريكة سريعة في بايثون للمبتدئين بدون تعقيد',
+                'كيف أحسب ميل المماس والتفاضل بكود بايثون؟',
+                'كيف أكتب لعبة تخمين رقمية بسيطة؟',
+                'ما أشهر 3 أخطاء يقع فيها المبتدئ وكيف أتجنبها؟'
               ].map((prompt, i) => (
                 <button
                   key={i}
+                  disabled={!isOnline}
                   onClick={() => {
                     setAiPrompt(prompt);
                     handleAskAiBuddy(prompt);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-violet-500/60 text-slate-300 hover:text-white transition-all cursor-pointer text-right"
+                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-violet-500/60 disabled:opacity-40 text-slate-300 hover:text-white transition-all cursor-pointer text-right"
                 >
                   {prompt}
                 </button>
@@ -736,15 +729,20 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
             <input
               type="text"
               value={aiPrompt}
+              disabled={!isOnline}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAskAiBuddy()}
-              placeholder="اسأل كود كوتش أي سؤال في البرمجة: (مثال: اشرح لي الحلقات Loops بطريقة سهلة ومضحكة)..."
-              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none"
+              placeholder={
+                isOnline
+                  ? 'اسأل كود كوتش أي سؤال في البرمجة...'
+                  : 'المحادثة غير متاحة في وضع عدم الاتصال'
+              }
+              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
             />
             <button
               onClick={() => handleAskAiBuddy()}
-              disabled={isAiLoading || !aiPrompt.trim()}
-              className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-violet-600/30"
+              disabled={!isOnline || isAiLoading || !aiPrompt.trim()}
+              className="min-h-[40px] bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{isAiLoading ? 'جارٍ التفكير...' : 'اسأل الكوتش'}</span>
@@ -768,13 +766,9 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
                   <h3 className="text-base font-bold text-white">{aiResponse.title}</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {aiResponse.offlineSample ? (
-                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                  {aiResponse.offlineSample && (
+                    <span className="text-[11px] text-amber-300 font-bold">
                       مثال جاهز بدون اتصال
-                    </span>
-                  ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                      +10 XP مكتسبة ✨
                     </span>
                   )}
                 </div>

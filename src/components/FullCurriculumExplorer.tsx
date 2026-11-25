@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { CurriculumUnit, PracticeQuestion } from '../types';
 import { MixedTextRenderer } from './MathRenderer';
+import { getReviewedQuestionsForStudent } from '../services/contentGate';
 
 interface FullCurriculumExplorerProps {
   units: CurriculumUnit[];
@@ -276,21 +277,34 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                     </div>
                   </div>
 
-                  {/* Interactive Practice Questions */}
+                  {/* Interactive Practice Questions (Reviewed Content Gate) */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-purple-400" />
-                        <span>تدريبات نواتج التعلم وأسئلة الامتحانات السابقة ({unit.practiceQuestions.length} تدريبات)</span>
-                      </h4>
-                      <span className="text-xs text-slate-400">
-                        حل المسألة ثم اعرض الحل المفصل للمقارنة
-                      </span>
-                    </div>
+                    {(() => {
+                      const reviewedQuestions = getReviewedQuestionsForStudent(unit.practiceQuestions);
+                      const hiddenUnreviewedCount = unit.practiceQuestions.length - reviewedQuestions.length;
 
-                    <div className="space-y-3">
-                      {unit.practiceQuestions.map((q) => {
-                        const isRevealed = revealedSolutions[q.id];
+                      return (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-purple-400" />
+                              <span>تدريبات نواتج التعلم المراجَعة ({reviewedQuestions.length} تدريبات)</span>
+                            </h4>
+                            <span className="text-xs text-slate-400">
+                              {hiddenUnreviewedCount > 0
+                                ? `تم حجب ${hiddenUnreviewedCount} سؤالاً قيد المراجعة`
+                                : 'حل المسألة ثم اعرض الحل المفصل للمقارنة'}
+                            </span>
+                          </div>
+
+                          {reviewedQuestions.length === 0 ? (
+                            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                              أسئلة هذه الوحدة قيد المراجعة الفنية حالياً ولا تُعرض للطلاب قبل اعتمادها.
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {reviewedQuestions.map((q) => {
+                                const isRevealed = revealedSolutions[q.id];
 
                         return (
                           <div
@@ -358,7 +372,11 @@ export const FullCurriculumExplorer: React.FC<FullCurriculumExplorerProps> = ({
                           </div>
                         );
                       })}
-                    </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

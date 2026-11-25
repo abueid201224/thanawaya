@@ -19,6 +19,8 @@ import {
 import { CurriculumUnit, SkipEvaluationResult, PracticeQuestion } from '../types';
 import { MixedTextRenderer } from './MathRenderer';
 
+import { getReviewedQuestionsForStudent } from '../services/contentGate';
+
 interface SkipExamEngineProps {
   units: CurriculumUnit[];
   initialSelectedUnit: CurriculumUnit | null;
@@ -42,63 +44,47 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
   const [examStarted, setExamStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
-  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(20 * 60); // 20 mins
+  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(15 * 60);
+  const [timerLiveMessage, setTimerLiveMessage] = useState('');
   const [evaluationResult, setEvaluationResult] = useState<SkipEvaluationResult | null>(null);
 
-  // Generate 4-5 test questions for the placement test
-  const testQuestions: PracticeQuestion[] = activeUnit?.practiceQuestions?.length
-    ? activeUnit.practiceQuestions
-    : [
-        {
-          id: 'sq_1',
-          questionNumber: 1,
-          questionText: 'إذا كانت ص = ظا(٢س)، فإن د²ص / دس² تساوي:',
-          options: [
-            { key: 'A', text: '٨ قا²(٢س) ظا(٢س)' },
-            { key: 'B', text: '٤ قا²(٢س) ظا(٢س)' },
-            { key: 'C', text: '٨ قا⁴(٢س)' },
-            { key: 'D', text: '٢ قا²(٢س)' }
-          ],
-          correctKey: 'A',
-          explanation: 'دص/دس = ٢ قا²(٢س). بالاشتقاق مرة أخرى: د²ص/دس² = ٢ × ٢ قا(٢س) × [قا(٢س) ظا(٢س) × ٢] = ٨ قا²(٢س) ظا(٢س).',
-          difficulty: 'B',
-          targetedLearningOutcome: 'إيجاد المشتقات العليا للدوال المثلثية'
-        },
-        {
-          id: 'sq_2',
-          questionNumber: 2,
-          questionText: 'قضيب منتظم يرتكز على أرض خشنة (م_س = ٠٫٥)، إذا كان القضيب على وشك الانزلاق عندما كانت زاوية ميله هـ، فإن ظا(هـ) تساوي:',
-          options: [
-            { key: 'A', text: '١' },
-            { key: 'B', text: '٢' },
-            { key: 'C', text: '٠٫٥' },
-            { key: 'D', text: '٠٫٢٥' }
-          ],
-          correctKey: 'A',
-          explanation: 'في حالة السلم المرتكز على أرض خشنة وحائط أملس على وشك الانزلاق: ظا(هـ) = ١ / (٢ م_س) = ١ / (٢ × ٠٫٥) = ١.',
-          difficulty: 'A',
-          targetedLearningOutcome: 'شروط انزلاق السلالم المنتظمة'
-        }
-      ];
+  // Strict Content Gate: ONLY reviewed questions are eligible
+  const testQuestions: PracticeQuestion[] = getReviewedQuestionsForStudent(
+    activeUnit?.practiceQuestions || []
+  );
 
-  // Timer countdown
+  // Timer countdown with calm announcements only at 10, 5, 1 remaining minutes
   React.useEffect(() => {
-    let timer: any = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
     if (examStarted && !evaluationResult && timeRemainingSeconds > 0) {
       timer = setInterval(() => {
-        setTimeRemainingSeconds((prev) => prev - 1);
+        setTimeRemainingSeconds((prev) => {
+          const next = prev - 1;
+          if (next === 10 * 60) {
+            setTimerLiveMessage('تبقى 10 دقائق على انتهاء الاختبار.');
+          } else if (next === 5 * 60) {
+            setTimerLiveMessage('تبقى 5 دقائق على انتهاء الاختبار.');
+          } else if (next === 60) {
+            setTimerLiveMessage('تبقى دقيقة واحدة على انتهاء الاختبار.');
+          }
+          return next;
+        });
       }, 1000);
     } else if (timeRemainingSeconds === 0 && examStarted && !evaluationResult) {
       handleSubmitExam();
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [examStarted, evaluationResult, timeRemainingSeconds]);
 
   const handleStartExam = () => {
+    if (testQuestions.length === 0) return;
     setUserAnswers({});
     setEvaluationResult(null);
     setCurrentQuestionIndex(0);
     setTimeRemainingSeconds(15 * 60);
+    setTimerLiveMessage('');
     setExamStarted(true);
   };
 
@@ -260,18 +246,30 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               ))}
             </div>
 
-            <div className="pt-4 flex justify-end">
+            <div className="pt-4 flex items-center justify-between gap-3">
+              {testQuestions.length === 0 ? (
+                <span className="text-xs text-amber-300 font-semibold">
+                  لا توجد أسئلة مراجَعة ومعتمدة بعد لهذه الوحدة.
+                </span>
+              ) : (
+                <span />
+              )}
               <button
                 onClick={handleStartExam}
-                className="bg-amber-500 hover:bg-amber-400 text-black px-6 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                disabled={testQuestions.length === 0}
+                className="min-h-[40px] bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black px-6 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
               >
                 <FastForward className="w-4 h-4 fill-black" />
-                <span>بدء اختبار التخطي والإتقان الآن ⚡</span>
+                <span>بدء اختبار التخطي والإتقان الآن</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <div aria-live="polite" className="sr-only">
+        {timerLiveMessage}
+      </div>
 
       {/* Active Exam Running */}
       {examStarted && !evaluationResult && (
@@ -282,13 +280,13 @@ export const SkipExamEngine: React.FC<SkipExamEngineProps> = ({
               <span className="text-xs text-amber-400 font-bold font-mono">
                 اختبار تخطي: {activeUnit.title}
               </span>
-              <div className="text-sm font-bold text-white mt-1">
+              <div className="text-sm font-bold text-white mt-1 tabular-nums">
                 السؤال {currentQuestionIndex + 1} من {testQuestions.length}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 font-mono text-amber-400 font-bold text-sm">
-              <Clock className="w-4 h-4 animate-spin" />
+            <div className="flex items-center gap-2 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 font-mono text-amber-400 font-bold text-sm tabular-nums">
+              <Clock className="w-4 h-4" />
               <span>{formatTimer(timeRemainingSeconds)}</span>
             </div>
           </div>

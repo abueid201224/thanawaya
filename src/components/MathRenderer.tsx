@@ -87,7 +87,9 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
 
   return (
     <span
-      className={`inline-block math-rendered ${block ? 'my-2 block text-center' : ''} ${className}`}
+      dir="ltr"
+      aria-label={latex}
+      className={`math-rendered max-w-full overflow-x-auto align-middle ${block ? 'my-2 block text-center' : 'inline-block'} ${className}`}
       dangerouslySetInnerHTML={{ __html: renderResult.html }}
     />
   );

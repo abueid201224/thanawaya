@@ -5,26 +5,20 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
   Send,
   X,
   FileImage,
   RefreshCw,
-  Eye,
   Brain,
-  HelpCircle,
   Zap,
   RotateCw,
   Copy,
   Check,
-  Maximize2,
   VideoOff,
-  Sliders,
-  ChevronRight,
-  Edit3
+  Edit3,
+  WifiOff
 } from 'lucide-react';
 import { MathRenderer } from './MathRenderer';
-import { ScannedMathProblem } from '../types';
 
 interface MathScanOcrModalProps {
   isOpen: boolean;
@@ -37,10 +31,8 @@ interface ExamPreset {
   id: string;
   title: string;
   branch: string;
-  imageUrl: string;
   latex: string;
   plainText: string;
-  confidence: number;
   scaffoldingSteps: Array<{
     stepNumber: number;
     title: string;
@@ -55,11 +47,9 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_calc_1',
     title: 'تكامل كسري لوغاريتمي',
-    branch: 'تفاضل وتكامل (2024 دور أول)',
-    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&auto=format&fit=crop&q=80',
+    branch: 'تفاضل وتكامل (مثال محلي)',
     latex: '\\int \\frac{2x + 3}{x^2 + 3x + 5} \\, dx',
-    plainText: 'تكامل دالة كسرية حيث مشتقة المقام موجودة في البسط: (٢س + ٣) / (س² + ٣س + ٥)',
-    confidence: 99.4,
+    plainText: 'تكامل دالة كسرية حيث مشتقة المقام موجودة في البسط: (2x + 3) / (x^2 + 3x + 5)',
     scaffoldingSteps: [
       {
         stepNumber: 1,
@@ -71,16 +61,9 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
       {
         stepNumber: 2,
         title: 'كتابة الصورة القياسية',
-        guidingQuestion: 'هل يحتاج البسط إلى ضرب في ثابت موازنة أم أنه يمثل المشتقة تماماً دون نقص؟',
+        guidingQuestion: 'هل يحتاج البسط إلى ضرب في ثابت أم يطابق المشتقة تماماً؟',
         hintFormulaLatex: '\\int \\frac{f\'(x)}{f(x)} \\, dx = \\ln|f(x)| + c',
-        officialMinistryRule: 'تحقق من عدم نسيان مقياس القيمة المطلقة وثابت التكامل (ث).'
-      },
-      {
-        stepNumber: 3,
-        title: 'التحقق والمراجعة الذاتية',
-        guidingQuestion: 'اشتق الناتج للتأكد: هل اشتقاق الدالة اللوغاريتمية يعيد لك الكسر الأصلي تماماً؟',
-        hintFormulaLatex: '\\frac{d}{dx}(\\ln|x^2 + 3x + 5| + c) = \\frac{2x + 3}{x^2 + 3x + 5}',
-        officialMinistryRule: 'سؤال أساسي في كل امتحان ثانوية عامة (درجتان في بابل شيت).'
+        officialMinistryRule: 'تحقق من القيمة المطلقة وثابت التكامل.'
       }
     ],
     finalAnswerVerification: '\\ln|x^2 + 3x + 5| + c'
@@ -88,80 +71,26 @@ const PRESET_EXAM_PROBLEMS: ExamPreset[] = [
   {
     id: 'preset_trig_2',
     title: 'نهاية دالة مثلثية',
-    branch: 'تفاضل وتكامل (2023 تجريبي)',
-    imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80',
+    branch: 'تفاضل وتكامل (مثال محلي)',
     latex: '\\lim_{x \\to 0} \\frac{\\sin(5x)}{\\tan(3x)}',
-    plainText: 'نهاية دالة مثلثية عند اقتراب س من الصفر: نها [جا(٥س) / ظا(٣س)] عندما س تقترب من ٠',
-    confidence: 98.8,
+    plainText: 'نهاية دالة مثلثية عند اقتراب س من الصفر',
     scaffoldingSteps: [
       {
         stepNumber: 1,
         title: 'التعويض المباشر',
-        guidingQuestion: 'ما ناتج التعويض المباشر عند س = ٠؟ وهل يمثل كمية غير معينة؟',
+        guidingQuestion: 'ما ناتج التعويض المباشر عند س = 0؟',
         hintFormulaLatex: '\\frac{\\sin(0)}{\\tan(0)} = \\frac{0}{0}',
-        officialMinistryRule: 'ظهور صفر على صفر يستدعي استخدام نظريات النهايات أو قاعدة لوبيتال.'
+        officialMinistryRule: 'ظهور صفر على صفر يستدعي القسمة على س أو تطبيق نظريات النهايات.'
       },
       {
         stepNumber: 2,
         title: 'القسمة على س في البسط والمقام',
-        guidingQuestion: 'إذا قسمت كل من البسط والمقام على س، ما هي القيمة التي تؤول إليها كل نهاية مستقلة؟',
+        guidingQuestion: 'إذا قسمت كل من البسط والمقام على س، ما قيمة كل نهاية مستقلة؟',
         hintFormulaLatex: '\\lim_{x \\to 0} \\frac{\\frac{\\sin(5x)}{x}}{\\frac{\\tan(3x)}{x}} = \\frac{5}{3}',
-        officialMinistryRule: 'نظرية الكتاب الوزاري: نها جا(أ س)/س = أ ، نها ظا(ب س)/س = ب.'
+        officialMinistryRule: 'قاعدة أساسية: نها جا(أ س)/س = أ ، نها ظا(ب س)/س = ب.'
       }
     ],
     finalAnswerVerification: '\\frac{5}{3}'
-  },
-  {
-    id: 'preset_statics_3',
-    title: 'معادلات اتزان جسم جاسئ',
-    branch: 'استاتيكا (2024 دور أول)',
-    imageUrl: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80',
-    latex: '\\sum F_x = 0, \\quad \\sum F_y = 0, \\quad \\sum M_A = 0',
-    plainText: 'شروط الاتزان العام لقضيب منتظم يرتكز على حائط رأسي أملس وأرضية خشنة',
-    confidence: 97.9,
-    scaffoldingSteps: [
-      {
-        stepNumber: 1,
-        title: 'رسم مخطط الجسم الحر (Free Body Diagram)',
-        guidingQuestion: 'حدد جميع القوى المؤثرة: الوزن عند المنتصف، رد فعل الحائط، وقوى الاحتكاك عند الأرض.',
-        hintFormulaLatex: 'R_1 - W = 0, \\quad R_2 - f_s = 0',
-        officialMinistryRule: 'رد فعل المستوى الأملس دائماً عمودي عليه، بينما الخشن يحلل إلى رد فعل عمودي واحتكاك.'
-      },
-      {
-        stepNumber: 2,
-        title: 'أخذ العزوم حول نقطة الارتكاز',
-        guidingQuestion: 'لماذا يُفضل أخذ العزوم حول النقطة (أ) التي تتلاقى عندها أكثر القوى المجهولة؟',
-        hintFormulaLatex: '\\sum M_A = -W \\cdot \\frac{L}{2}\\cos\\theta + R_2 \\cdot L\\sin\\theta = 0',
-        officialMinistryRule: 'اختيار نقطة تلاشي المجاهيل يقلل معادلات الحل إلى مجهول واحد فقط.'
-      }
-    ],
-    finalAnswerVerification: '\\tan\\theta = \\frac{1}{2\\mu_s}'
-  },
-  {
-    id: 'preset_algebra_4',
-    title: 'الصورة المثلثية للعدد المركب',
-    branch: 'جبر وهندسة فراغية (2025 استرشادي)',
-    imageUrl: 'https://images.unsplash.com/photo-1509869175650-a1c97972541a?w=600&auto=format&fit=crop&q=80',
-    latex: 'z = 2\\left(\\cos \\frac{\\pi}{3} + i \\sin \\frac{\\pi}{3}\\right)',
-    plainText: 'تحويل العدد المركب ع = ١ + جذر ٣ ت إلى الصورة المثلثية وحساب الجذور التكعيبية بديموافر',
-    confidence: 99.1,
-    scaffoldingSteps: [
-      {
-        stepNumber: 1,
-        title: 'إيجاد المقياس والسعة الأساسية',
-        guidingQuestion: 'احسب المقياس r = جذر(س² + ص²)، ثم حدد الربع الذي يقع فيه العدد لإيجاد السعة ثيتا.',
-        hintFormulaLatex: 'r = \\sqrt{1^2 + (\\sqrt{3})^2} = 2, \\quad \\theta = \\tan^{-1}(\\sqrt{3}) = \\frac{\\pi}{3}',
-        officialMinistryRule: 'تأكد من أن السعة الأساسية تنتمي للفترة (-ط ، ط].'
-      },
-      {
-        stepNumber: 2,
-        title: 'تطبيق نظرية ديموافر',
-        guidingQuestion: 'عند رفع العدد للقوة ن، كيف تتصرف في المقياس والسعة؟',
-        hintFormulaLatex: 'z^n = r^n \\left(\\cos(n\\theta) + i\\sin(n\\theta)\\right)',
-        officialMinistryRule: 'تطبيق ديموافر هو مفتاح حل أسئلة الجذور النونية في الامتحان النهائي.'
-      }
-    ],
-    finalAnswerVerification: 'z^3 = -8'
   }
 ];
 
@@ -171,35 +100,47 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
   onInsertToInput,
   onSendToChat
 }) => {
-  // Input Mode: camera, upload, or preset library
-  const [activeMode, setActiveMode] = useState<'camera' | 'upload' | 'preset'>('camera');
+  const [activeMode, setActiveMode] = useState<'camera' | 'upload' | 'preset'>('upload');
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
 
   // Camera Stream State
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Captured / Selected Image
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  // OCR Processing State
+  // OCR Processing State (Honest empty initial state — zero fake pre-populated result)
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [ocrProgressStep, setOcrProgressStep] = useState<string>('');
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [revealedStepIndex, setRevealedStepIndex] = useState(0);
 
-  // OCR Result Data
-  const [extractedLatex, setExtractedLatex] = useState<string>(PRESET_EXAM_PROBLEMS[0].latex);
-  const [plainText, setPlainText] = useState<string>(PRESET_EXAM_PROBLEMS[0].plainText);
-  const [identifiedTopic, setIdentifiedTopic] = useState<string>(PRESET_EXAM_PROBLEMS[0].branch);
-  const [confidence, setConfidence] = useState<number>(PRESET_EXAM_PROBLEMS[0].confidence);
-  const [scaffoldingSteps, setScaffoldingSteps] = useState(PRESET_EXAM_PROBLEMS[0].scaffoldingSteps);
-  const [finalVerification, setFinalVerification] = useState<string>(PRESET_EXAM_PROBLEMS[0].finalAnswerVerification);
+  // Extracted Data + Student Confirmation Gate
+  const [extractedLatex, setExtractedLatex] = useState<string>('');
+  const [plainText, setPlainText] = useState<string>('');
+  const [identifiedTopic, setIdentifiedTopic] = useState<string>('');
+  const [scaffoldingSteps, setScaffoldingSteps] = useState<ExamPreset['scaffoldingSteps']>([]);
+  const [finalVerification, setFinalVerification] = useState<string>('');
+  const [isTranscriptionConfirmed, setIsTranscriptionConfirmed] = useState<boolean>(false);
 
-  // Cleanup Camera Helper
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -208,16 +149,14 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsCameraActive(false);
   }, []);
 
-  // Initialize Camera Stream
   const startCamera = useCallback(async () => {
     stopCamera();
     setCameraError(null);
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('متصفحك لا يدعم فتح الكاميرا المباشرة، يمكنك رفع صورة من جهازك بدلاً من ذلك.');
+        throw new Error('متصفحك لا يدعم فتح الكاميرا المباشرة، يمكنك رفع صورة من جهازك.');
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -234,23 +173,19 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
       }
-      setIsCameraActive(true);
     } catch (err: any) {
-      console.warn('Camera access issue:', err);
       let message = 'تعذر تشغيل الكاميرا.';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        message = 'يرجى السماح للتطبيق بالوصول للكاميرا من إعدادات المتصفح، أو اختر رفع صورة أو نموذج جاهز.';
+        message = 'يرجى السماح بالوصول للكاميرا أو اختيار رفع صورة.';
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        message = 'لم يتم العثور على كاميرا متصلة بجهازك، يمكنك رفع صورة مسألة من الملفات.';
+        message = 'لم يتم العثور على كاميرا متصلة، يمكنك رفع صورة المسألة.';
       } else if (err.message) {
         message = err.message;
       }
       setCameraError(message);
-      setIsCameraActive(false);
     }
   }, [facingMode, stopCamera]);
 
-  // Effect to manage camera lifecycle
   useEffect(() => {
     if (isOpen && activeMode === 'camera' && !capturedImage) {
       startCamera();
@@ -262,14 +197,12 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
     };
   }, [isOpen, activeMode, capturedImage, startCamera, stopCamera]);
 
-  // Flip Camera Front/Rear
   const handleToggleFacingMode = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
   };
 
-  // Perform Snapshot Capture from Camera Viewfinder
   const handleCaptureSnapshot = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !isOnline) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 1280;
@@ -285,8 +218,11 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
     runOcrAnalysis(dataUrl);
   };
 
-  // File Upload Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isOnline) {
+      setOcrError('التعرف الضوئي عبر الإنترنت غير متاح في وضع عدم الاتصال.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -301,48 +237,43 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Select Preset Exam Problem
   const handleSelectPreset = (preset: ExamPreset) => {
-    setCapturedImage(preset.imageUrl);
+    setCapturedImage('preset-local');
     setOcrError(null);
-    setIsProcessingOcr(true);
-    setOcrProgressStep('جاري قراءة الرموز والمعادلات الرياضية من النموذج الوزاري...');
-
-    setTimeout(() => {
-      setExtractedLatex(preset.latex);
-      setPlainText(preset.plainText);
-      setIdentifiedTopic(preset.branch);
-      setConfidence(preset.confidence);
-      setScaffoldingSteps(preset.scaffoldingSteps);
-      setFinalVerification(preset.finalAnswerVerification);
-      setRevealedStepIndex(0);
-      setIsProcessingOcr(false);
-    }, 700);
+    setIsProcessingOcr(false);
+    setExtractedLatex(preset.latex);
+    setPlainText(preset.plainText);
+    setIdentifiedTopic(preset.branch);
+    setScaffoldingSteps(preset.scaffoldingSteps);
+    setFinalVerification(preset.finalAnswerVerification);
+    setRevealedStepIndex(0);
+    setIsTranscriptionConfirmed(false);
   };
 
-  // Real OCR Analysis Pipeline (Strict Honest Error Handling & >=30s Timeout)
   const runOcrAnalysis = async (imageSrc: string) => {
+    if (!isOnline) {
+      setIsProcessingOcr(false);
+      setOcrError('أنت غير متصل بالإنترنت الآن. تعذر استدعاء خدمة التحليل الضوئي.');
+      return;
+    }
+
     setIsProcessingOcr(true);
     setOcrError(null);
     setExtractedLatex('');
     setPlainText('');
+    setIdentifiedTopic('');
     setScaffoldingSteps([]);
-    setOcrProgressStep('1/3 مسح تراكيب الصورة واكتشاف الأنماط الرياضية...');
+    setFinalVerification('');
+    setIsTranscriptionConfirmed(false);
+    setOcrProgressStep('1/2 مسح تراكيب الصورة وإرسالها للخادم المحلي...');
 
     try {
-      const timer1 = setTimeout(() => {
-        setOcrProgressStep('2/3 فك الترميز الضوئي وتحويل الكسور والتكاملات إلى KaTeX...');
-      }, 700);
-
-      // Client-side 35s timeout signal
       const controller = new AbortController();
       const clientTimeoutId = setTimeout(() => controller.abort(), 35000);
 
       const response = await fetch('/api/ocr-math', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: imageSrc,
           mimeType: 'image/jpeg'
@@ -350,263 +281,223 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
         signal: controller.signal
       });
 
-      clearTimeout(timer1);
       clearTimeout(clientTimeoutId);
 
       if (response.ok) {
         const data = await response.json();
-        setOcrProgressStep('3/3 إعداد الخطوات السقالية الوزارية...');
-
-        setTimeout(() => {
-          if (data.latex) setExtractedLatex(data.latex);
-          if (data.plainText) setPlainText(data.plainText);
-          if (data.topic) setIdentifiedTopic(data.topic);
-          if (data.confidence) setConfidence(data.confidence);
-          if (data.scaffoldingSteps && data.scaffoldingSteps.length > 0) {
-            setScaffoldingSteps(data.scaffoldingSteps);
-          }
-          if (data.finalAnswerVerification) setFinalVerification(data.finalAnswerVerification);
-          setRevealedStepIndex(0);
-          setIsProcessingOcr(false);
-        }, 500);
-        return;
+        setExtractedLatex(data.latex || '');
+        setPlainText(data.plainText || '');
+        setIdentifiedTopic(data.topic || 'مسألة رياضية');
+        setScaffoldingSteps(Array.isArray(data.scaffoldingSteps) ? data.scaffoldingSteps : []);
+        setFinalVerification(data.finalAnswerVerification || '');
+        setRevealedStepIndex(0);
+        setIsTranscriptionConfirmed(false);
+        setIsProcessingOcr(false);
       } else {
         const errorJson = await response.json().catch(() => ({}));
-        const message = errorJson.error || 'تعذر استخراج المعادلة الرياضية من الصورة. يرجى التأكد من وضوح المسألة ومراجعة إعدادات المفتاح.';
-        setOcrError(message);
-        setExtractedLatex('');
+        setOcrError(
+          errorJson.error ||
+            'تعذر استخراج المعادلة الرياضية من الصورة. يرجى التأكد من وضوح المسألة وإعداد المفتاح.'
+        );
         setIsProcessingOcr(false);
-        return;
       }
     } catch (err: any) {
-      console.warn('Backend OCR call failed:', err);
-      setExtractedLatex('');
       if (err?.name === 'AbortError') {
-        setOcrError('استغرقت معالجة الصورة أكثر من 30 ثانية (TIMEOUT). يرجى التأكد من اتصال الإنترنت أو استخدام صورة ذات حجم أصغر.');
+        setOcrError('استغرقت معالجة الصورة أكثر من 30 ثانية (TIMEOUT).');
       } else {
-        setOcrError('تعذر الاتصال بخادم الذكاء الاصطناعي (127.0.0.1). يرجى التأكد من تشغيل التطبيق أو مراجعة إعدادات المفتاح (Ctrl+,).');
+        setOcrError('تعذر الاتصال بخادم التحليل المحلي. يرجى التحقق من التشغيل وإعداد المفتاح.');
       }
       setIsProcessingOcr(false);
     }
   };
 
-  // Retake / Reset Image
   const handleRetake = () => {
     setCapturedImage(null);
     setOcrError(null);
+    setExtractedLatex('');
+    setPlainText('');
+    setScaffoldingSteps([]);
+    setFinalVerification('');
+    setIsTranscriptionConfirmed(false);
     if (activeMode === 'camera') {
       startCamera();
     }
   };
 
-  // Copy LaTeX helper
   const handleCopyLatex = () => {
+    if (!extractedLatex) return;
     navigator.clipboard.writeText(extractedLatex);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
-  // User Actions
   const handleInsertIntoChatInput = () => {
-    const fullText = `مسألة مصورة (${identifiedTopic}):\n${plainText}\n$$${extractedLatex}$$`;
+    if (!isTranscriptionConfirmed || !extractedLatex.trim()) return;
+    const fullText = `مسألة (${identifiedTopic || 'رياضيات'}):\n${plainText}\n$$${extractedLatex}$$`;
     onInsertToInput(extractedLatex, fullText);
     onClose();
   };
 
   const handleSendDirectlyToChat = () => {
-    const fullText = `مسألة مصورة عبر Scan & Solve (${identifiedTopic}):\n"${plainText}"\nالصيغة الرياضية: $$${extractedLatex}$$`;
+    if (!isTranscriptionConfirmed || !extractedLatex.trim()) return;
+    const fullText = `مسألة مؤكدة (${identifiedTopic || 'رياضيات'}):\n"${plainText}"\nالصيغة الرياضية: $$${extractedLatex}$$`;
     onSendToChat(fullText, extractedLatex);
     onClose();
   };
 
   if (!isOpen) return null;
 
+  const hasValidResult = Boolean(extractedLatex.trim()) && !isProcessingOcr && !ocrError;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-4xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-4xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-cyan-600/30">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center">
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">كاميرا استخراج المسائل (Scan & Solve OCR)</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-                  مدعوم بالذكاء الاصطناعي
-                </span>
-              </div>
+              <h3 className="text-base font-bold text-white">
+                كاميرا استخراج المسائل مع تأكيد التفريغ الرياضي
+              </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                التقط صورة المسألة من الورقة أو كتاب الوزارة لاستخراج صيغة KaTeX وإدراجها مباشرة في المحادثة
+                تحويل الصورة إلى صيغة LaTeX مع مراجعة الطالب وتأكيدها قبل عرض الخطوات الإرشادية
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+            className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="px-4 py-2.5 bg-amber-950/60 border-b border-amber-700/50 text-amber-200 text-xs flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              أنت في وضع عدم الاتصال: أزرار التحليل الضوئي بالشبكة معطلة. يمكنك تجربة الأمثلة المحلية فقط.
+            </span>
+          </div>
+        )}
+
         {/* Source Mode Tabs */}
         <div className="bg-slate-950/90 px-4 py-2 border-b border-slate-800 flex items-center justify-between gap-2 overflow-x-auto text-xs">
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => {
                 setActiveMode('camera');
                 setCapturedImage(null);
               }}
-              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 activeMode === 'camera'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>كاميرا حية (Live Camera)</span>
+              <span>الكاميرا</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 setActiveMode('upload');
                 setCapturedImage(null);
               }}
-              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 activeMode === 'upload'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>رفع صورة من الجهاز</span>
+              <span>رفع صورة</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 setActiveMode('preset');
                 setCapturedImage(null);
               }}
-              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 activeMode === 'preset'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <FileImage className="w-3.5 h-3.5" />
-              <span>نماذج امتحانية للاختبار السريع</span>
+              <span>أمثلة محلية</span>
             </button>
           </div>
 
           {capturedImage && (
             <button
+              type="button"
               onClick={handleRetake}
-              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer font-medium"
+              className="min-h-[40px] px-3 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer font-medium whitespace-nowrap"
             >
               <RotateCw className="w-3 h-3" />
-              <span>التقاط صورة أخرى</span>
+              <span>البدء من جديد</span>
             </button>
           )}
         </div>
 
         {/* Modal Body */}
         <div className="flex-1 p-5 overflow-y-auto space-y-5">
-          {/* CAMERA / CAPTURE VIEW */}
+          {/* CAMERA VIEW */}
           {!capturedImage && activeMode === 'camera' && (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black aspect-video sm:aspect-16/9 flex flex-col items-center justify-center shadow-inner">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
+            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black aspect-video flex flex-col items-center justify-center">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
-              {/* Viewfinder Target Reticle Frame */}
-              <div className="absolute inset-8 sm:inset-12 pointer-events-none border-2 border-cyan-400/40 rounded-2xl flex flex-col justify-between p-3">
-                {/* 4 Corner Markers */}
-                <div className="flex justify-between">
-                  <div className="w-6 h-6 border-t-4 border-l-4 border-cyan-400 rounded-tl-lg shadow-[0_0_10px_#22d3ee]" />
-                  <div className="w-6 h-6 border-t-4 border-r-4 border-cyan-400 rounded-tr-lg shadow-[0_0_10px_#22d3ee]" />
-                </div>
-
-                <div className="text-center">
-                  <span className="bg-slate-950/80 backdrop-blur-md text-cyan-300 font-bold px-3 py-1 rounded-full text-xs border border-cyan-500/40 shadow-lg">
-                    ضع المسألة الرياضية أو المعادلة داخل هذا الإطار
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <div className="w-6 h-6 border-b-4 border-l-4 border-cyan-400 rounded-bl-lg shadow-[0_0_10px_#22d3ee]" />
-                  <div className="w-6 h-6 border-b-4 border-r-4 border-cyan-400 rounded-br-lg shadow-[0_0_10px_#22d3ee]" />
-                </div>
-              </div>
-
-              {/* Camera Error Fallback */}
               {cameraError && (
                 <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-                    <VideoOff className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1 max-w-md">
-                    <h4 className="text-sm font-bold text-white">إتاحة الكاميرا</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">{cameraError}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <VideoOff className="w-8 h-8 text-amber-400" />
+                  <p className="text-xs text-slate-300 max-w-md">{cameraError}</p>
+                  <div className="flex flex-wrap gap-2">
                     <button
+                      type="button"
                       onClick={startCamera}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      className="min-h-[40px] px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>إعادة المحاولة</span>
+                      إعادة المحاولة
                     </button>
                     <button
+                      type="button"
                       onClick={() => setActiveMode('upload')}
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      className="min-h-[40px] px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer"
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>رفع صورة مسألة</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveMode('preset')}
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <FileImage className="w-3.5 h-3.5" />
-                      <span>اختيار نموذج جاهز</span>
+                      رفع صورة
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Camera Controls Bar */}
               {!cameraError && (
-                <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 px-4">
+                <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4 px-4">
                   <button
+                    type="button"
                     onClick={handleToggleFacingMode}
-                    title="تبديل الكاميرا (الأمامية / الخلفية)"
-                    className="p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white backdrop-blur-md border border-slate-700 transition-all cursor-pointer shadow-lg"
+                    className="min-h-[40px] px-3 rounded-xl bg-slate-900/90 text-white border border-slate-700 text-xs cursor-pointer"
                   >
-                    <RotateCw className="w-4 h-4" />
+                    تبديل الكاميرا
                   </button>
-
                   <button
+                    type="button"
+                    disabled={!isOnline}
                     onClick={handleCaptureSnapshot}
-                    className="w-16 h-16 rounded-full bg-white text-slate-900 flex items-center justify-center shadow-xl shadow-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer border-4 border-cyan-400"
-                    title="التقاط صورة المسألة الآن"
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-xs font-bold cursor-pointer flex items-center gap-2"
                   >
-                    <div className="w-11 h-11 rounded-full bg-cyan-500 flex items-center justify-center text-white">
-                      <Camera className="w-6 h-6" />
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveMode('upload')}
-                    title="رفع من الملفات"
-                    className="p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white backdrop-blur-md border border-slate-700 transition-all cursor-pointer shadow-lg"
-                  >
-                    <Upload className="w-4 h-4" />
+                    <Camera className="w-4 h-4" />
+                    <span>{isOnline ? 'التقاط وتحليل الصورة' : 'غير متاح دون اتصال'}</span>
                   </button>
                 </div>
               )}
@@ -615,297 +506,316 @@ export const MathScanOcrModal: React.FC<MathScanOcrModalProps> = ({
 
           {/* UPLOAD VIEW */}
           {!capturedImage && activeMode === 'upload' && (
-            <div className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-3xl p-8 sm:p-12 text-center bg-slate-950/60 transition-all space-y-4">
+            <div className="border-2 border-dashed border-slate-700 rounded-3xl p-8 sm:p-12 text-center bg-slate-950/60 space-y-4">
               <div className="w-16 h-16 rounded-3xl bg-blue-600/20 text-blue-400 mx-auto flex items-center justify-center border border-blue-500/30">
                 <Upload className="w-8 h-8" />
               </div>
               <div className="space-y-1">
                 <h4 className="text-base font-bold text-white">اختر صورة المسألة من جهازك</h4>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  يدعم صور كاميرا الهاتف، مسودات الحلول اليدوية، واللقطات المصورة من مذكرات وكتب الوزارة (JPG, PNG, WEBP)
+                  يدعم صور JPG و PNG و WEBP. بعد الاستخراج سيُطلب منك مراجعة وتأكيد الصيغة الرياضية قبل المتابعة.
                 </p>
               </div>
-
-              <div>
-                <label className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-blue-600/30">
-                  <FileImage className="w-4 h-4" />
-                  <span>تصفح واختيار الصورة</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label
+                className={`min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white text-xs font-bold ${
+                  isOnline
+                    ? 'bg-blue-600 hover:bg-blue-500 cursor-pointer'
+                    : 'bg-slate-700 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <FileImage className="w-4 h-4" />
+                <span>{isOnline ? 'تصفح واختيار الصورة' : 'التحليل بالشبكة غير متاح دون اتصال'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={!isOnline}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
           )}
 
-          {/* PRESET SAMPLES VIEW */}
+          {/* LOCAL PRESETS VIEW (No external Unsplash images) */}
           {!capturedImage && activeMode === 'preset' && (
             <div className="space-y-3">
               <div className="text-xs text-slate-400 font-semibold">
-                اضغط على أي مسألة امتحانية أدناه لتجربة التعرف الضوئي التلقائي الفوري:
+                اختر مثالاً محلياً لتجربة تأكيد التفريغ الرياضي والخطوات الإرشادية دون اتصال:
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PRESET_EXAM_PROBLEMS.map((preset) => (
-                  <div
+                  <button
                     key={preset.id}
+                    type="button"
                     onClick={() => handleSelectPreset(preset)}
-                    className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group flex items-start gap-3 hover:bg-slate-900/80"
+                    className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-cyan-500/50 text-right space-y-2 cursor-pointer"
                   >
-                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-700 bg-black">
-                      <img src={preset.imageUrl} alt={preset.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-bold text-white">{preset.title}</h5>
+                      <span className="text-[11px] text-slate-400">{preset.branch}</span>
                     </div>
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors truncate">
-                          {preset.title}
-                        </h5>
-                        <span className="text-[10px] text-cyan-400 font-mono">
-                          {preset.confidence}%
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate">{preset.branch}</p>
-                      <div className="text-xs text-blue-300 font-mono pt-1">
-                        <MathRenderer latex={preset.latex} className="text-xs" />
-                      </div>
+                    <div className="text-xs text-blue-300 font-mono pt-1">
+                      <MathRenderer latex={preset.latex} />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ACTIVE CAPTURED IMAGE & OCR RESULTS */}
+          {/* ACTIVE RESULT + MANDATORY TRANSCRIPTION CONFIRMATION STEP */}
           {capturedImage && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Left Column: Image Preview + Laser Scanning Animation */}
+              {/* Left Column: Image / Extracted LaTeX & Mandatory Student Confirmation */}
               <div className="space-y-3">
-                <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black aspect-video flex items-center justify-center">
-                  <img
-                    src={capturedImage}
-                    alt="Captured Math Problem"
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Scanning Animation */}
-                  {isProcessingOcr && (
-                    <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center p-4">
-                      {/* Laser Line */}
-                      <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_20px_#22d3ee] animate-pulse" />
-                      <div className="mt-4 bg-slate-900/90 border border-cyan-500/40 px-4 py-2 rounded-xl text-center shadow-xl">
-                        <div className="flex items-center justify-center gap-2 text-cyan-300 font-bold text-xs">
-                          <Sparkles className="w-4 h-4 animate-spin text-cyan-400" />
-                          <span>جاري فك الترميز الرياضي عبر الذكاء الاصطناعي...</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">{ocrProgressStep}</p>
+                {capturedImage !== 'preset-local' && (
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black aspect-video flex items-center justify-center">
+                    <img
+                      src={capturedImage}
+                      alt="الصورة الملتقطة للمسألة"
+                      className="w-full h-full object-contain"
+                    />
+                    {isProcessingOcr && (
+                      <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center p-4 text-center space-y-2">
+                        <RefreshCw className="w-6 h-6 text-cyan-400 animate-spin" />
+                        <span className="text-xs font-bold text-cyan-300">{ocrProgressStep}</span>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )}
 
-                  {/* Status Badge */}
-                  {!isProcessingOcr && !ocrError && (
-                    <div className="absolute top-3 right-3 bg-slate-950/90 border border-emerald-500/40 rounded-xl px-3 py-1 text-[11px] text-emerald-400 flex items-center gap-1.5 shadow-lg backdrop-blur-md">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>تم الاستخراج بنجاح (دقة {confidence}%)</span>
-                    </div>
-                  )}
-
-                  {!isProcessingOcr && ocrError && (
-                    <div className="absolute top-3 right-3 bg-slate-950/95 border border-rose-500/60 rounded-xl px-3 py-1 text-[11px] text-rose-300 flex items-center gap-1.5 shadow-lg backdrop-blur-md">
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                      <span>تعذر استخراج المعادلة</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Retake & Info bar */}
-                <div className="flex items-center justify-between text-xs px-1">
-                  <span className="text-slate-400">
-                    التصنيف: <strong className="text-white">{ocrError ? 'غير محدد' : identifiedTopic}</strong>
-                  </span>
-                  <button
-                    onClick={handleRetake}
-                    className="text-xs text-blue-400 hover:text-blue-300 underline cursor-pointer flex items-center gap-1"
-                  >
-                    <RotateCw className="w-3 h-3" />
-                    <span>إعادة التصوير</span>
-                  </button>
-                </div>
-
-                {/* Extracted KaTeX Box or Error State */}
                 {ocrError ? (
-                  <div role="alert" aria-live="assertive" className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3 shadow-lg">
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3"
+                  >
                     <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
                       <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>تنبيه من محرك الذكاء الاصطناعي:</span>
+                      <span>تنبيه:</span>
                     </div>
-                    <p className="text-xs text-rose-200 leading-relaxed font-sans">
-                      {ocrError}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <p className="text-xs text-rose-200 leading-relaxed">{ocrError}</p>
+                    <div className="flex gap-2">
+                      {capturedImage !== 'preset-local' && (
+                        <button
+                          type="button"
+                          disabled={!isOnline}
+                          onClick={() => runOcrAnalysis(capturedImage)}
+                          className="min-h-[40px] px-3 py-1.5 rounded-xl bg-rose-600 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
+                        >
+                          إعادة المحاولة
+                        </button>
+                      )}
                       <button
-                        onClick={() => runOcrAnalysis(capturedImage!)}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>إعادة المحاولة</span>
-                      </button>
-                      <button
+                        type="button"
                         onClick={handleRetake}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                        className="min-h-[40px] px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer"
                       >
-                        <Camera className="w-3 h-3" />
-                        <span>التقاط صورة أخرى</span>
+                        تغيير المصدر
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-800/40 space-y-2 shadow-lg">
+                ) : hasValidResult ? (
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-800/40 space-y-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-300 font-bold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>الصيغة الرياضية المستخرجة (KaTeX):</span>
+                        <span>مراجعة وتأكيد التفريغ الرياضي (LaTeX):</span>
                       </span>
                       <button
+                        type="button"
                         onClick={handleCopyLatex}
-                        className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer font-medium"
+                        className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
                       >
-                        {copySuccess ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                        <span>{copySuccess ? 'تم النسخ' : 'نسخ كود LaTeX'}</span>
+                        {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copySuccess ? 'تم النسخ' : 'نسخ LaTeX'}</span>
                       </button>
                     </div>
 
-                    <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center overflow-x-auto min-h-[55px] flex items-center justify-center">
-                      <MathRenderer latex={extractedLatex} block={true} className="text-lg text-cyan-300 font-bold" />
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-center">
+                      <MathRenderer latex={extractedLatex} block={true} className="text-base text-cyan-300" />
                     </div>
 
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      📝 <strong>الوصف باللغة العربية:</strong> {plainText}
-                    </p>
+                    <div className="space-y-1.5">
+                      <label htmlFor="ocr-latex-edit" className="block text-[11px] text-slate-400">
+                        عدّل الصيغة عند الحاجة قبل التأكيد:
+                      </label>
+                      <input
+                        id="ocr-latex-edit"
+                        type="text"
+                        dir="ltr"
+                        value={extractedLatex}
+                        onChange={(e) => {
+                          setExtractedLatex(e.target.value);
+                          setIsTranscriptionConfirmed(false);
+                        }}
+                        className="w-full min-h-[40px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 font-mono text-xs text-slate-200 text-left"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="ocr-plain-edit" className="block text-[11px] text-slate-400">
+                        الوصف النصي للمسألة:
+                      </label>
+                      <input
+                        id="ocr-plain-edit"
+                        type="text"
+                        value={plainText}
+                        onChange={(e) => {
+                          setPlainText(e.target.value);
+                          setIsTranscriptionConfirmed(false);
+                        }}
+                        className="w-full min-h-[40px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsTranscriptionConfirmed(true)}
+                      disabled={isTranscriptionConfirmed}
+                      className={`min-h-[44px] w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer ${
+                        isTranscriptionConfirmed
+                          ? 'bg-emerald-950/60 border border-emerald-500 text-emerald-300'
+                          : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>
+                        {isTranscriptionConfirmed
+                          ? 'تم تأكيد صحة التفريغ الرياضي'
+                          : 'تأكيد صحة التفريغ الرياضي للمتابعة'}
+                      </span>
+                    </button>
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Right Column: Pedagogical Scaffolding Steps */}
+              {/* Right Column: Scaffolding Steps (Gated until student confirms transcription) */}
               <div className="space-y-3 flex flex-col justify-between">
                 <div className="space-y-3">
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-800/40 space-y-1.5">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
                     <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs">
                       <Brain className="w-4 h-4 text-indigo-400" />
                       <span>خطوات التوجيه السقالي (Scaffolding Steps):</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      يتم توجيهك خطوة بخطوة وفق معايير ونماذج إجابة وزارة التربية والتعليم للوصول للحل دون تلقين مباشر.
+                      تظهر الخطوات الإرشادية بعد تأكيدك أن التفريغ الرياضي للصيغة صحيح.
                     </p>
                   </div>
 
-                  {/* Steps Accordion */}
-                  <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
-                    {scaffoldingSteps.map((step, idx) => {
-                      const isUnlocked = idx <= revealedStepIndex;
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-3.5 rounded-2xl border transition-all ${
-                            isUnlocked
-                              ? 'bg-slate-900/90 border-slate-700/80 shadow-md'
-                              : 'bg-slate-950/40 border-slate-900 opacity-60'
-                          }`}
+                  {!isTranscriptionConfirmed ? (
+                    <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-800 text-center space-y-2 text-xs text-slate-400">
+                      <AlertTriangle className="w-6 h-6 text-amber-400 mx-auto" />
+                      <div className="font-bold text-slate-200">بانتظار تأكيد التفريغ الرياضي</div>
+                      <p>
+                        راجع الصيغة المستخرجة على اليمين واضغط «تأكيد صحة التفريغ الرياضي للمتابعة» لفتح التوجيه.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
+                        {scaffoldingSteps.map((step, idx) => {
+                          const isUnlocked = idx <= revealedStepIndex;
+                          return (
+                            <div
+                              key={idx}
+                              className={`p-3.5 rounded-2xl border ${
+                                isUnlocked
+                                  ? 'bg-slate-900/90 border-slate-700/80'
+                                  : 'bg-slate-950/40 border-slate-900 opacity-60'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white">
+                                  {step.stepNumber}. {step.title}
+                                </span>
+                                {!isUnlocked && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setRevealedStepIndex(idx)}
+                                    className="text-[11px] text-cyan-400 hover:underline cursor-pointer"
+                                  >
+                                    إظهار الخطوة
+                                  </button>
+                                )}
+                              </div>
+
+                              {isUnlocked && (
+                                <div className="mt-2.5 space-y-2 text-xs">
+                                  <div className="text-slate-200">{step.guidingQuestion}</div>
+                                  <div className="p-2 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                                    <MathRenderer latex={step.hintFormulaLatex} block={true} />
+                                  </div>
+                                  <div className="text-[11px] text-slate-300 bg-blue-950/20 p-2 rounded-lg border border-blue-900/30">
+                                    {step.officialMinistryRule}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {revealedStepIndex < scaffoldingSteps.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setRevealedStepIndex((prev) => prev + 1)}
+                          className="min-h-[40px] w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center font-mono ${
-                                  isUnlocked
-                                    ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/30'
-                                    : 'bg-slate-800 text-slate-500'
-                                }`}
-                              >
-                                {step.stepNumber}
-                              </span>
-                              <span className="text-xs font-bold text-white">{step.title}</span>
-                            </div>
-                            {!isUnlocked && (
-                              <button
-                                onClick={() => setRevealedStepIndex(idx)}
-                                className="text-[11px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                              >
-                                إظهار الخطوة
-                              </button>
-                            )}
-                          </div>
-
-                          {isUnlocked && (
-                            <div className="mt-2.5 space-y-2 text-xs">
-                              <div className="text-slate-200 font-medium">{step.guidingQuestion}</div>
-                              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800/80 text-center">
-                                <MathRenderer latex={step.hintFormulaLatex} block={true} className="text-xs text-amber-300" />
-                              </div>
-                              <div className="text-[11px] text-slate-400 bg-blue-950/20 p-2 rounded-lg border border-blue-900/30">
-                                💡 {step.officialMinistryRule}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {revealedStepIndex < scaffoldingSteps.length - 1 && (
-                    <button
-                      onClick={() => setRevealedStepIndex((prev) => prev + 1)}
-                      className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-700"
-                    >
-                      <Zap className="w-3.5 h-3.5 text-amber-400" />
-                      <span>إظهار الخطوة الإرشادية التالية</span>
-                    </button>
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <span>إظهار الخطوة الإرشادية التالية</span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
 
-                {/* Final Verification Hint */}
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center justify-between">
-                  <span>التحقق النهائي:</span>
-                  <MathRenderer latex={finalVerification} className="text-emerald-400 font-bold" />
-                </div>
+                {isTranscriptionConfirmed && finalVerification && (
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+                    <span>التحقق النهائي:</span>
+                    <MathRenderer latex={finalVerification} className="text-emerald-400 font-bold" />
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Modal Footer with Chat Input Actions */}
+        {/* Footer Actions */}
         <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-400 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>سيتم تحويل المعادلة وإتاحتها فوراً في شاشة المعلم الذكي</span>
+            <span>
+              {isTranscriptionConfirmed
+                ? 'تم تأكيد التفريغ — يمكنك الإدراج أو الإرسال للمناقشة'
+                : 'يلزم تأكيد التفريغ الرياضي قبل الإدراج'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="min-h-[40px] px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white cursor-pointer"
             >
               إلغاء
             </button>
 
-            {/* BUTTON 1: Insert Formula directly into the Chat Input Box */}
             <button
+              type="button"
               onClick={handleInsertIntoChatInput}
-              disabled={isProcessingOcr || Boolean(ocrError)}
-              title="إدراج المعادلة في حقل الكتابة لمراجعتها وإضافة أسئلتك قبل الإرسال"
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!hasValidResult || !isTranscriptionConfirmed}
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
             >
               <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
               <span>إدراج في مربع الشات</span>
             </button>
 
-            {/* BUTTON 2: Insert & Send Directly for Immediate AI Scaffolding */}
             <button
+              type="button"
               onClick={handleSendDirectlyToChat}
-              disabled={isProcessingOcr || Boolean(ocrError)}
-              title="إرسال المسألة ومناقشتها فوراً مع المعلم الذكي"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-600/30 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!hasValidResult || !isTranscriptionConfirmed}
+              className="min-h-[40px] px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
             >
               <Send className="w-3.5 h-3.5" />
               <span>إدراج وإرسال للمناقشة</span>

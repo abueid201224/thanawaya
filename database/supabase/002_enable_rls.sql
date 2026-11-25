@@ -52,7 +52,7 @@ CREATE POLICY "student_profiles_update_own"
         auth.uid() = id OR public.is_app_admin()
     )
     WITH CHECK (
-        auth.uid() = id
+        auth.uid() = id OR public.is_app_admin()
     );
 
 -- 4. Row Level Security Policies for student_subjects
@@ -85,7 +85,7 @@ CREATE POLICY "student_subjects_update_own"
         auth.uid() = user_id OR public.is_app_admin()
     )
     WITH CHECK (
-        auth.uid() = user_id
+        auth.uid() = user_id OR public.is_app_admin()
     );
 
 CREATE POLICY "student_subjects_delete_own"
@@ -178,23 +178,23 @@ BEGIN
         user_school,
         user_governorate,
         user_assigned_role,
-        1,
-        95,
-        7
+        0,
+        0,
+        6
     ) ON CONFLICT (id) DO UPDATE SET
         role = CASE 
             WHEN LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN 'admin' 
             ELSE public.student_profiles.role 
         END;
 
-    -- Initialize standard Thanaweya Amma Math Curriculum Subjects
+    -- Initialize standard Thanaweya Amma Math Curriculum Subjects (zeroed initial state)
     INSERT INTO public.student_subjects (user_id, subject_code, name_ar, category, total_chapters, completed_chapters, average_score, mastery_percentage, color_hex)
     VALUES
-        (NEW.id, 'CALCULUS', 'التفاضل والتكامل', 'رياضيات بحتة', 10, 4, 88, 40, '#2563EB'),
-        (NEW.id, 'ALGEBRA_SOLID_GEO', 'الجبر والهندسة الفراغية', 'رياضيات بحتة', 8, 3, 91, 38, '#7C3AED'),
-        (NEW.id, 'STATICS', 'الاستاتيكا (توازن الأجسام)', 'رياضيات تطبيقية', 6, 2, 85, 33, '#059669'),
-        (NEW.id, 'DYNAMICS', 'الديناميكا (قوانين الحركة)', 'رياضيات تطبيقية', 7, 2, 82, 29, '#D97706'),
-        (NEW.id, 'PHYSICS', 'الفيزياء للثانوية العامة', 'العلوم الفيزيائية', 12, 5, 87, 42, '#DC2626')
+        (NEW.id, 'CALCULUS', 'التفاضل والتكامل', 'رياضيات بحتة', 10, 0, 0, 0, '#2563EB'),
+        (NEW.id, 'ALGEBRA_SOLID_GEO', 'الجبر والهندسة الفراغية', 'رياضيات بحتة', 8, 0, 0, 0, '#7C3AED'),
+        (NEW.id, 'STATICS', 'الاستاتيكا (توازن الأجسام)', 'رياضيات تطبيقية', 6, 0, 0, 0, '#059669'),
+        (NEW.id, 'DYNAMICS', 'الديناميكا (قوانين الحركة)', 'رياضيات تطبيقية', 7, 0, 0, 0, '#D97706'),
+        (NEW.id, 'PHYSICS', 'الفيزياء للثانوية العامة', 'العلوم الفيزيائية', 12, 0, 0, 0, '#DC2626')
     ON CONFLICT (user_id, subject_code) DO NOTHING;
 
     RETURN NEW;

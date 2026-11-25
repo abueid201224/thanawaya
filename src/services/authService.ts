@@ -99,19 +99,18 @@ export function normalizePhoneDigits(input: string): string {
  * Builds a default local profile (used for offline guest or master admin fallback)
  */
 export function createDefaultProfile(email: string, fullName?: string): UserProfile {
-  const isMaster = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
   return {
-    id: isMaster ? 'master_admin_root' : `student_${Date.now()}`,
-    name: fullName || (isMaster ? 'المهندس أحمد حمادة (مدير المنظومة)' : 'طالب ثانوية عامة'),
+    id: `student_${Date.now()}`,
+    name: fullName || 'طالب ثانوية عامة',
     email: email.trim(),
-    role: isMaster ? 'admin' : 'student',
-    seatingNumber: isMaster ? 'ADMIN-001' : '٤٨١٩٢٠',
-    school: isMaster ? 'الإدارة العامة لمنظومة المناهج' : 'مدرسة المتفوقين الثانوية',
+    role: 'student',
+    seatingNumber: '—',
+    school: 'مدرسة الثانوية العامة',
     governorate: 'القاهرة',
-    targetFaculty: 'كلية الهندسة - جامعة القاهرة',
-    dailyStreak: 1,
-    disciplineScore: 95,
-    preferredStudyHours: 7
+    targetFaculty: 'كلية الهندسة',
+    dailyStreak: 0,
+    disciplineScore: 0,
+    preferredStudyHours: 6
   };
 }
 
@@ -194,14 +193,14 @@ class AuthService {
         id: data.id,
         name: data.full_name,
         email: data.email,
-        role: isMaster ? 'admin' : ((data.role as UserRole) || 'student'),
-        seatingNumber: data.seating_number || '٤٨١٩٢٠',
-        school: data.school_name || 'مدرسة المتفوقين الثانوية',
+        role: (data.role as UserRole) || 'student',
+        seatingNumber: data.seating_number || '—',
+        school: data.school_name || 'مدرسة الثانوية العامة',
         governorate: data.governorate || 'القاهرة',
         targetFaculty: data.target_faculty || 'كلية الهندسة',
-        dailyStreak: data.daily_streak || 1,
-        disciplineScore: data.discipline_score || 94,
-        preferredStudyHours: data.preferred_study_hours || 7,
+        dailyStreak: data.daily_streak || 0,
+        disciplineScore: data.discipline_score || 0,
+        preferredStudyHours: data.preferred_study_hours || 6,
         avatarUrl: data.avatar_url
       };
     } catch {
