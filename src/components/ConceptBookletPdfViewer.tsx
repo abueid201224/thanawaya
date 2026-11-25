@@ -54,6 +54,8 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
   const [zoomLevel, setZoomLevel] = useState<number>(100); // 80, 100, 120, 140 %
   const [showAnnotationsDrawer, setShowAnnotationsDrawer] = useState<boolean>(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [pendingConfirmAction, setPendingConfirmAction] = useState<'clear_page' | 'reset_all' | null>(null);
+  const [clipboardNotice, setClipboardNotice] = useState<string | null>(null);
 
   // Active Tool state
   const [activeTool, setActiveTool] = useState<'select' | 'highlighter' | 'sticky_note' | 'eraser'>('select');
@@ -467,18 +469,23 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
 
   // Reset to original clean state
   const handleResetAnnotations = () => {
-    if (window.confirm('هل تريد إعادة تعيين التظليلات والملاحظات للنسخة الافتراضية؟')) {
-      setHighlights(INITIAL_BOOKLET_ANNOTATIONS.highlights);
-      setStickyNotes(INITIAL_BOOKLET_ANNOTATIONS.stickyNotes);
-    }
+    setPendingConfirmAction('reset_all');
   };
 
   // Clear current page annotations
   const handleClearCurrentPage = () => {
-    if (window.confirm(`هل أنت متأكد من مسح جميع التظليلات والملاحظات في الصفحة ${currentPage}؟`)) {
+    setPendingConfirmAction('clear_page');
+  };
+
+  const handleConfirmPendingAction = () => {
+    if (pendingConfirmAction === 'reset_all') {
+      setHighlights(INITIAL_BOOKLET_ANNOTATIONS.highlights);
+      setStickyNotes(INITIAL_BOOKLET_ANNOTATIONS.stickyNotes);
+    } else if (pendingConfirmAction === 'clear_page') {
       setHighlights((prev) => prev.filter((h) => h.pageNumber !== currentPage));
       setStickyNotes((prev) => prev.filter((s) => s.pageNumber !== currentPage));
     }
+    setPendingConfirmAction(null);
   };
 
   // Jump to page from drawer or dropdown
@@ -712,6 +719,32 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
             </button>
           </div>
         </div>
+
+        {pendingConfirmAction && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-rose-950/60 border border-rose-700/50 rounded-xl px-3 py-2 text-xs text-rose-100">
+            <span>
+              {pendingConfirmAction === 'reset_all'
+                ? 'هل تريد إعادة تعيين التظليلات والملاحظات للنسخة الافتراضية؟'
+                : `هل أنت متأكد من مسح جميع التظليلات والملاحظات في الصفحة ${currentPage}؟`}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmPendingAction}
+                className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer"
+              >
+                تأكيد
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingConfirmAction(null)}
+                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. MAIN DOCUMENT VIEW & INTERACTIVE OVERLAY */}
@@ -1214,6 +1247,11 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
 
             {/* Drawer Footer Actions */}
             <div className="pt-3 border-t border-slate-800 space-y-2">
+              {clipboardNotice && (
+                <div className="text-[11px] text-emerald-300 bg-emerald-950/60 border border-emerald-700/40 rounded-lg px-2.5 py-1.5 text-center">
+                  {clipboardNotice}
+                </div>
+              )}
               <button
                 onClick={() => {
                   const summaryText = [
@@ -1226,8 +1264,15 @@ export const ConceptBookletPdfViewer: React.FC<ConceptBookletPdfViewerProps> = (
                     )
                   ].join('\n\n');
 
-                  navigator.clipboard.writeText(summaryText);
-                  alert('تم نسخ ملخص الملاحظات والتظليلات إلى الحافظة!');
+                  navigator.clipboard?.writeText(summaryText).then(
+                    () => {
+                      setClipboardNotice('تم نسخ ملخص الملاحظات والتظليلات إلى الحافظة!');
+                      setTimeout(() => setClipboardNotice(null), 3000);
+                    },
+                    () => {
+                      setClipboardNotice('تعذر النسخ التلقائي للحافظة.');
+                    }
+                  );
                 }}
                 className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >

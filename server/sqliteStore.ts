@@ -91,6 +91,9 @@ export class SqliteStudyStore {
   private db: NodeDatabaseSync;
   public readonly dbPath: string;
 
+  private closed = false;
+  private transactionDepth = 0;
+
   constructor(dbPath: string = ':memory:') {
     this.dbPath = dbPath;
     if (dbPath !== ':memory:') {
@@ -106,9 +109,56 @@ export class SqliteStudyStore {
     this.seedOfficialMoeSources();
   }
 
+  public isInTransaction(): boolean {
+    return this.transactionDepth > 0 || Boolean((this.db as unknown as { isTransaction?: boolean }).isTransaction);
+  }
+
+  /**
+   * Executes a database unit of work inside an atomic SQLite transaction.
+   * Uses BEGIN IMMEDIATE for top-level transactions so the write lock is acquired
+   * upfront, preventing partial writes or SQLITE_BUSY upgrades on abrupt Windows shutdown.
+   */
+  private runInTransaction<T>(fn: () => T): T {
+    const isOuter = this.transactionDepth === 0;
+    this.transactionDepth += 1;
+    const savepointName = `sp_tx_${this.transactionDepth}`;
+
+    if (isOuter) {
+      this.db.exec('BEGIN IMMEDIATE;');
+    } else {
+      this.db.exec(`SAVEPOINT ${savepointName};`);
+    }
+
+    try {
+      const result = fn();
+      if (isOuter) {
+        this.db.exec('COMMIT;');
+      } else {
+        this.db.exec(`RELEASE SAVEPOINT ${savepointName};`);
+      }
+      return result;
+    } catch (err) {
+      try {
+        if (isOuter) {
+          this.db.exec('ROLLBACK;');
+        } else {
+          this.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName};`);
+          this.db.exec(`RELEASE SAVEPOINT ${savepointName};`);
+        }
+      } catch {
+        // Ignore rollback failure if database handle is already closing or corrupted
+      }
+      throw err;
+    } finally {
+      this.transactionDepth -= 1;
+    }
+  }
+
   private initializeSchema(): void {
+    this.db.exec('PRAGMA busy_timeout = 5000;');
     if (this.dbPath !== ':memory:') {
       this.db.exec('PRAGMA journal_mode = WAL;');
+      this.db.exec('PRAGMA synchronous = FULL;');
     }
     this.db.exec('PRAGMA foreign_keys = ON;');
 
@@ -213,32 +263,47 @@ export class SqliteStudyStore {
 
   private seedOfficialMoeSources(): void {
     const now = new Date().toISOString();
-    const stmt = this.db.prepare(`
-      INSERT INTO official_sources (id, title_ar, portal_type, url, academic_year, verified_domain, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        title_ar = excluded.title_ar,
-        portal_type = excluded.portal_type,
-        url = excluded.url,
-        academic_year = excluded.academic_year,
-        verified_domain = excluded.verified_domain
-    `);
+    this.runInTransaction(() => {
+      const stmt = this.db.prepare(`
+        INSERT INTO official_sources (id, title_ar, portal_type, url, academic_year, verified_domain, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title_ar = excluded.title_ar,
+          portal_type = excluded.portal_type,
+          url = excluded.url,
+          academic_year = excluded.academic_year,
+          verified_domain = excluded.verified_domain
+      `);
 
-    for (const src of OFFICIAL_MOE_SOURCES) {
-      stmt.run(
-        src.id,
-        src.titleAr,
-        src.portalType,
-        src.url,
-        src.academicYear,
-        src.verifiedDomain,
-        now
-      );
-    }
+      for (const src of OFFICIAL_MOE_SOURCES) {
+        stmt.run(
+          src.id,
+          src.titleAr,
+          src.portalType,
+          src.url,
+          src.academicYear,
+          src.verifiedDomain,
+          now
+        );
+      }
+    });
   }
 
   public close(): void {
-    this.db.close();
+    if (this.closed) return;
+    this.closed = true;
+    if (this.dbPath !== ':memory:') {
+      try {
+        this.db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+      } catch {
+        // ignore checkpoint failure if database is already closing
+      }
+    }
+    try {
+      this.db.close();
+    } catch {
+      // already closed
+    }
   }
 
   // ==========================================
@@ -267,19 +332,21 @@ export class SqliteStudyStore {
     }
     const src = validated.value;
     const now = new Date().toISOString();
-    this.db
-      .prepare(`
-        INSERT INTO official_sources (id, title_ar, portal_type, url, academic_year, verified_domain, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          title_ar = excluded.title_ar,
-          portal_type = excluded.portal_type,
-          url = excluded.url,
-          academic_year = excluded.academic_year,
-          verified_domain = excluded.verified_domain
-      `)
-      .run(src.id, src.titleAr, src.portalType, src.url, src.academicYear, src.verifiedDomain, now);
-    return src;
+    return this.runInTransaction(() => {
+      this.db
+        .prepare(`
+          INSERT INTO official_sources (id, title_ar, portal_type, url, academic_year, verified_domain, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            title_ar = excluded.title_ar,
+            portal_type = excluded.portal_type,
+            url = excluded.url,
+            academic_year = excluded.academic_year,
+            verified_domain = excluded.verified_domain
+        `)
+        .run(src.id, src.titleAr, src.portalType, src.url, src.academicYear, src.verifiedDomain, now);
+      return src;
+    });
   }
 
   public upsertCurriculumUnit(raw: unknown): CurriculumUnitSchema {
@@ -289,36 +356,38 @@ export class SqliteStudyStore {
     }
     const unit = validated.value;
     const now = new Date().toISOString();
-    this.db
-      .prepare(`
-        INSERT INTO curriculum_units (
-          id, subject_code, subject_name_ar, unit_number, title, description,
-          learning_outcomes_json, source_id, academic_year, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          subject_code = excluded.subject_code,
-          subject_name_ar = excluded.subject_name_ar,
-          unit_number = excluded.unit_number,
-          title = excluded.title,
-          description = excluded.description,
-          learning_outcomes_json = excluded.learning_outcomes_json,
-          source_id = excluded.source_id,
-          academic_year = excluded.academic_year,
-          updated_at = excluded.updated_at
-      `)
-      .run(
-        unit.id,
-        unit.subjectCode,
-        unit.subjectNameAr,
-        unit.unitNumber,
-        unit.title,
-        unit.description,
-        JSON.stringify(unit.learningOutcomes),
-        unit.sourceId ?? null,
-        unit.academicYear,
-        now
-      );
-    return unit;
+    return this.runInTransaction(() => {
+      this.db
+        .prepare(`
+          INSERT INTO curriculum_units (
+            id, subject_code, subject_name_ar, unit_number, title, description,
+            learning_outcomes_json, source_id, academic_year, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            subject_code = excluded.subject_code,
+            subject_name_ar = excluded.subject_name_ar,
+            unit_number = excluded.unit_number,
+            title = excluded.title,
+            description = excluded.description,
+            learning_outcomes_json = excluded.learning_outcomes_json,
+            source_id = excluded.source_id,
+            academic_year = excluded.academic_year,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          unit.id,
+          unit.subjectCode,
+          unit.subjectNameAr,
+          unit.unitNumber,
+          unit.title,
+          unit.description,
+          JSON.stringify(unit.learningOutcomes),
+          unit.sourceId ?? null,
+          unit.academicYear,
+          now
+        );
+      return unit;
+    });
   }
 
   public upsertContentQuestion(raw: unknown): ContentQuestionSchema {
@@ -327,56 +396,58 @@ export class SqliteStudyStore {
       throw new Error(validated.error);
     }
     const q = validated.value;
-    this.db
-      .prepare(`
-        INSERT INTO content_questions (
-          id, question_version, unit_id, subject_code, question_number, question_text,
-          options_json, correct_key, explanation, solution_steps_json, hints_json,
-          difficulty, targeted_learning_outcome, exam_source, source_id,
-          review_status, reviewed_by, reviewed_at, verified_sympy
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          question_version = excluded.question_version,
-          unit_id = excluded.unit_id,
-          subject_code = excluded.subject_code,
-          question_number = excluded.question_number,
-          question_text = excluded.question_text,
-          options_json = excluded.options_json,
-          correct_key = excluded.correct_key,
-          explanation = excluded.explanation,
-          solution_steps_json = excluded.solution_steps_json,
-          hints_json = excluded.hints_json,
-          difficulty = excluded.difficulty,
-          targeted_learning_outcome = excluded.targeted_learning_outcome,
-          exam_source = excluded.exam_source,
-          source_id = excluded.source_id,
-          review_status = excluded.review_status,
-          reviewed_by = excluded.reviewed_by,
-          reviewed_at = excluded.reviewed_at,
-          verified_sympy = excluded.verified_sympy
-      `)
-      .run(
-        q.id,
-        q.questionVersion,
-        q.unitId,
-        q.subjectCode,
-        q.questionNumber,
-        q.questionText,
-        JSON.stringify(q.options),
-        q.correctKey,
-        q.explanation,
-        q.solutionSteps ? JSON.stringify(q.solutionSteps) : null,
-        q.hints ? JSON.stringify(q.hints) : null,
-        q.difficulty,
-        q.targetedLearningOutcome,
-        q.examSource ?? null,
-        q.sourceId ?? null,
-        q.reviewStatus,
-        q.reviewedBy ?? null,
-        q.reviewedAt ?? null,
-        q.verifiedBySympy ? 1 : 0
-      );
-    return q;
+    return this.runInTransaction(() => {
+      this.db
+        .prepare(`
+          INSERT INTO content_questions (
+            id, question_version, unit_id, subject_code, question_number, question_text,
+            options_json, correct_key, explanation, solution_steps_json, hints_json,
+            difficulty, targeted_learning_outcome, exam_source, source_id,
+            review_status, reviewed_by, reviewed_at, verified_sympy
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            question_version = excluded.question_version,
+            unit_id = excluded.unit_id,
+            subject_code = excluded.subject_code,
+            question_number = excluded.question_number,
+            question_text = excluded.question_text,
+            options_json = excluded.options_json,
+            correct_key = excluded.correct_key,
+            explanation = excluded.explanation,
+            solution_steps_json = excluded.solution_steps_json,
+            hints_json = excluded.hints_json,
+            difficulty = excluded.difficulty,
+            targeted_learning_outcome = excluded.targeted_learning_outcome,
+            exam_source = excluded.exam_source,
+            source_id = excluded.source_id,
+            review_status = excluded.review_status,
+            reviewed_by = excluded.reviewed_by,
+            reviewed_at = excluded.reviewed_at,
+            verified_sympy = excluded.verified_sympy
+        `)
+        .run(
+          q.id,
+          q.questionVersion,
+          q.unitId,
+          q.subjectCode,
+          q.questionNumber,
+          q.questionText,
+          JSON.stringify(q.options),
+          q.correctKey,
+          q.explanation,
+          q.solutionSteps ? JSON.stringify(q.solutionSteps) : null,
+          q.hints ? JSON.stringify(q.hints) : null,
+          q.difficulty,
+          q.targetedLearningOutcome,
+          q.examSource ?? null,
+          q.sourceId ?? null,
+          q.reviewStatus,
+          q.reviewedBy ?? null,
+          q.reviewedAt ?? null,
+          q.verifiedBySympy ? 1 : 0
+        );
+      return q;
+    });
   }
 
   public getStudentApprovedCurriculum(): Array<CurriculumUnitSchema & { questions: ContentQuestionSchema[] }> {
@@ -465,6 +536,15 @@ export class SqliteStudyStore {
     if (!input.questionId || typeof input.questionId !== 'string') {
       throw new Error('questionId is required');
     }
+    if (!input.unitId || typeof input.unitId !== 'string') {
+      throw new Error('unitId is required');
+    }
+    if (!input.subjectCode || typeof input.subjectCode !== 'string') {
+      throw new Error('subjectCode is required');
+    }
+    if (typeof input.selectedKey !== 'string' || !input.selectedKey.trim()) {
+      throw new Error('selectedKey is required');
+    }
     if (!Number.isInteger(input.questionVersion) || input.questionVersion < 1) {
       throw new Error('questionVersion must be >= 1');
     }
@@ -479,46 +559,48 @@ export class SqliteStudyStore {
     const id = input.id || `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const timestamp = input.timestamp || new Date().toISOString();
 
-    this.db
-      .prepare(`
-        INSERT INTO study_attempts (
-          id, question_id, question_version, unit_id, subject_code,
-          mode, selected_key, is_correct, hint_tier_used, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      .run(
-        id,
-        input.questionId,
-        input.questionVersion,
-        input.unitId,
-        input.subjectCode,
-        input.mode,
-        input.selectedKey,
-        input.isCorrect ? 1 : 0,
-        hintTier,
-        timestamp
-      );
+    return this.runInTransaction(() => {
+      this.db
+        .prepare(`
+          INSERT INTO study_attempts (
+            id, question_id, question_version, unit_id, subject_code,
+            mode, selected_key, is_correct, hint_tier_used, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .run(
+          id,
+          input.questionId,
+          input.questionVersion,
+          input.unitId,
+          input.subjectCode,
+          input.mode,
+          input.selectedKey,
+          input.isCorrect ? 1 : 0,
+          hintTier,
+          timestamp
+        );
 
-    // Read-back verification from SQLite
-    const row = this.db
-      .prepare('SELECT * FROM study_attempts WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
-    if (!row) {
-      throw new Error('Failed to verify SQLite write for study attempt');
-    }
+      // Read-back verification inside the same atomic transaction
+      const row = this.db
+        .prepare('SELECT * FROM study_attempts WHERE id = ?')
+        .get(id) as Record<string, unknown> | undefined;
+      if (!row) {
+        throw new Error('Failed to verify SQLite write for study attempt');
+      }
 
-    return {
-      id: String(row.id),
-      questionId: String(row.question_id),
-      questionVersion: Number(row.question_version),
-      unitId: String(row.unit_id),
-      subjectCode: String(row.subject_code),
-      mode: String(row.mode) as StudyMode,
-      selectedKey: String(row.selected_key),
-      isCorrect: Number(row.is_correct) === 1,
-      hintTierUsed: Number(row.hint_tier_used) as 0 | 1 | 2 | 3,
-      timestamp: String(row.created_at)
-    };
+      return {
+        id: String(row.id),
+        questionId: String(row.question_id),
+        questionVersion: Number(row.question_version),
+        unitId: String(row.unit_id),
+        subjectCode: String(row.subject_code),
+        mode: String(row.mode) as StudyMode,
+        selectedKey: String(row.selected_key),
+        isCorrect: Number(row.is_correct) === 1,
+        hintTierUsed: Number(row.hint_tier_used) as 0 | 1 | 2 | 3,
+        timestamp: String(row.created_at)
+      };
+    });
   }
 
   public getAttempts(limit: number = 200): SqliteStudyAttempt[] {
@@ -564,16 +646,18 @@ export class SqliteStudyStore {
       throw new Error('spaced intervals must be a 4-element tuple from [1, 3, 7, 14]');
     }
     const now = new Date().toISOString();
-    this.db
-      .prepare(`
-        INSERT INTO spaced_settings (key, value_json, updated_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(key) DO UPDATE SET
-          value_json = excluded.value_json,
-          updated_at = excluded.updated_at
-      `)
-      .run('spaced_intervals', JSON.stringify(intervals), now);
-    return this.getSpacedIntervals();
+    return this.runInTransaction(() => {
+      this.db
+        .prepare(`
+          INSERT INTO spaced_settings (key, value_json, updated_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(key) DO UPDATE SET
+            value_json = excluded.value_json,
+            updated_at = excluded.updated_at
+        `)
+        .run('spaced_intervals', JSON.stringify(intervals), now);
+      return this.getSpacedIntervals();
+    });
   }
 
   public captureMistake(input: {
@@ -592,6 +676,30 @@ export class SqliteStudyStore {
     studentNote?: string;
     now?: Date;
   }): SqliteMistakeEntry {
+    if (!input.questionId || typeof input.questionId !== 'string') {
+      throw new Error('questionId is required');
+    }
+    if (!input.unitId || typeof input.unitId !== 'string') {
+      throw new Error('unitId is required');
+    }
+    if (!input.subjectCode || typeof input.subjectCode !== 'string') {
+      throw new Error('subjectCode is required');
+    }
+    if (!input.subjectNameAr || typeof input.subjectNameAr !== 'string') {
+      throw new Error('subjectNameAr is required');
+    }
+    if (!input.questionText || typeof input.questionText !== 'string') {
+      throw new Error('questionText is required');
+    }
+    if (typeof input.selectedKey !== 'string' || !input.selectedKey.trim()) {
+      throw new Error('selectedKey is required');
+    }
+    if (typeof input.correctKey !== 'string' || !input.correctKey.trim()) {
+      throw new Error('correctKey is required');
+    }
+    if (typeof input.explanation !== 'string') {
+      throw new Error('explanation is required');
+    }
     if (!VALID_ERROR_TYPES.has(input.errorType)) {
       throw new Error('Invalid errorType');
     }
@@ -601,58 +709,61 @@ export class SqliteStudyStore {
 
     const nowDate = input.now || new Date();
     const nowIso = nowDate.toISOString();
-    const intervals = this.getSpacedIntervals();
-    const firstInterval = intervals[0] || 1;
-    const nextReviewAt = addDaysIso(nowDate, firstInterval);
     const id = input.id || `mst_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    this.db
-      .prepare(`
-        INSERT INTO mistake_notebook (
-          id, question_id, question_version, unit_id, subject_code, subject_name_ar,
-          question_text, selected_key, correct_key, explanation, solution_steps_json,
-          error_type, student_note, review_interval_days, review_count, next_review_at,
-          resolved, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?)
-        ON CONFLICT(question_id, question_version) DO UPDATE SET
-          selected_key = excluded.selected_key,
-          error_type = excluded.error_type,
-          student_note = CASE
-            WHEN excluded.student_note <> '' THEN excluded.student_note
-            ELSE mistake_notebook.student_note
-          END,
-          review_interval_days = excluded.review_interval_days,
-          next_review_at = excluded.next_review_at,
-          resolved = 0,
-          updated_at = excluded.updated_at
-      `)
-      .run(
-        id,
-        input.questionId,
-        input.questionVersion,
-        input.unitId,
-        input.subjectCode,
-        input.subjectNameAr,
-        input.questionText,
-        input.selectedKey,
-        input.correctKey,
-        input.explanation,
-        input.solutionSteps ? JSON.stringify(input.solutionSteps) : null,
-        input.errorType,
-        input.studentNote || '',
-        firstInterval,
-        nextReviewAt,
-        nowIso,
-        nowIso
-      );
+    return this.runInTransaction(() => {
+      const intervals = this.getSpacedIntervals();
+      const firstInterval = intervals[0] || 1;
+      const nextReviewAt = addDaysIso(nowDate, firstInterval);
 
-    const row = this.db
-      .prepare('SELECT * FROM mistake_notebook WHERE question_id = ? AND question_version = ?')
-      .get(input.questionId, input.questionVersion) as Record<string, unknown> | undefined;
-    if (!row) {
-      throw new Error('Failed to verify SQLite write for mistake entry');
-    }
-    return this.mapMistakeRow(row);
+      this.db
+        .prepare(`
+          INSERT INTO mistake_notebook (
+            id, question_id, question_version, unit_id, subject_code, subject_name_ar,
+            question_text, selected_key, correct_key, explanation, solution_steps_json,
+            error_type, student_note, review_interval_days, review_count, next_review_at,
+            resolved, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?)
+          ON CONFLICT(question_id, question_version) DO UPDATE SET
+            selected_key = excluded.selected_key,
+            error_type = excluded.error_type,
+            student_note = CASE
+              WHEN excluded.student_note <> '' THEN excluded.student_note
+              ELSE mistake_notebook.student_note
+            END,
+            review_interval_days = excluded.review_interval_days,
+            next_review_at = excluded.next_review_at,
+            resolved = 0,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          id,
+          input.questionId,
+          input.questionVersion,
+          input.unitId,
+          input.subjectCode,
+          input.subjectNameAr,
+          input.questionText,
+          input.selectedKey,
+          input.correctKey,
+          input.explanation,
+          input.solutionSteps ? JSON.stringify(input.solutionSteps) : null,
+          input.errorType,
+          input.studentNote || '',
+          firstInterval,
+          nextReviewAt,
+          nowIso,
+          nowIso
+        );
+
+      const row = this.db
+        .prepare('SELECT * FROM mistake_notebook WHERE question_id = ? AND question_version = ?')
+        .get(input.questionId, input.questionVersion) as Record<string, unknown> | undefined;
+      if (!row) {
+        throw new Error('Failed to verify SQLite write for mistake entry');
+      }
+      return this.mapMistakeRow(row);
+    });
   }
 
   public getMistakes(): SqliteMistakeEntry[] {
@@ -676,49 +787,87 @@ export class SqliteStudyStore {
     wasCorrect: boolean,
     now: Date = new Date()
   ): SqliteMistakeEntry {
-    const existing = this.db
-      .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
-      .get(mistakeId) as Record<string, unknown> | undefined;
-    if (!existing) {
-      throw new Error('Mistake entry not found');
-    }
-
-    const intervals = this.getSpacedIntervals();
-    const currentInterval = Number(existing.review_interval_days) as SpacedIntervalDays;
-    let nextInterval: SpacedIntervalDays = intervals[0] || 1;
-    let resolved = false;
-
-    if (wasCorrect) {
-      const idx = intervals.indexOf(currentInterval);
-      if (idx === -1) {
-        nextInterval = intervals[0] || 1;
-      } else if (idx === intervals.length - 1) {
-        nextInterval = intervals[idx];
-        resolved = true;
-      } else {
-        nextInterval = intervals[idx + 1];
+    return this.runInTransaction(() => {
+      const existing = this.db
+        .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
+        .get(mistakeId) as Record<string, unknown> | undefined;
+      if (!existing) {
+        throw new Error('Mistake entry not found');
       }
+
+      const intervals = this.getSpacedIntervals();
+      const currentInterval = Number(existing.review_interval_days) as SpacedIntervalDays;
+      let nextInterval: SpacedIntervalDays = intervals[0] || 1;
+      let resolved = false;
+
+      if (wasCorrect) {
+        const idx = intervals.indexOf(currentInterval);
+        if (idx === -1) {
+          nextInterval = intervals[0] || 1;
+        } else if (idx === intervals.length - 1) {
+          nextInterval = intervals[idx];
+          resolved = true;
+        } else {
+          nextInterval = intervals[idx + 1];
+        }
+      }
+
+      const nextReviewAt = addDaysIso(now, nextInterval);
+      const updatedAt = now.toISOString();
+
+      this.db
+        .prepare(`
+          UPDATE mistake_notebook
+          SET review_interval_days = ?,
+              review_count = review_count + 1,
+              next_review_at = ?,
+              resolved = ?,
+              updated_at = ?
+          WHERE id = ?
+        `)
+        .run(nextInterval, nextReviewAt, resolved ? 1 : 0, updatedAt, mistakeId);
+
+      const updated = this.db
+        .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
+        .get(mistakeId) as Record<string, unknown>;
+      return this.mapMistakeRow(updated);
+    });
+  }
+
+  public updateMistakeClassification(
+    mistakeId: string,
+    errorType: MistakeErrorType,
+    studentNote?: string,
+    now: Date = new Date()
+  ): SqliteMistakeEntry {
+    if (!VALID_ERROR_TYPES.has(errorType)) {
+      throw new Error('Invalid errorType');
     }
+    return this.runInTransaction(() => {
+      const existing = this.db
+        .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
+        .get(mistakeId) as Record<string, unknown> | undefined;
+      if (!existing) {
+        throw new Error('Mistake entry not found');
+      }
 
-    const nextReviewAt = addDaysIso(now, nextInterval);
-    const updatedAt = now.toISOString();
+      const updatedAt = now.toISOString();
+      const nextNote = studentNote !== undefined ? studentNote : String(existing.student_note || '');
+      this.db
+        .prepare(`
+          UPDATE mistake_notebook
+          SET error_type = ?,
+              student_note = ?,
+              updated_at = ?
+          WHERE id = ?
+        `)
+        .run(errorType, nextNote, updatedAt, mistakeId);
 
-    this.db
-      .prepare(`
-        UPDATE mistake_notebook
-        SET review_interval_days = ?,
-            review_count = review_count + 1,
-            next_review_at = ?,
-            resolved = ?,
-            updated_at = ?
-        WHERE id = ?
-      `)
-      .run(nextInterval, nextReviewAt, resolved ? 1 : 0, updatedAt, mistakeId);
-
-    const updated = this.db
-      .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
-      .get(mistakeId) as Record<string, unknown>;
-    return this.mapMistakeRow(updated);
+      const updated = this.db
+        .prepare('SELECT * FROM mistake_notebook WHERE id = ?')
+        .get(mistakeId) as Record<string, unknown>;
+      return this.mapMistakeRow(updated);
+    });
   }
 
   private mapMistakeRow(row: Record<string, unknown>): SqliteMistakeEntry {

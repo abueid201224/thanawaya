@@ -32,7 +32,7 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --no-audit --no-fund
 
       - name: 🔐 Validate Required Secrets for Windows Production Build
         shell: pwsh
@@ -64,8 +64,14 @@ jobs:
       - name: 🛡️ Verify Build Invariants & Anti-Drift Checks
         run: node scripts/verify-build.mjs
 
+      - name: 🔬 Run E2E Build Contract Tests
+        run: npm run test:e2e
+
       - name: 📦 Package Windows Installer & Portable Executable
-        run: npx electron-builder --win --x64 --config electron-builder.yml
+        shell: pwsh
+        run: |
+          $publishMode = if ("${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' }}" -eq "True") { "onTagOrDraft" } else { "never" }
+          npx electron-builder --win --x64 --config electron-builder.yml --publish $publishMode
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}

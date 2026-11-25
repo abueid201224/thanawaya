@@ -24,8 +24,6 @@ export interface AuthActionResult {
   errorMessage?: string;
 }
 
-const MASTER_ADMIN_EMAIL = 'ahmed.hamada.gana.2012@gmail.com';
-
 /**
  * Translates raw Supabase and network errors into clear, student-friendly Arabic text.
  */
@@ -96,7 +94,7 @@ export function normalizePhoneDigits(input: string): string {
 }
 
 /**
- * Builds a default local profile (used for offline guest or master admin fallback)
+ * Builds a default local profile (used for offline guest fallback)
  */
 export function createDefaultProfile(email: string, fullName?: string): UserProfile {
   return {
@@ -169,7 +167,6 @@ class AuthService {
    */
   public async fetchStudentProfile(userId: string, email: string): Promise<UserProfile> {
     const supabase = getSupabase();
-    const isMaster = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
     if (!supabase) {
       return createDefaultProfile(email);

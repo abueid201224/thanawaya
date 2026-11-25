@@ -14,6 +14,9 @@ import {
   Layers
 } from 'lucide-react';
 import { offlineStorage } from '../services/offlineStorage';
+import { initialCurriculumUnits, initialMonthlyExams } from '../data/fullCurriculumData';
+import { OFFICIAL_BOOKLET_PAGES } from '../data/conceptBookletPages';
+import { getReviewedUnitsForStudent, getReviewedExamsForStudent } from '../services/contentGate';
 
 interface OfflineSyncModalProps {
   isOpen: boolean;
@@ -34,21 +37,30 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
 
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   const pendingSyncCount = offlineStorage.getPendingSyncCount();
+  const reviewedUnits = getReviewedUnitsForStudent(initialCurriculumUnits);
+  const reviewedExams = getReviewedExamsForStudent(initialMonthlyExams);
 
   const handleDownloadFullOfflinePack = async () => {
     setIsSyncing(true);
-    // Simulate caching full core curriculum units and cheat sheets into IndexedDB
-    setTimeout(async () => {
-      await offlineStorage.setItem('full_curriculum_pack_v1', {
-        status: 'cached',
-        downloadDate: new Date().toISOString(),
-        unitsCount: 16,
-        cheatSheetsCount: 12
-      }, 'curriculum');
-      setIsSyncing(false);
+    try {
+      await offlineStorage.setItem(
+        'full_curriculum_pack_v1',
+        {
+          status: 'cached',
+          downloadDate: new Date().toISOString(),
+          unitsCount: reviewedUnits.length,
+          examsCount: reviewedExams.length,
+          bookletPagesCount: OFFICIAL_BOOKLET_PAGES.length,
+          units: reviewedUnits,
+          exams: reviewedExams
+        },
+        'curriculum'
+      );
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
-    }, 1500);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleExportBackup = () => {
@@ -107,9 +119,9 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
           <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
             <span className="text-slate-400">الملفات المخزنة محلياً:</span>
             <div className="text-xl font-black text-cyan-400 font-mono">
-              {cachedResourcesCount + (downloadSuccess ? 28 : 12)} عنصر
+              {cachedResourcesCount + OFFICIAL_BOOKLET_PAGES.length + reviewedUnits.length} عنصر
             </div>
-            <span className="text-[10px] text-slate-500">مذكرات A4 ومفاهيم وقوانين</span>
+            <span className="text-[10px] text-slate-500">مذكرات A4 وكتيب المفاهيم والوحدات المراجعة</span>
           </div>
 
           <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">

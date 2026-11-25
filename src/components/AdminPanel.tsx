@@ -367,14 +367,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Lock className="w-4 h-4 text-emerald-400" />
-            <span>سجل تدقيق الصلاحيات والامتثال الأمني (Security Audit Log)</span>
+            <span>ملخص الصلاحيات وحالة مراجعة المصادر (Live RBAC &amp; Resource Audit)</span>
           </h3>
 
           <div className="bg-slate-950 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-2 border border-slate-800">
-            <div className="text-emerald-400">[2026-10-28 14:02:11] RBAC Session Verified: User 'Admin_Ahmed' authenticated via DPAPI vault token.</div>
-            <div className="text-blue-400">[2026-10-28 14:15:30] Web Scout Scanner dispatched to 'moe.gov.eg' - 2 documents discovered.</div>
-            <div className="text-purple-400">[2026-10-28 14:22:45] Permission Grant: Only Verified Admin can mutate 'multimedia_library' table.</div>
-            <div className="text-slate-400">[2026-10-28 14:30:19] Student Role Gated: Students hold read/quiz/chat authorization only (NIST SP 800-162 compliant).</div>
+            <div className="text-emerald-400">
+              [ACTIVE ROLE] userRole={userRole} — صلاحية التعديل مقيدة بالحساب الموثق عبر Supabase RLS.
+            </div>
+            <div className="text-blue-400">
+              [SCOUT QUEUE] إجمالي المصادر: {scoutedResources.length} | معتمد: {scoutedResources.filter((r) => r.status === 'approved').length} | قيد الانتظار: {scoutedResources.filter((r) => r.status === 'pending').length} | مرفوض: {scoutedResources.filter((r) => r.status === 'rejected').length}
+            </div>
+            {scoutedResources.map((res) => (
+              <div key={res.id} className="text-slate-400">
+                [{res.dateDiscovered}] [{res.platform}] ({res.status}) {res.title}
+              </div>
+            ))}
           </div>
         </div>
       )}

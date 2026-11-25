@@ -123,39 +123,73 @@ export const CodingBuddyAssistantView: React.FC<CodingBuddyAssistantViewProps> =
     setCurrentPuzzleIndex((prev) => (prev + 1) % CODING_PUZZLES.length);
   };
 
-  // Simulated Sandbox Runner
+  // Deterministic local math/coding sandbox evaluator (no fabricated Python compiler claims)
   const handleRunSandbox = () => {
     setIsRunningSandbox(true);
-    setSandboxOutput('⏳ جارٍ تجهيز البيئة وتشغيل الأوامر...');
 
-    setTimeout(() => {
-      setIsRunningSandbox(false);
-      // Smart simulation for Python / JS demos
+    try {
       if (sandboxCode.includes('discriminant') || sandboxCode.includes('root1')) {
-        setSandboxOutput(`=== [تشغيل بايثون 3.12 - مخرجات الكونسول] ===
-المميز = 1 (جذران حقيقيان)
-الجذر الأول: س = 3.0
-الجذر الثاني: س = 2.0
-✅ تم تنفيذ الكود بنجاح في 0.04 ثانية!`);
+        const aMatch = sandboxCode.match(/^\s*a\s*=\s*(-?\d+(?:\.\d+)?)/m);
+        const bMatch = sandboxCode.match(/^\s*b\s*=\s*(-?\d+(?:\.\d+)?)/m);
+        const cMatch = sandboxCode.match(/^\s*c\s*=\s*(-?\d+(?:\.\d+)?)/m);
+        const a = aMatch ? Number(aMatch[1]) : 1;
+        const b = bMatch ? Number(bMatch[1]) : -5;
+        const c = cMatch ? Number(cMatch[1]) : 6;
+        if (a === 0) {
+          setSandboxOutput('⚠️ المعامل a لا يمكن أن يساوي صفراً في المعادلة التربيعية.');
+        } else {
+          const disc = b * b - 4 * a * c;
+          if (disc > 0) {
+            const r1 = (-b + Math.sqrt(disc)) / (2 * a);
+            const r2 = (-b - Math.sqrt(disc)) / (2 * a);
+            setSandboxOutput(
+              `=== [محاكاة حسابية فورية للمعادلة ${a}x² + (${b})x + (${c}) = 0] ===\nالمميز = ${disc} (جذران حقيقيان مختلفان)\nالجذر الأول: س = ${Number(r1.toFixed(4))}\nالجذر الثاني: س = ${Number(r2.toFixed(4))}`
+            );
+          } else if (disc === 0) {
+            const r = -b / (2 * a);
+            setSandboxOutput(
+              `=== [محاكاة حسابية فورية للمعادلة ${a}x² + (${b})x + (${c}) = 0] ===\nالمميز = 0 (جذر حقيقي مكرر)\nالجذر: س = ${Number(r.toFixed(4))}`
+            );
+          } else {
+            const realPart = (-b / (2 * a)).toFixed(4);
+            const imagPart = (Math.sqrt(-disc) / (2 * a)).toFixed(4);
+            setSandboxOutput(
+              `=== [محاكاة حسابية فورية للمعادلة ${a}x² + (${b})x + (${c}) = 0] ===\nالمميز = ${disc} (جذران مركبان مترافقان)\nالجذر الأول: ${realPart} + ${imagPart}i\nالجذر الثاني: ${realPart} - ${imagPart}i`
+            );
+          }
+        }
       } else if (sandboxCode.includes('get_fibonacci')) {
-        setSandboxOutput(`=== [تشغيل بايثون 3.12 - مخرجات الكونسول] ===
-أول 10 أرقام في المتتالية:
-[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
-النسبة الذهبية التقريبية: 1.6190
-🌟 النسبة تقترب من العدد الذهبي الفاخر φ = 1.618033!`);
+        const nMatch = sandboxCode.match(/get_fibonacci\(\s*(\d+)\s*\)/);
+        const count = Math.min(25, Math.max(2, nMatch ? Number(nMatch[1]) : 10));
+        const seq: number[] = [0, 1];
+        for (let i = 2; i < count; i++) {
+          seq.push(seq[i - 1] + seq[i - 2]);
+        }
+        const slice = seq.slice(0, count);
+        const ratio = slice.length >= 2 && slice[slice.length - 2] > 0
+          ? (slice[slice.length - 1] / slice[slice.length - 2]).toFixed(6)
+          : '—';
+        setSandboxOutput(
+          `=== [حساب متتالية فيبوناتشي محلياً] ===\nأول ${count} حدود:\n[${slice.join(', ')}]\nالنسبة الذهبية التقريبية (${slice[slice.length - 1]}/${slice[slice.length - 2]}): ${ratio}`
+        );
       } else if (sandboxCode.includes('password')) {
-        const randStr = 'K9#mQ!v8@xL2';
-        setSandboxOutput(`=== [تشغيل بايثون 3.12 - مخرجات الكونسول] ===
-كلمة المرور الآمنة المقترحة: ${randStr}
-طول الكلمة: 12 حرف ورمز
-🔒 تشفير عالي القوة مقاوم لهجمات القوة الغاشمة (Brute-force).`);
+        const lenMatch = sandboxCode.match(/length\s*=\s*(\d+)/);
+        const len = Math.min(32, Math.max(8, lenMatch ? Number(lenMatch[1]) : 12));
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+        const bytes = new Uint32Array(len);
+        crypto.getRandomValues(bytes);
+        const generated = Array.from(bytes, (v) => charset[v % charset.length]).join('');
+        setSandboxOutput(
+          `=== [مولد كلمات المرور العشوائي الآمن] ===\nكلمة المرور المولّدة: ${generated}\nالطول: ${len} حرفاً ورمزاً (باستخدام Web Crypto API)`
+        );
       } else {
-        setSandboxOutput(`=== [تشغيل الكود - مخرجات المعاينة] ===
->>> تم قراءة الأسطر البرمجية بنجاح!
-النتيجة: الكود سليم 100% ولا توجد أي أخطاء نحو SyntaxError.
-💡 نصيحة الكوتش: جرب تغير قيم المتغيرات واضغط تشغيل لملاحظة التغير فوراً!`);
+        setSandboxOutput(
+          `ℹ️ تنبيه تقني: المحرر السريع ينفذ حسابياً نماذج المعادلة التربيعية وفيبوناتشي ومولد كلمات المرور محلياً فقط، ولا يتضمن مفسر Python كامل في المتصفح.\nلمراجعة أي كود Python مخصص واكتشاف الأخطاء، استخدم تبويب «المساعد الذكي للبرمجة».`
+        );
       }
-    }, 600);
+    } finally {
+      setIsRunningSandbox(false);
+    }
   };
 
   // Load a preset demo into sandbox

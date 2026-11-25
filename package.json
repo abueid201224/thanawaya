@@ -17,8 +17,9 @@
     "preview": "vite preview",
     "start": "node server.ts",
     "clean": "rm -rf dist dist-electron release server.js",
-    "lint": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "test:unit": "node --test \"tests/**/*.test.mjs\"",
+    "lint": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
+    "test:unit": "node --test \"tests/**/*.test.mjs\" && tsx --test tests/unit/*.test.ts",
+    "test:e2e": "tsx --test tests/e2e/*.test.ts",
     "test": "npm run lint && npm run test:unit"
   },
   "dependencies": {
@@ -45,9 +46,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.21",
     "electron-builder": "^26.15.3",
-    "esbuild": "^0.25.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
+    "esbuild": "^0.28.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",

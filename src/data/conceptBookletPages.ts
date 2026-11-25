@@ -167,7 +167,7 @@ export const OFFICIAL_BOOKLET_PAGES: BookletPageData[] = [
         description: 'عند اقتطاع قرص أو مربع أو جزء من صفيحة منتظمة الكثافة، تعامل مساحة الجزء المقتطع ككتلة سالبة (-m) عند مركز ثقل الجزء المقتطع.',
         ruleBox: {
           title: 'عزم الازدواج المحصل والتكافؤ',
-          formula: '\\vec{M}_{\\text{couple}} = \\vec{r} \\times \\vec{F} = \\pm F \\cdot L',
+          formula: '\\vec{M}_{\\text{couple}} = \\vec{r} \\times \\vec{F} = \\pm (F \\cdot L)\\,\\hat{n} \\quad (|\\vec{M}_{\\text{couple}}| = F \\cdot L)',
           notes: 'عزم الازدواج ثابت وقيمته لا تعتمد على النقطة المأخوذ حولها العزم. الإشارة موجبة عكس عقارب الساعة وسالبة معها.'
         },
         examAlert: 'نصيحة الموجه: لا تغير نقطة الأصل أثناء حل مسألة مركز الثقل، والتزم بإحداثيات الربع الأول الموجبة.'

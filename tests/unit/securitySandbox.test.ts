@@ -56,12 +56,17 @@ test('isPathInSandbox rejects root escapes, protected files, and forbidden exten
     assert.equal(isPathInSandbox(path.join(workspace, 'secure_keys.dat'), dirs, { mode: 'write_file' }), false);
     assert.equal(isPathInSandbox(path.join(workspace, 'user_settings.json'), dirs, { mode: 'write_file' }), false);
     assert.equal(isPathInSandbox(path.join(workspace, 'main.log'), dirs, { mode: 'write_file' }), false);
+    assert.equal(isPathInSandbox(path.join(workspace, 'thanaweya_study.sqlite'), dirs, { mode: 'write_file' }), false);
+    assert.equal(isPathInSandbox(path.join(workspace, 'thanaweya_study.sqlite-wal'), dirs, { mode: 'write_file' }), false);
 
-    // Forbidden extensions (.lnk, .url, .msix, .exe, .ps1) must be rejected
+    // Forbidden extensions (.lnk, .url, .msix, .exe, .ps1, .html, .htm, .svg) must be rejected
     assert.equal(isPathInSandbox(path.join(workspace, 'shortcut.lnk'), dirs, { mode: 'write_file' }), false);
     assert.equal(isPathInSandbox(path.join(workspace, 'link.url'), dirs, { mode: 'write_file' }), false);
     assert.equal(isPathInSandbox(path.join(workspace, 'pkg.msix'), dirs, { mode: 'write_file' }), false);
     assert.equal(isPathInSandbox(path.join(workspace, 'run.exe'), dirs, { mode: 'write_file' }), false);
+    assert.equal(isPathInSandbox(path.join(workspace, 'page.html'), dirs, { mode: 'write_file' }), false);
+    assert.equal(isPathInSandbox(path.join(workspace, 'page.htm'), dirs, { mode: 'write_file' }), false);
+    assert.equal(isPathInSandbox(path.join(workspace, 'vector.svg'), dirs, { mode: 'write_file' }), false);
 
     // Path traversal out of workspace must be rejected
     assert.equal(

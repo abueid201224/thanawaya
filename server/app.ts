@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
+import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { isAllowedHostHeader, isAllowedOrigin } from './hostGuard.ts';
 import {
@@ -16,6 +17,8 @@ export interface AppServerOptions {
   preferredPort?: number;
   host?: string;
   loopbackOnly?: boolean;
+  sessionToken?: string;
+  adminToken?: string;
   sqlitePath?: string;
   sqliteStore?: SqliteStudyStore;
 }
@@ -69,10 +72,40 @@ export function createExpressApp(options: {
   staticDir?: string;
   initialApiKey?: string;
   loopbackOnly?: boolean;
+  sessionToken?: string;
+  adminToken?: string;
   sqlitePath?: string;
   sqliteStore?: SqliteStudyStore;
 }) {
   const app = express();
+  const expectedSessionToken = (options.sessionToken || '').trim();
+  const configuredAdminToken = (options.adminToken || process.env.ADMIN_API_TOKEN || '').trim();
+
+  function safeTokenEquals(provided: string, expected: string): boolean {
+    if (!provided || !expected) return false;
+    const a = Buffer.from(provided, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  function requireAdminIfRemote(req: Request, res: Response, next: NextFunction): void {
+    if (options.loopbackOnly !== false) {
+      next();
+      return;
+    }
+    const headerToken = String(
+      req.headers['x-admin-token'] ||
+      (typeof req.headers.authorization === 'string' && req.headers.authorization.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : '')
+    ).trim();
+    if (!configuredAdminToken || !safeTokenEquals(headerToken, configuredAdminToken)) {
+      res.status(403).json({ error: 'Access denied: admin token required' });
+      return;
+    }
+    next();
+  }
   let currentApiKey = options.initialApiKey || process.env.GEMINI_API_KEY || '';
   let aiClient: GoogleGenAI | null = currentApiKey ? createAiInstance(currentApiKey) : null;
   let studyStore: SqliteStudyStore | null = options.sqliteStore ?? null;
@@ -152,6 +185,14 @@ export function createExpressApp(options: {
         res.status(403).json({ error: 'Access denied: cross-origin request' });
         return;
       }
+      if (expectedSessionToken && req.path.startsWith('/api/') && !(req.path === '/api/health' && req.method === 'GET')) {
+        const rawHeader = req.headers['x-thanaweya-session'];
+        const providedToken = Array.isArray(rawHeader) ? rawHeader[0] : (rawHeader || '');
+        if (!safeTokenEquals(String(providedToken).trim(), expectedSessionToken)) {
+          res.status(403).json({ error: 'Access denied: invalid or missing session token' });
+          return;
+        }
+      }
       res.setHeader('X-Frame-Options', 'DENY');
     }
 
@@ -160,9 +201,16 @@ export function createExpressApp(options: {
     next();
   });
 
-  // Body parser with payload limit for handwritten math scans
-  app.use(express.json({ limit: '35mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '35mb' }));
+  // Strict 1MB default body parser; /api/ocr-math uses an explicit 35MB parser below
+  const defaultJsonParser = express.json({ limit: '1mb' });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/api/ocr-math') {
+      next();
+      return;
+    }
+    defaultJsonParser(req, res, next);
+  });
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
   // 1. Health check endpoint
   app.get('/api/health', (_req: Request, res: Response) => {
@@ -182,7 +230,7 @@ export function createExpressApp(options: {
   });
 
   // 3. Math OCR & Scaffolding extraction endpoint (Strict Honest Error Handling & >=30s Timeout)
-  app.post('/api/ocr-math', async (req: Request, res: Response) => {
+  app.post('/api/ocr-math', express.json({ limit: '35mb' }), async (req: Request, res: Response) => {
     try {
       const { imageBase64, mimeType = 'image/jpeg' } = req.body;
       if (!imageBase64) {
@@ -392,6 +440,68 @@ export function createExpressApp(options: {
     }
   });
 
+  // 4b. AI Math Tutor Scaffolding Chat Endpoint
+  app.post('/api/tutor-chat', async (req: Request, res: Response) => {
+    try {
+      const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      const subjectNameAr = typeof req.body?.subjectNameAr === 'string' ? req.body.subjectNameAr.trim() : 'الرياضيات';
+      const topic = typeof req.body?.topic === 'string' ? req.body.topic.trim() : '';
+      const history = Array.isArray(req.body?.history) ? req.body.history.slice(-8) : [];
+
+      if (!message) {
+        return res.status(400).json({ error: 'رسالة الطالب مطلوبة.', code: 'MESSAGE_REQUIRED' });
+      }
+
+      if (!aiClient || !currentApiKey) {
+        return res.status(503).json({
+          error: 'مفتاح Gemini API غير مضبوط. يرجى إدخال المفتاح في الإعدادات (Ctrl+,) لتفعيل المعلم الذكي، أو استخدام بطاقات المفاهيم المحلية.',
+          code: 'MISSING_API_KEY'
+        });
+      }
+
+      const systemInstruction = `أنت معلم رياضيات خبير للمرحلة الثانوية العامة المصرية (علمي رياضة - ${subjectNameAr}).
+الموضوع الحالي: ${topic || subjectNameAr}.
+استخدم التوجيه السقالي (Scaffolding): ساعد الطالب بخطوة واضحة وصيغ KaTeX ($...$) بدون اختلاق درجات أو روابط غير موثوقة، ولا تعطِ الإجابة النهائية جاهزة مباشرة ما لم يطلب التحقق من خطواته.`;
+
+      const formattedHistory = history
+        .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
+        .map((m: any) => `${m.role === 'user' ? 'الطالب' : 'المعلم'}: ${m.text}`)
+        .join('\n');
+
+      const promptText = formattedHistory ? `${formattedHistory}\nالطالب: ${message}` : message;
+      const response: any = await aiClient.models.generateContent({
+        model: getModel(req.body?.model),
+        contents: promptText,
+        config: {
+          systemInstruction,
+          temperature: 0.3,
+        },
+      });
+
+      const reply = response.text?.trim() || '';
+      if (!reply) {
+        return res.status(502).json({
+          error: 'لم يرجع النموذج إجابة نصية صالحة.',
+          code: 'EMPTY_TUTOR_RESPONSE'
+        });
+      }
+
+      return res.json({ ok: true, reply });
+    } catch (err: any) {
+      const errMsg = String(err?.message || '').toLowerCase();
+      if (err?.status === 429 || errMsg.includes('429') || errMsg.includes('rate limit') || errMsg.includes('resource_exhausted')) {
+        return res.status(429).json({
+          error: 'تم تجاوز حد الطلبات المؤقت لخدمة الذكاء الاصطناعي. يرجى المحاولة بعد دقيقة.',
+          code: 'RATE_LIMITED'
+        });
+      }
+      return res.status(500).json({
+        error: 'تعذر الحصول على رد من المعلم الذكي حالياً.',
+        code: 'TUTOR_CHAT_FAILED'
+      });
+    }
+  });
+
   // 5. Model Configuration Endpoint
   app.get('/api/model-config', (_req: Request, res: Response) => {
     res.json({
@@ -402,7 +512,7 @@ export function createExpressApp(options: {
     });
   });
 
-  app.post('/api/model-config', (req: Request, res: Response) => {
+  app.post('/api/model-config', requireAdminIfRemote, (req: Request, res: Response) => {
     const { model } = req.body;
     if (typeof model !== 'string') {
       return res.status(400).json({
@@ -452,7 +562,7 @@ export function createExpressApp(options: {
     res.json({ sources: store.listOfficialSources() });
   });
 
-  app.post('/api/study/sources', (req: Request, res: Response) => {
+  app.post('/api/study/sources', requireAdminIfRemote, (req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
     try {
@@ -469,7 +579,7 @@ export function createExpressApp(options: {
     res.json({ units: store.getStudentApprovedCurriculum() });
   });
 
-  app.post('/api/study/curriculum/unit', (req: Request, res: Response) => {
+  app.post('/api/study/curriculum/unit', requireAdminIfRemote, (req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
     try {
@@ -480,7 +590,7 @@ export function createExpressApp(options: {
     }
   });
 
-  app.post('/api/study/curriculum/question', (req: Request, res: Response) => {
+  app.post('/api/study/curriculum/question', requireAdminIfRemote, (req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
     try {
@@ -580,6 +690,27 @@ export function createExpressApp(options: {
     }
   });
 
+  app.patch('/api/study/mistakes/:id', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const mistakeId = String(req.params.id || '').trim();
+    if (!mistakeId) {
+      return res.status(400).json({ error: 'Missing mistake id' });
+    }
+    try {
+      const mistake = store.updateMistakeClassification(
+        mistakeId,
+        req.body?.errorType,
+        typeof req.body?.studentNote === 'string' ? req.body.studentNote : undefined
+      );
+      return res.json({ ok: true, mistake });
+    } catch (err: any) {
+      const message = err?.message || 'Failed to update mistake';
+      const status = message === 'Mistake entry not found' ? 404 : 400;
+      return res.status(status).json({ ok: false, error: message });
+    }
+  });
+
   app.post('/api/study/mistakes/:id/review', (req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
@@ -657,13 +788,21 @@ export function createExpressApp(options: {
  */
 export async function startEmbeddedServer(options: AppServerOptions = {}): Promise<RunningEmbeddedServer> {
   const host = options.host || '127.0.0.1';
+  const loopbackOnly = options.loopbackOnly ?? true;
+  const isLoopbackHost = host === '127.0.0.1' || host === '::1' || host === 'localhost';
+  if (loopbackOnly && !isLoopbackHost) {
+    throw new Error(`Security violation: loopbackOnly mode requires a loopback bind host (received "${host}")`);
+  }
+
   const preferredPort = options.preferredPort || 47321;
   const boundPort = await findAvailablePort(preferredPort, host);
 
   const { app, setApiKey, getApiKeyStatus, getModel, setModel, closeStore } = createExpressApp({
     staticDir: options.staticDir,
     initialApiKey: options.initialApiKey,
-    loopbackOnly: options.loopbackOnly ?? true,
+    loopbackOnly,
+    sessionToken: options.sessionToken,
+    adminToken: options.adminToken,
     sqlitePath: options.sqlitePath,
     sqliteStore: options.sqliteStore
   });

@@ -142,27 +142,177 @@ test('SqliteStudyStore seeds official MOE portals, filters unreviewed content, a
 
   // Reopen the SQLite file to verify persistence on disk
   const store2 = new SqliteStudyStore(dbPath);
-  t.after(() => store2.close());
+  try {
+    const curriculum = store2.getStudentApprovedCurriculum();
+    assert.equal(curriculum.length, 1);
+    assert.equal(curriculum[0].questions.length, 1);
+    assert.equal(curriculum[0].questions[0].id, 'q_rev_1');
 
-  const curriculum = store2.getStudentApprovedCurriculum();
-  assert.equal(curriculum.length, 1);
-  assert.equal(curriculum[0].questions.length, 1);
-  assert.equal(curriculum[0].questions[0].id, 'q_rev_1');
+    const attempts = store2.getAttempts();
+    assert.equal(attempts.length, 1);
+    assert.equal(attempts[0].questionId, injectionId);
 
-  const attempts = store2.getAttempts();
-  assert.equal(attempts.length, 1);
-  assert.equal(attempts[0].questionId, injectionId);
+    const day1 = new Date('2026-10-21T09:01:00.000Z');
+    assert.equal(store2.getDueReviews(day1).length, 1);
 
-  const day1 = new Date('2026-10-21T09:01:00.000Z');
-  assert.equal(store2.getDueReviews(day1).length, 1);
+    const r1 = store2.recordSpacedReviewOutcome(mistake.id, true, day1);
+    assert.equal(r1.reviewIntervalDays, 3);
+    const r2 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-10-24T10:00:00.000Z'));
+    assert.equal(r2.reviewIntervalDays, 7);
+    const r3 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-10-31T10:00:00.000Z'));
+    assert.equal(r3.reviewIntervalDays, 14);
+    const r4 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-11-14T10:00:00.000Z'));
+    assert.equal(r4.resolved, true);
+    assert.equal(store2.getDueReviews(new Date('2026-11-14T10:00:00.000Z')).length, 0);
 
-  const r1 = store2.recordSpacedReviewOutcome(mistake.id, true, day1);
-  assert.equal(r1.reviewIntervalDays, 3);
-  const r2 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-10-24T10:00:00.000Z'));
-  assert.equal(r2.reviewIntervalDays, 7);
-  const r3 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-10-31T10:00:00.000Z'));
-  assert.equal(r3.reviewIntervalDays, 14);
-  const r4 = store2.recordSpacedReviewOutcome(mistake.id, true, new Date('2026-11-14T10:00:00.000Z'));
-  assert.equal(r4.resolved, true);
-  assert.equal(store2.getDueReviews(new Date('2026-11-14T10:00:00.000Z')).length, 0);
+    // Classification + note update and validation
+    const updatedMistake = store2.updateMistakeClassification(
+      mistake.id,
+      'sign_unit',
+      'مراجعة الإشارة السالبة'
+    );
+    assert.equal(updatedMistake.errorType, 'sign_unit');
+    assert.equal(updatedMistake.studentNote, 'مراجعة الإشارة السالبة');
+
+    assert.throws(() => store2.updateMistakeClassification(mistake.id, /** @type {any} */ ('invalid_type')));
+    assert.throws(() => store2.updateMistakeClassification('missing_id', 'algebra'));
+  } finally {
+    store2.close();
+  }
+
+  const store3 = new SqliteStudyStore(dbPath);
+  t.after(() => store3.close());
+  const reloadedMistakes = store3.getMistakes();
+  assert.equal(reloadedMistakes.length, 1);
+  assert.equal(reloadedMistakes[0].errorType, 'sign_unit');
+  assert.equal(reloadedMistakes[0].studentNote, 'مراجعة الإشارة السالبة');
 });
+
+test('SqliteStudyStore enforces crash-safe pragmas and atomic transaction rollback for captureMistake & recordAttempt', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'thanaweya-sqlite-tx-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const dbPath = path.join(dir, 'tx.sqlite');
+
+  const store = new SqliteStudyStore(dbPath);
+  t.after(() => store.close());
+  assert.equal(store.isInTransaction(), false);
+
+  const sqliteMod = /** @type {{ DatabaseSync: new (p: string) => { exec: (sql: string) => void; prepare: (sql: string) => { get: () => Record<string, unknown> }; close: () => void } }} */ (
+    process.getBuiltinModule('node:sqlite')
+  );
+  const inspector = new sqliteMod.DatabaseSync(dbPath);
+  t.after(() => inspector.close());
+
+  const journalRow = inspector.prepare('PRAGMA journal_mode;').get();
+  assert.equal(String(journalRow.journal_mode).toLowerCase(), 'wal');
+  const syncRow = inspector.prepare('PRAGMA synchronous;').get();
+  // SQLite synchronous FULL === 2
+  assert.equal(Number(syncRow.synchronous), 2);
+
+  // Install AFTER INSERT triggers to simulate an abrupt failure inside an active transaction
+  inspector.exec(`
+    CREATE TRIGGER test_abort_attempt AFTER INSERT ON study_attempts
+    BEGIN
+      SELECT RAISE(ABORT, 'simulated abrupt interruption during attempt write');
+    END;
+    CREATE TRIGGER test_abort_mistake AFTER INSERT ON mistake_notebook
+    BEGIN
+      SELECT RAISE(ABORT, 'simulated abrupt interruption during mistake write');
+    END;
+  `);
+
+  assert.throws(() =>
+    store.recordAttempt({
+      questionId: 'q_tx_1',
+      questionVersion: 1,
+      unitId: 'u_tx',
+      subjectCode: 'CALCULUS',
+      mode: 'practice',
+      selectedKey: 'B',
+      isCorrect: false
+    })
+  );
+  assert.equal(store.isInTransaction(), false);
+  assert.equal(store.getAttempts().length, 0);
+
+  assert.throws(() =>
+    store.captureMistake({
+      questionId: 'q_tx_1',
+      questionVersion: 1,
+      unitId: 'u_tx',
+      subjectCode: 'CALCULUS',
+      subjectNameAr: 'التفاضل والتكامل',
+      questionText: 'احسب المشتقة',
+      selectedKey: 'B',
+      correctKey: 'A',
+      explanation: 'تطبيق القاعدة',
+      errorType: 'rule'
+    })
+  );
+  assert.equal(store.isInTransaction(), false);
+  assert.equal(store.getMistakes().length, 0);
+
+  // Validation rejects missing required strings prior to opening transaction
+  assert.throws(() =>
+    store.recordAttempt({
+      questionId: 'q_tx_1',
+      questionVersion: 1,
+      unitId: 'u_tx',
+      subjectCode: 'CALCULUS',
+      mode: 'practice',
+      selectedKey: '   ',
+      isCorrect: true
+    })
+  );
+  assert.throws(() =>
+    store.captureMistake({
+      questionId: 'q_tx_1',
+      questionVersion: 1,
+      unitId: 'u_tx',
+      subjectCode: 'CALCULUS',
+      subjectNameAr: 'التفاضل والتكامل',
+      questionText: 'احسب المشتقة',
+      selectedKey: ' ',
+      correctKey: 'A',
+      explanation: 'تطبيق القاعدة',
+      errorType: 'rule'
+    })
+  );
+
+  // Drop triggers and confirm connection cleanly recovers and commits atomically
+  inspector.exec(`
+    DROP TRIGGER test_abort_attempt;
+    DROP TRIGGER test_abort_mistake;
+  `);
+
+  const attempt = store.recordAttempt({
+    questionId: 'q_tx_1',
+    questionVersion: 1,
+    unitId: 'u_tx',
+    subjectCode: 'CALCULUS',
+    mode: 'practice',
+    selectedKey: 'B',
+    isCorrect: false
+  });
+  assert.equal(attempt.questionId, 'q_tx_1');
+  assert.equal(store.isInTransaction(), false);
+  assert.equal(store.getAttempts().length, 1);
+
+  const mistake = store.captureMistake({
+    questionId: 'q_tx_1',
+    questionVersion: 1,
+    unitId: 'u_tx',
+    subjectCode: 'CALCULUS',
+    subjectNameAr: 'التفاضل والتكامل',
+    questionText: 'احسب المشتقة',
+    selectedKey: 'B',
+    correctKey: 'A',
+    explanation: 'تطبيق القاعدة',
+    errorType: 'rule'
+  });
+  assert.equal(mistake.questionId, 'q_tx_1');
+  assert.equal(store.isInTransaction(), false);
+  assert.equal(store.getMistakes().length, 1);
+});
+
+

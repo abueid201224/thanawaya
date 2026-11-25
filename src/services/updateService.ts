@@ -117,11 +117,11 @@ class UpdateService {
       }
     }
 
-    // Web / Standalone mode simulation with honest check
-    await new Promise((r) => setTimeout(r, 900));
+    // Non-desktop or standalone browser environment: report honestly without simulating progress
     this.updateState({
       status: 'not-available',
-      currentVersion: '1.0.0'
+      currentVersion: this.state.currentVersion,
+      error: 'التحديث التلقائي متاح عبر تطبيق سطح المكتب لنظام Windows فقط.'
     });
     return { available: false };
   }
@@ -132,9 +132,8 @@ class UpdateService {
   public async downloadUpdate(): Promise<boolean> {
     if (this.state.status !== 'available') return false;
 
-    this.updateState({ status: 'downloading', progress: { percent: 0, bytesPerSecond: 0, transferred: 0, total: 100 } });
-
     if (typeof window !== 'undefined' && (window as any).electronBridge?.downloadUpdate) {
+      this.updateState({ status: 'downloading', progress: { percent: 0, bytesPerSecond: 0, transferred: 0, total: 100 } });
       try {
         await (window as any).electronBridge.downloadUpdate();
         return true;
@@ -144,21 +143,11 @@ class UpdateService {
       }
     }
 
-    // Simulation for web environment
-    for (let p = 10; p <= 100; p += 20) {
-      await new Promise((r) => setTimeout(r, 300));
-      this.updateState({
-        progress: {
-          percent: p,
-          bytesPerSecond: 1024 * 500,
-          transferred: p * 100000,
-          total: 10000000
-        }
-      });
-    }
-
-    this.updateState({ status: 'downloaded' });
-    return true;
+    this.updateState({
+      status: 'error',
+      error: 'تنزيل التحديثات التلقائية يتطلب تشغيل النسخة المثبتة على Windows.'
+    });
+    return false;
   }
 
   /**

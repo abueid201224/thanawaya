@@ -30,7 +30,10 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --no-audit --no-fund
+
+      - name: 🔍 Type-check & Unit Tests
+        run: npm test
 
       - name: 🏗️ Compile Web & Electron
         run: npm run build:all
@@ -40,6 +43,9 @@ jobs:
 
       - name: 🛡️ Verify Build Invariants
         run: node scripts/verify-build.mjs
+
+      - name: 🔬 Run E2E Build Contract Tests
+        run: npm run test:e2e
 
       - name: 📦 Package & Publish to GitHub Releases
         run: npx electron-builder --win --x64 --config electron-builder.yml --publish always

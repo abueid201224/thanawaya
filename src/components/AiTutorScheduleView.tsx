@@ -149,56 +149,76 @@ export const AiTutorScheduleView: React.FC<AiTutorScheduleViewProps> = ({
     setChatInput((prev) => `${prev} ${latex} `);
   };
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     if (!isOnline) {
       setInputNotice('أنت في وضع عدم الاتصال: أزرار المساعد التفاعلي معطلة حتى يعود الاتصال.');
       return;
     }
     const text = (textToSend || chatInput).trim();
-    if (!text) return;
+    if (!text || isAiThinking) return;
 
     if (!textToSend) setChatInput('');
+    setInputNotice(null);
 
     const newHistory = [...chatMessages, { role: 'user' as const, text, time: 'الآن' }];
     setChatMessages(newHistory);
     setIsAiThinking(true);
 
-    setTimeout(() => {
-      let reply = '';
-      let links: Array<{ title: string; url: string }> | undefined;
+    try {
+      const response = await fetch('/api/tutor-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          subjectNameAr: currentSlot.subjectNameAr,
+          topic: currentSlot.topic,
+          history: newHistory.slice(-6).map((m) => ({ role: m.role, text: m.text }))
+        })
+      });
 
-      if (text.includes('الخدعة') || text.includes('فخ')) {
-        reply = `⚠️ **الخدعة الامتحانية المتكررة (امتحانات 2021 - 2025):**\n${matchingEssential?.examTrapWarning || 'عدم التحقق من شروط المسألة ومجال المتغيرات الهندسية وملاحظة أن البعد لا يمكن أن يكون سالباً!'}\n\n💡 **القاعدة الذهبية المعتمدة من الوزارة:**\n${matchingEssential?.coreConcept}\n\nجرّب الآن كتابة المعادلة المساعدة لمسألتك مستخدماً لوحة الرموز وسأراجعها معك خطوة بخطوة.`;
-      } else if (text.includes('امتحان سابق') || text.includes('مسألة مشابهة') || text.includes('وزاري')) {
-        reply = `📝 **مسألة وزارية تكررت في امتحانات الثانوية العامة (${matchingEssential?.pastExamOccurrences.join('، ')}):**\n\n"${matchingEssential?.sampleExamQuestion || 'أوجد أبعاد الشكل التي تجعل المساحة أكبر ما يمكن عندما يكون المحيط ثابتاً.'}"\n\n🔍 **خطوات التفكير السقالي وفق نموذج التصحيح:**\n${matchingEssential?.stepByStepSolution || '1. كتابة دالة الهدف -> 2. اشتقاق ومساواة بالصفر -> 3. اختبار المشتقة الثانية للتأكد من أنها عظمى.'}`;
-      } else if (text.includes('Scan') || text.includes('المعادلة المستخرجة')) {
-        reply = `🔍 **تحليل المسألة المصورة بالذكاء الاصطناعي:**\nتم فحص المعطيات بنجاح. وفقاً لمنهجية الوزارة:\n1. ما هي الخطوة الرياضية الأولى التي ستبدأ بها لتبسيط هذا المقدار؟\n2. هل راجعت شروط الاشتقاق أو حدود التكامل؟\nاكتب إجابتك وسأوجهك مباشرة دون إعطاء حل جاهز!`;
-      } else if (text.includes('روابط') || text.includes('مستندات') || text.includes('حكومية')) {
-        reply = `تم جلب أهم الوثائق الرسمية والمذكرات المعتمدة ذات التقييم الأعلى لموضوع "${currentSlot.topic}":`;
-        links = [
-          { title: 'نماذج الوزارة الاسترشادية الرسمية (moe.gov.eg)', url: 'https://moe.gov.eg' },
-          { title: 'مذكرة تدريبات منصة نجوى التفاعلية (تقييم 4.9/5)', url: 'https://nagwa.com' },
-          { title: 'مخطط المفاهيم الصادر عن بنك المعرفة المصري EKB', url: 'https://ekb.eg' }
-        ];
-      } else {
-        reply = `أحسنت في استفسارك يا بطل! 💡
-لنطبق استراتيجية التوجيه السقالي (Scaffolding):
-1. ما هي العلاقة الأساسية أو الدالة الهدف التي تربط متغيرات المسألة؟
-2. هل يمكنك استخدام لوحة الرموز لكتابة المشتقة الأولى $\\frac{dy}{dx}$ وتحديد نقطة الانعدام؟
-اكتب لي خطوتك الأولى وسأدلك على الصواب فوراً لنبني مهارة الحل الذاتي لديك لاجتياز الامتحان بدرجة كاملة!`;
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errCode = String(payload?.code || '');
+        const fallbackMsg =
+          errCode === 'MISSING_API_KEY'
+            ? 'مفتاح Gemini API غير مضبوط حالياً. افتح الإعدادات (Ctrl+,) لإضافة المفتاح، أو راجع «بطاقة الدرس والنقاط الامتحانية» التي تعمل بدون إنترنت.'
+            : payload?.error || 'تعذر الحصول على رد من المعلم الذكي حالياً. يمكنك مراجعة بطاقة الدرس أو إعادة المحاولة.';
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: fallbackMsg,
+            time: 'الآن'
+          }
+        ]);
+        return;
       }
 
-      setChatMessages([
-        ...newHistory,
+      const replyText = typeof payload?.reply === 'string' && payload.reply.trim()
+        ? payload.reply.trim()
+        : 'لم يصل نص واضح من النموذج. يرجى إعادة صياغة سؤالك.';
+
+      setChatMessages((prev) => [
+        ...prev,
         {
           role: 'assistant',
-          text: reply,
-          time: 'الآن',
-          links
+          text: replyText,
+          time: 'الآن'
         }
       ]);
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: 'تعذر الاتصال بالخادم المحلي للمعلم الذكي (127.0.0.1). تأكد من تشغيل التطبيق أو راجع «بطاقة الدرس والنقاط الامتحانية».',
+          time: 'الآن'
+        }
+      ]);
+    } finally {
       setIsAiThinking(false);
-    }, 600);
+    }
   };
 
   const handleSpeakText = (text: string) => {

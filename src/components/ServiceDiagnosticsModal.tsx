@@ -55,7 +55,18 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
   onOpenDocumentExport
 }) => {
   if (!isOpen) return null;
+  return (
+    <ServiceDiagnosticsModalContent
+      onClose={onClose}
+      onOpenDocumentExport={onOpenDocumentExport}
+    />
+  );
+};
 
+const ServiceDiagnosticsModalContent: React.FC<{
+  onClose: () => void;
+  onOpenDocumentExport?: () => void;
+}> = ({ onClose, onOpenDocumentExport }) => {
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [audioResult, setAudioResult] = useState<AudioDiagnosticResult | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');

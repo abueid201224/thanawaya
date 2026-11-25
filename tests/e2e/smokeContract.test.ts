@@ -23,6 +23,9 @@ test('source code has zero Unsplash URLs and zero fake Ministry/Vision grading c
   for (const file of srcFiles) {
     const text = fs.readFileSync(file, 'utf8');
     assert.equal(text.includes('images.unsplash.com'), false, `Found Unsplash URL in ${file}`);
+    assert.equal(/\bwindow\.(alert|confirm|open)\s*\(/.test(text), false, `Found blocked window dialog/open in ${file}`);
+    assert.equal(/\balert\s*\(/.test(text), false, `Found alert() in ${file}`);
+    assert.equal(/BigBuckBunny|ElephantsDream|ForBiggerBlazes|SoundHelix/.test(text), false, `Found demo media placeholder in ${file}`);
   }
 
   const essayView = fs.readFileSync(

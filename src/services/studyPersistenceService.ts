@@ -73,8 +73,34 @@ export function getNextIntervalDays(
   return { nextInterval: intervals[idx + 1], resolved: false };
 }
 
+export interface ElectronStudyDbBridge {
+  recordAttempt?: (attempt: unknown) => Promise<{ ok?: boolean; error?: string }>;
+  getAttempts?: (limit?: number) => Promise<{ ok?: boolean; attempts?: StudyAttempt[] }>;
+  captureMistake?: (mistake: unknown) => Promise<{ ok?: boolean; error?: string }>;
+  getMistakes?: () => Promise<{ ok?: boolean; mistakes?: MistakeEntry[] }>;
+  recordReview?: (mistakeId: string, wasCorrect: boolean) => Promise<{ ok?: boolean; error?: string }>;
+  updateMistake?: (
+    mistakeId: string,
+    errorType: MistakeErrorType,
+    studentNote?: string
+  ) => Promise<{ ok?: boolean; error?: string }>;
+  getSpacedIntervals?: () => Promise<{ ok?: boolean; intervals?: SpacedReviewIntervalDays[] }>;
+  saveSpacedIntervals?: (
+    intervals: SpacedReviewIntervalDays[]
+  ) => Promise<{ ok?: boolean; error?: string }>;
+}
+
+function getElectronStudyDb(): ElectronStudyDbBridge | undefined {
+  const g = globalThis as unknown as {
+    window?: { electronAPI?: { studyDb?: ElectronStudyDbBridge } };
+    electronAPI?: { studyDb?: ElectronStudyDbBridge };
+  };
+  return g.window?.electronAPI?.studyDb ?? g.electronAPI?.studyDb;
+}
+
 export class StudyPersistenceService {
   private storage: StorageBackend;
+  private lastSyncWarning: string | null = null;
 
   constructor(storage?: StorageBackend) {
     this.storage = storage || getDefaultStorage();
@@ -84,21 +110,39 @@ export class StudyPersistenceService {
     this.storage = storage;
   }
 
+  public getLastSyncWarning(): string | null {
+    return this.lastSyncWarning;
+  }
+
   private mirrorToSqlite(
-    ipcCall: (db: NonNullable<Window['electronAPI']>['studyDb']) => Promise<unknown> | undefined,
+    ipcCall: (db: ElectronStudyDbBridge) => Promise<{ ok?: boolean; error?: string } | undefined> | undefined,
     apiPath: string,
-    payload: unknown
+    payload: unknown,
+    method: 'POST' | 'PATCH' = 'POST'
   ): void {
     if (typeof window === 'undefined') return;
     try {
-      const studyDb = window.electronAPI?.studyDb;
+      const studyDb = getElectronStudyDb();
       if (studyDb) {
-        void ipcCall(studyDb)?.catch(() => {});
+        const promise = ipcCall(studyDb);
+        if (promise) {
+          void promise
+            .then((res) => {
+              if (res && res.ok === false) {
+                this.lastSyncWarning = res.error || 'تعذر مزامنة التحديث مع قاعدة البيانات المحلية (SQLite).';
+              } else {
+                this.lastSyncWarning = null;
+              }
+            })
+            .catch(() => {
+              this.lastSyncWarning = 'تعذر الاتصال بقاعدة البيانات المحلية (SQLite).';
+            });
+        }
         return;
       }
       if (typeof fetch === 'function' && window.location?.protocol?.startsWith('http')) {
         void fetch(apiPath, {
-          method: 'POST',
+          method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         }).catch(() => {});
@@ -106,6 +150,87 @@ export class StudyPersistenceService {
     } catch {
       // Non-blocking background sync to SQLite
     }
+  }
+
+  public async hydrateFromStore(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    let updated = false;
+    try {
+      const studyDb = getElectronStudyDb();
+      if (studyDb) {
+        if (studyDb.getMistakes) {
+          const res = await studyDb.getMistakes();
+          if (res?.ok && Array.isArray(res.mistakes) && res.mistakes.length > 0) {
+            this.mergeMistakesFromStore(res.mistakes);
+            updated = true;
+          }
+        }
+        if (studyDb.getAttempts) {
+          const res = await studyDb.getAttempts(200);
+          if (res?.ok && Array.isArray(res.attempts) && res.attempts.length > 0) {
+            this.mergeAttemptsFromStore(res.attempts);
+            updated = true;
+          }
+        }
+        if (studyDb.getSpacedIntervals) {
+          const res = await studyDb.getSpacedIntervals();
+          if (res?.ok && Array.isArray(res.intervals) && res.intervals.length === 4) {
+            this.storage.setItem(SPACED_INTERVALS_KEY, JSON.stringify(res.intervals));
+            updated = true;
+          }
+        }
+        return updated;
+      }
+
+      if (typeof fetch === 'function' && window.location?.protocol?.startsWith('http')) {
+        const [mistakesRes, intervalsRes] = await Promise.all([
+          fetch('/api/study/mistakes').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch('/api/study/spaced-intervals').then((r) => (r.ok ? r.json() : null)).catch(() => null)
+        ]);
+        if (mistakesRes?.ok && Array.isArray(mistakesRes.mistakes) && mistakesRes.mistakes.length > 0) {
+          this.mergeMistakesFromStore(mistakesRes.mistakes);
+          updated = true;
+        }
+        if (intervalsRes?.ok && Array.isArray(intervalsRes.intervals) && intervalsRes.intervals.length === 4) {
+          this.storage.setItem(SPACED_INTERVALS_KEY, JSON.stringify(intervalsRes.intervals));
+          updated = true;
+        }
+      }
+    } catch {
+      // Keep local storage cache intact
+    }
+    return updated;
+  }
+
+  private mergeMistakesFromStore(remoteMistakes: MistakeEntry[]): void {
+    const local = this.getMistakes();
+    const byKey = new Map<string, MistakeEntry>();
+    for (const m of remoteMistakes) {
+      byKey.set(`${m.questionId}::${m.questionVersion}`, m);
+    }
+    for (const m of local) {
+      const key = `${m.questionId}::${m.questionVersion}`;
+      const existing = byKey.get(key);
+      if (!existing || new Date(m.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+        byKey.set(key, m);
+      }
+    }
+    const merged = Array.from(byKey.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    this.storage.setItem(MISTAKES_KEY, JSON.stringify(merged));
+  }
+
+  private mergeAttemptsFromStore(remoteAttempts: StudyAttempt[]): void {
+    const local = this.getAttempts();
+    const seen = new Map<string, StudyAttempt>();
+    for (const a of [...remoteAttempts, ...local]) {
+      if (a && a.id) seen.set(a.id, a);
+    }
+    const merged = Array.from(seen.values()).sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    this.storage.setItem(ATTEMPTS_KEY, JSON.stringify(merged));
   }
 
   public getSpacedIntervals(): SpacedReviewIntervalDays[] {
@@ -131,7 +256,11 @@ export class StudyPersistenceService {
       if (verify !== serialized) {
         return { ok: false, error: 'تعذر التحقق من حفظ فترات المراجعة محلياً.' };
       }
-      this.mirrorToSqlite(() => undefined, '/api/study/spaced-intervals', { intervals });
+      this.mirrorToSqlite(
+        (db) => db.saveSpacedIntervals?.(intervals),
+        '/api/study/spaced-intervals',
+        { intervals }
+      );
       return { ok: true, data: intervals, savedAt: new Date().toISOString() };
     } catch (err: any) {
       return { ok: false, error: err?.message || 'فشل الحفظ المحلي لفترات المراجعة.' };
@@ -187,7 +316,7 @@ export class StudyPersistenceService {
       }
 
       this.mirrorToSqlite(
-        (db) => db?.recordAttempt(attempt),
+        (db) => db.recordAttempt?.(attempt),
         '/api/study/attempts',
         attempt
       );
@@ -278,7 +407,7 @@ export class StudyPersistenceService {
       }
 
       this.mirrorToSqlite(
-        (db) => db?.captureMistake(savedEntry),
+        (db) => db.captureMistake?.(savedEntry),
         '/api/study/mistakes',
         savedEntry
       );
@@ -314,6 +443,13 @@ export class StudyPersistenceService {
       if (this.storage.getItem(MISTAKES_KEY) !== serialized) {
         return { ok: false, error: 'تعذر التحقق من تحديث التصنيف.' };
       }
+
+      this.mirrorToSqlite(
+        (db) => db.updateMistake?.(mistakeId, errorType, studentNote),
+        `/api/study/mistakes/${encodeURIComponent(mistakeId)}`,
+        { errorType, studentNote },
+        'PATCH'
+      );
 
       return { ok: true, data: mistakes[idx], savedAt: nowIso };
     } catch (err: any) {
@@ -365,7 +501,7 @@ export class StudyPersistenceService {
       }
 
       this.mirrorToSqlite(
-        (db) => db?.recordReview(mistakeId, wasCorrect),
+        (db) => db.recordReview?.(mistakeId, wasCorrect),
         `/api/study/mistakes/${encodeURIComponent(mistakeId)}/review`,
         { wasCorrect }
       );

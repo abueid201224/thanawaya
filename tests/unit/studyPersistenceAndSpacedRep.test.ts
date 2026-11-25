@@ -33,7 +33,8 @@ const sampleQuestion: PracticeQuestion = {
 };
 
 test('StudyPersistenceService records versioned attempts and spaced-repetition mistake lifecycle', () => {
-  const svc = new StudyPersistenceService(createMemoryStorage());
+  const storage = createMemoryStorage();
+  const svc = new StudyPersistenceService(storage);
 
   // 1. Record wrong attempt in practice mode
   const attRes = svc.recordAttempt({
@@ -66,11 +67,17 @@ test('StudyPersistenceService records versioned attempts and spaced-repetition m
   assert.equal(capRes.data!.reviewIntervalDays, 1);
   assert.equal(capRes.data!.resolved, false);
 
-  // 3. Reclassify mistake and verify persistence
+  // 3. Reclassify mistake and save custom spaced intervals, then verify across reload
   const updRes = svc.updateMistakeClassification(mistakeId, 'rule', 'مراجعة قاعدة القوة');
   assert.equal(updRes.ok, true);
-  assert.equal(svc.getMistakes()[0].errorType, 'rule');
-  assert.equal(svc.getMistakes()[0].studentNote, 'مراجعة قاعدة القوة');
+  const intervalSave = svc.saveSpacedIntervals([14, 7, 3, 1]);
+  assert.equal(intervalSave.ok, true);
+
+  const reloaded = new StudyPersistenceService(storage);
+  assert.equal(reloaded.getMistakes()[0].errorType, 'rule');
+  assert.equal(reloaded.getMistakes()[0].studentNote, 'مراجعة قاعدة القوة');
+  assert.deepEqual(reloaded.getSpacedIntervals(), [14, 7, 3, 1]);
+  svc.saveSpacedIntervals([1, 3, 7, 14]);
 
   // 4. Not due immediately; due after +1 day
   assert.equal(svc.getDueReviews(t0).length, 0);

@@ -88,7 +88,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             </div>
             <h3 className="font-bold text-slate-800 text-sm">تم إرسال رابط التحقق إلى بريدك</h3>
             <p className="text-xs font-mono font-bold text-blue-700 bg-blue-50 py-1.5 px-3 rounded-lg inline-block" dir="ltr">
-              {email || 'ahmed.hamada.gana.2012@gmail.com'}
+              {email || '—'}
             </p>
             <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
               يرجى النقر على الرابط في الرسالة لتفعيل حسابك ومزامنة جداول المذاكرة ودرجات الامتحانات.

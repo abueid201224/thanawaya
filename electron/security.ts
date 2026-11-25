@@ -16,18 +16,23 @@ export const FORBIDDEN_EXTENSIONS = new Set([
   '.wsf', '.wsh', '.msc', '.msi', '.msp', '.com', '.scr', '.pif',
   '.reg', '.hta', '.cpl', '.jar', '.dll', '.sys', '.drv',
   '.lnk', '.url', '.msix', '.msixbundle', '.appx', '.appxbundle',
-  '.scf', '.inf', '.iso', '.img', '.chm', '.sct', '.wsc', '.dat'
+  '.scf', '.inf', '.iso', '.img', '.chm', '.sct', '.wsc', '.dat',
+  '.html', '.htm', '.svg'
 ]);
 
 export const ALLOWED_WRITE_EXTENSIONS = new Set([
   '.json', '.txt', '.md', '.pdf', '.png', '.jpg', '.jpeg', '.webp',
-  '.svg', '.csv', '.mp3', '.mp4', '.wav', '.webm'
+  '.csv', '.mp3', '.mp4', '.wav', '.webm'
 ]);
 
 export const PROTECTED_FILENAMES = new Set([
   'secure_keys.dat',
   'user_settings.json',
-  'main.log'
+  'main.log',
+  'thanaweya_study.sqlite',
+  'thanaweya_study.sqlite-wal',
+  'thanaweya_study.sqlite-shm',
+  'thanaweya_study.sqlite-journal'
 ]);
 
 const WINDOWS_DEVICE_NAMES = new Set([

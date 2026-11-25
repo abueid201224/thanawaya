@@ -11,10 +11,16 @@ import {
 } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { evaluatePath } from './pathSandbox';
+import * as crypto from 'crypto';
+import {
+  evaluatePath,
+  FORBIDDEN_EXTENSIONS as BASE_FORBIDDEN_EXTENSIONS,
+  resolveRealPath
+} from './pathSandbox';
+import { ALLOWED_WRITE_EXTENSIONS, PROTECTED_FILENAMES } from './security';
 import { GoogleGenAI } from '@google/genai';
 import { startEmbeddedServer, RunningEmbeddedServer } from '../server/app';
-import { SqliteStudyStore } from '../server/sqliteStore';
+import { SqliteStudyStore, isValidSpacedIntervalTuple } from '../server/sqliteStore';
 import type {
   SystemInfo,
   FileWriteOptions,
@@ -36,6 +42,14 @@ let mainWindow: BrowserWindow | null = null;
 let embeddedServer: RunningEmbeddedServer | null = null;
 let studyStore: SqliteStudyStore | null = null;
 let boundServerUrl: string = '';
+let isShuttingDown = false;
+
+const EXTENDED_FORBIDDEN_EXTENSIONS = new Set([
+  ...BASE_FORBIDDEN_EXTENSIONS,
+  '.html',
+  '.htm',
+  '.svg'
+]);
 
 // Determine environment
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -191,18 +205,47 @@ function storeEncryptedApiKey(rawKey: string): boolean {
  *    folders with a shared prefix and symlink escapes are rejected. The whole home folder
  *    is intentionally NOT allowed.
  */
-function isPathInSandbox(targetPath: string): boolean {
-  const decision = evaluatePath(targetPath, {
-    allowedBases: [
-      app.getPath('userData'),
-      app.getPath('documents'),
-      app.getPath('downloads')
-    ]
-  });
-  if (!decision.allowed && decision.reason === 'forbidden-extension') {
-    console.warn(`[Security Alert] Blocked attempt to access executable extension -> ${String(targetPath)}`);
+function getSandboxAllowedBases(): string[] {
+  return [
+    app.getPath('userData'),
+    app.getPath('documents'),
+    app.getPath('downloads')
+  ];
+}
+
+function isPathInSandbox(
+  targetPath: string,
+  options: { mode?: 'read_or_dir' | 'write_file'; allowProtectedInternal?: boolean } = {}
+): boolean {
+  if (!targetPath || typeof targetPath !== 'string') return false;
+  const resolved = path.resolve(targetPath);
+  const fileName = path.basename(resolved).toLowerCase();
+
+  if (!options.allowProtectedInternal && PROTECTED_FILENAMES.has(fileName)) {
+    console.warn(`[Security Alert] Blocked attempt to access protected file -> ${fileName}`);
+    return false;
   }
-  return decision.allowed;
+
+  const decision = evaluatePath(targetPath, {
+    allowedBases: getSandboxAllowedBases(),
+    forbiddenExtensions: EXTENDED_FORBIDDEN_EXTENSIONS
+  });
+  if (!decision.allowed) {
+    if (decision.reason === 'forbidden-extension') {
+      console.warn(`[Security Alert] Blocked attempt to access restricted extension -> ${String(targetPath)}`);
+    }
+    return false;
+  }
+
+  if (options.mode === 'write_file') {
+    const ext = path.extname(resolved).toLowerCase();
+    if (!ext || !ALLOWED_WRITE_EXTENSIONS.has(ext)) {
+      console.warn(`[Security Alert] Blocked write to non-whitelisted extension -> ${ext || '(none)'}`);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -418,7 +461,7 @@ function setupIpcHandlers(): void {
     }
   });
 
-  // 5. Write local file (Path Sandboxed & Atomic Write)
+  // 5. Write local file (Path Sandboxed & TOCTOU-hardened Atomic Write)
   ipcMain.handle(
     'fs:write-file',
     async (
@@ -428,7 +471,7 @@ function setupIpcHandlers(): void {
       if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
       try {
         const { filePath, content, isBinary } = args;
-        if (!isPathInSandbox(filePath)) {
+        if (!isPathInSandbox(filePath, { mode: 'write_file' })) {
           return { success: false, filePath, error: 'Access denied: Target path is outside sandbox or has restricted extension' };
         }
 
@@ -439,18 +482,34 @@ function setupIpcHandlers(): void {
           await fs.promises.mkdir(parentDir, { recursive: true });
         }
 
+        // Re-verify realpath after directory creation to mitigate TOCTOU symlink races
+        const realParent = resolveRealPath(parentDir);
+        const parentDecision = evaluatePath(realParent, {
+          allowedBases: getSandboxAllowedBases(),
+          forbiddenExtensions: EXTENDED_FORBIDDEN_EXTENSIONS
+        });
+        if (!parentDecision.allowed) {
+          return { success: false, filePath, error: 'Access denied: Parent directory escaped sandbox' };
+        }
+
         const buffer = isBinary
           ? Buffer.from(content, 'base64')
           : Buffer.from(content, 'utf-8');
 
-        // Atomic write via temporary file
-        const tempPath = `${normalized}.tmp_${Date.now()}`;
-        await fs.promises.writeFile(tempPath, buffer);
-        await fs.promises.rename(tempPath, normalized);
+        const safeDest = path.join(realParent, path.basename(normalized));
+        const tempPath = path.join(realParent, `.${path.basename(normalized)}.${process.pid}.${Date.now()}.tmp`);
+        const handle = await fs.promises.open(tempPath, 'wx', 0o600);
+        try {
+          await handle.writeFile(buffer);
+          await handle.sync();
+        } finally {
+          await handle.close();
+        }
+        await fs.promises.rename(tempPath, safeDest);
 
         return {
           success: true,
-          filePath: normalized,
+          filePath: safeDest,
           bytesWritten: buffer.length
         };
       } catch (err: any) {
@@ -534,19 +593,55 @@ function setupIpcHandlers(): void {
     }
   });
 
-  // 9. Native Dialogs
+  // 9. Native Dialogs (Sanitized options bounded inside sandbox)
   ipcMain.handle('dialog:show-open', async (event, options: any) => {
     if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
     if (!mainWindow) return null;
-    const result = await dialog.showOpenDialog(mainWindow, options || {});
+    const safeDefault =
+      typeof options?.defaultPath === 'string' && isPathInSandbox(options.defaultPath)
+        ? path.resolve(options.defaultPath)
+        : path.join(app.getPath('documents'), 'ThanaweyaAmma');
+    const allowedProps = new Set(['openFile', 'multiSelections']);
+    const safeProps = Array.isArray(options?.properties)
+      ? options.properties.filter((p: unknown) => typeof p === 'string' && allowedProps.has(p))
+      : ['openFile'];
+    const safeFilters = Array.isArray(options?.filters)
+      ? options.filters
+          .filter((f: any) => f && typeof f.name === 'string' && Array.isArray(f.extensions))
+          .slice(0, 8)
+      : undefined;
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: typeof options?.title === 'string' ? options.title.slice(0, 120) : undefined,
+      buttonLabel: typeof options?.buttonLabel === 'string' ? options.buttonLabel.slice(0, 40) : undefined,
+      defaultPath: safeDefault,
+      filters: safeFilters,
+      properties: safeProps as Array<'openFile' | 'multiSelections'>
+    });
     return result.canceled ? null : result.filePaths;
   });
 
   ipcMain.handle('dialog:show-save', async (event, options: any) => {
     if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
     if (!mainWindow) return null;
-    const result = await dialog.showSaveDialog(mainWindow, options || {});
-    return result.canceled ? null : result.filePath;
+    const safeDefault =
+      typeof options?.defaultPath === 'string' && isPathInSandbox(options.defaultPath, { mode: 'write_file' })
+        ? path.resolve(options.defaultPath)
+        : path.join(app.getPath('documents'), 'ThanaweyaAmma');
+    const safeFilters = Array.isArray(options?.filters)
+      ? options.filters
+          .filter((f: any) => f && typeof f.name === 'string' && Array.isArray(f.extensions))
+          .slice(0, 8)
+      : undefined;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: typeof options?.title === 'string' ? options.title.slice(0, 120) : undefined,
+      buttonLabel: typeof options?.buttonLabel === 'string' ? options.buttonLabel.slice(0, 40) : undefined,
+      defaultPath: safeDefault,
+      filters: safeFilters
+    });
+    if (result.canceled || !result.filePath) return null;
+    return isPathInSandbox(result.filePath, { mode: 'write_file' }) ? result.filePath : null;
   });
 
   // 10. Native A4 Print Engine
@@ -805,6 +900,40 @@ function setupIpcHandlers(): void {
       return { ok: false, error: err?.message || 'Failed to record review' };
     }
   });
+
+  ipcMain.handle(
+    'study:update-mistake',
+    (event, args: { mistakeId: string; errorType: string; studentNote?: string }) => {
+      if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+      if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+      try {
+        const mistake = studyStore.updateMistakeClassification(
+          args.mistakeId,
+          args.errorType as any,
+          args.studentNote
+        );
+        return { ok: true, mistake };
+      } catch (err: any) {
+        return { ok: false, error: err?.message || 'Failed to update mistake' };
+      }
+    }
+  );
+
+  ipcMain.handle('study:get-spaced-intervals', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, intervals: studyStore.getSpacedIntervals() };
+  });
+
+  ipcMain.handle('study:save-spaced-intervals', (event, intervals: unknown) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    if (!isValidSpacedIntervalTuple(intervals)) {
+      return { ok: false, error: 'Invalid spaced interval tuple (expected 4 positive integers <= 60)' };
+    }
+    const saved = studyStore.saveSpacedIntervals(intervals);
+    return { ok: true, intervals: saved };
+  });
 }
 
 if (gotTheLock) {
@@ -818,16 +947,30 @@ if (gotTheLock) {
 
   // App lifecycle
   app.whenReady().then(async () => {
-    // 1. Enforce Content-Security-Policy on embedded loopback origin
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+
+    // 1. Enforce hardened Content-Security-Policy on embedded loopback origin
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https:; frame-src https:; object-src 'none'; base-uri 'self';"
+            "default-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.moe.gov.eg; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.moe.gov.eg; object-src 'none'; base-uri 'self';"
           ]
         }
       });
+    });
+
+    // 1b. Attach per-launch session token strictly to authorized main-window requests to embedded API
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      const headers = { ...details.requestHeaders };
+      const isAuthorizedRenderer =
+        details.webContentsId === undefined ||
+        Boolean(mainWindow && !mainWindow.isDestroyed() && details.webContentsId === mainWindow.webContents.id);
+      if (boundServerUrl && isAuthorizedRenderer && details.url.startsWith(`${boundServerUrl}/api/`)) {
+        headers['X-Thanaweya-Session'] = sessionToken;
+      }
+      callback({ requestHeaders: headers });
     });
 
     // 2. Strict Permissions Request Handler: only allow media (camera/mic for OCR/Audio)
@@ -846,7 +989,7 @@ if (gotTheLock) {
         'student_workspace',
         'thanaweya_study.sqlite'
       );
-      if (isPathInSandbox(sqliteDbPath)) {
+      if (isPathInSandbox(sqliteDbPath, { allowProtectedInternal: true })) {
         studyStore = new SqliteStudyStore(sqliteDbPath);
       }
     } catch (err) {
@@ -866,6 +1009,8 @@ if (gotTheLock) {
         staticDir,
         initialApiKey: initialKey,
         host: '127.0.0.1',
+        loopbackOnly: true,
+        sessionToken,
         sqliteStore: studyStore ?? undefined
       });
       embeddedServer.setModel(getEffectiveModel());
@@ -891,19 +1036,30 @@ if (gotTheLock) {
     }
   });
 
-  app.on('will-quit', () => {
+  app.on('will-quit', (event) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    event.preventDefault();
     globalShortcut.unregisterAll();
-    if (embeddedServer) {
-      embeddedServer.close().catch(() => {});
-    }
-    if (studyStore) {
-      try {
-        studyStore.close();
-      } catch {
-        // ignore close errors
-      }
-      studyStore = null;
-    }
+
+    Promise.resolve()
+      .then(async () => {
+        if (embeddedServer) {
+          await embeddedServer.close().catch(() => {});
+          embeddedServer = null;
+        }
+        if (studyStore) {
+          try {
+            studyStore.close();
+          } catch {
+            // ignore close errors
+          }
+          studyStore = null;
+        }
+      })
+      .finally(() => {
+        app.quit();
+      });
   });
 }
 

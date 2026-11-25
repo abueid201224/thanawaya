@@ -104,20 +104,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         )}
 
-        {/* Role Selector */}
-        <button
-          type="button"
-          onClick={() => onSwitchRole(user.role === 'student' ? 'admin' : 'student')}
-          className={`min-h-[40px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
-            user.role === 'admin'
-              ? 'bg-violet-50 border-violet-200 text-violet-800 hover:bg-violet-100'
-              : 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100'
-          }`}
-          title="التبديل بين عرض الطالب وعرض المشرف"
-        >
-          <ShieldCheck className="w-4 h-4" />
-          <span>{user.role === 'admin' ? 'وضع المشرف' : 'وضع الطالب'}</span>
-        </button>
+        {/* Role Status / Verified Admin Preview Switcher */}
+        {user.role === 'admin' ? (
+          <button
+            type="button"
+            onClick={() => onSwitchRole('student')}
+            className="min-h-[40px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap bg-violet-50 border-violet-200 text-violet-800 hover:bg-violet-100"
+            title="معاينة واجهة الطالب"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>وضع المشرف</span>
+          </button>
+        ) : (
+          <span
+            className="min-h-[40px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border bg-blue-50 border-blue-200 text-blue-800 whitespace-nowrap"
+            title="حساب طالب ثانوية عامة"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>حساب الطالب</span>
+          </span>
+        )}
 
         {/* User Profile Button */}
         <button

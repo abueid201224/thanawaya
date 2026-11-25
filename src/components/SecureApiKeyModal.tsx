@@ -47,6 +47,7 @@ export const SecureApiKeyModal: React.FC<SecureApiKeyModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [testResult, setTestResult] = useState<ApiKeyTestResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [confirmRemoveKey, setConfirmRemoveKey] = useState(false);
 
   // Model state
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
@@ -142,8 +143,7 @@ export const SecureApiKeyModal: React.FC<SecureApiKeyModalProps> = ({
   };
 
   const handleRemoveKey = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في حذف مفتاح API المخزن؟')) return;
-
+    setConfirmRemoveKey(false);
     try {
       await nativeDesktop.removeApiKey();
       setApiKeyInput('');
@@ -372,16 +372,35 @@ export const SecureApiKeyModal: React.FC<SecureApiKeyModalProps> = ({
                       <span>{isTesting ? 'جاري الفحص...' : 'اختبار المفتاح'}</span>
                     </button>
 
-                    {keyStatus?.isConfigured && (
+                    {keyStatus?.isConfigured && !confirmRemoveKey && (
                       <button
                         type="button"
-                        onClick={handleRemoveKey}
+                        onClick={() => setConfirmRemoveKey(true)}
                         className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                         title="حذف المفتاح المشفر"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                         <span>حذف</span>
                       </button>
+                    )}
+
+                    {keyStatus?.isConfigured && confirmRemoveKey && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleRemoveKey}
+                          className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer"
+                        >
+                          تأكيد الحذف
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmRemoveKey(false)}
+                          className="px-2.5 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
                     )}
                   </div>
 

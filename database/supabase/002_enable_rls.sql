@@ -101,6 +101,7 @@ CREATE OR REPLACE FUNCTION public.enforce_student_security()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     -- Only allow admin or system to alter role or email
@@ -127,11 +128,35 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.enforce_student_insert_security()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NOT public.is_app_admin() THEN
+        IF LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN
+            NEW.role := 'admin';
+        ELSE
+            NEW.role := 'student';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS trg_enforce_student_security ON public.student_profiles;
 CREATE TRIGGER trg_enforce_student_security
     BEFORE UPDATE ON public.student_profiles
     FOR EACH ROW
     EXECUTE FUNCTION public.enforce_student_security();
+
+DROP TRIGGER IF EXISTS trg_enforce_student_insert_security ON public.student_profiles;
+CREATE TRIGGER trg_enforce_student_insert_security
+    BEFORE INSERT ON public.student_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.enforce_student_insert_security();
 
 -- 6. Automatic User Onboarding Trigger (Runs on auth.users INSERT)
 CREATE OR REPLACE FUNCTION public.handle_new_student_signup()

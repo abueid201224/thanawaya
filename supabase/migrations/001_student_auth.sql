@@ -15,12 +15,12 @@ CREATE TABLE IF NOT EXISTS public.student_profiles (
     phone_whatsapp VARCHAR(30),
     school_name VARCHAR(200),
     governorate VARCHAR(100),
-    seating_number VARCHAR(20) DEFAULT '٤٨١٩٢٠',
+    seating_number VARCHAR(20) DEFAULT '—',
     target_faculty VARCHAR(200) DEFAULT 'كلية الهندسة - جامعة القاهرة',
     role VARCHAR(20) NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin')),
-    daily_streak INT NOT NULL DEFAULT 1,
-    discipline_score INT NOT NULL DEFAULT 94,
-    preferred_study_hours INT NOT NULL DEFAULT 7,
+    daily_streak INT NOT NULL DEFAULT 0,
+    discipline_score INT NOT NULL DEFAULT 0,
+    preferred_study_hours INT NOT NULL DEFAULT 6,
     avatar_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -137,6 +137,7 @@ CREATE OR REPLACE FUNCTION public.enforce_student_security()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     -- Only allow admin or system to alter role or email
@@ -163,11 +164,35 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.enforce_student_insert_security()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NOT public.is_app_admin() THEN
+        IF LOWER(NEW.email) = 'ahmed.hamada.gana.2012@gmail.com' THEN
+            NEW.role := 'admin';
+        ELSE
+            NEW.role := 'student';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS trg_enforce_student_security ON public.student_profiles;
 CREATE TRIGGER trg_enforce_student_security
     BEFORE UPDATE ON public.student_profiles
     FOR EACH ROW
     EXECUTE FUNCTION public.enforce_student_security();
+
+DROP TRIGGER IF EXISTS trg_enforce_student_insert_security ON public.student_profiles;
+CREATE TRIGGER trg_enforce_student_insert_security
+    BEFORE INSERT ON public.student_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.enforce_student_insert_security();
 
 -- 9. Automatic User Onboarding Trigger (Runs on auth.users INSERT)
 CREATE OR REPLACE FUNCTION public.handle_new_student_signup()

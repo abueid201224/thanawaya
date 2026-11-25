@@ -123,8 +123,13 @@ const api: ElectronAPIContract = {
     getAttempts: (limit?: number) => ipcRenderer.invoke('study:get-attempts', limit),
     captureMistake: (payload: any) => ipcRenderer.invoke('study:capture-mistake', payload),
     getMistakes: () => ipcRenderer.invoke('study:get-mistakes'),
+    updateMistake: (mistakeId: string, errorType: string, studentNote?: string) =>
+      ipcRenderer.invoke('study:update-mistake', { mistakeId, errorType, studentNote }),
     recordReview: (mistakeId: string, wasCorrect: boolean) =>
-      ipcRenderer.invoke('study:record-review', { mistakeId, wasCorrect })
+      ipcRenderer.invoke('study:record-review', { mistakeId, wasCorrect }),
+    getSpacedIntervals: () => ipcRenderer.invoke('study:get-spaced-intervals'),
+    saveSpacedIntervals: (intervals: number[]) =>
+      ipcRenderer.invoke('study:save-spaced-intervals', intervals)
   }
 };
 

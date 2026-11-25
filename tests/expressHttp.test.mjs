@@ -325,4 +325,96 @@ test('real HTTP: /api/study/* endpoints persist MOE schema, attempts, mistakes, 
   });
   assert.equal(revRes.statusCode, 200);
   assert.equal(JSON.parse(revRes.body).mistake.reviewIntervalDays, 3);
+
+  // 5. Update mistake classification & note over PATCH /api/study/mistakes/:id
+  const patchRes = await requestHttp({
+    port: running.port,
+    path: `/api/study/mistakes/${encodeURIComponent(mistakeId)}`,
+    method: 'PATCH',
+    headers: hostHeaders,
+    body: { errorType: 'sign_unit', studentNote: 'تعديل إشارة الاحتكاك' }
+  });
+  assert.equal(patchRes.statusCode, 200);
+  const patchedMistake = JSON.parse(patchRes.body).mistake;
+  assert.equal(patchedMistake.errorType, 'sign_unit');
+  assert.equal(patchedMistake.studentNote, 'تعديل إشارة الاحتكاك');
+
+  const patchNotFound = await requestHttp({
+    port: running.port,
+    path: '/api/study/mistakes/nonexistent-id',
+    method: 'PATCH',
+    headers: hostHeaders,
+    body: { errorType: 'rule' }
+  });
+  assert.equal(patchNotFound.statusCode, 404);
 });
+
+test('real HTTP: X-Thanaweya-Session token guard and /api/tutor-chat honest errors', async (t) => {
+  const sessionToken = 'test-session-token-32bytes-secret';
+  const running = await startEmbeddedServer({
+    host: '127.0.0.1',
+    preferredPort: 47960,
+    loopbackOnly: true,
+    sessionToken,
+    initialApiKey: ''
+  });
+  t.after(async () => {
+    await running.close();
+  });
+
+  const baseHeaders = { Host: `127.0.0.1:${running.port}` };
+  const authHeaders = { ...baseHeaders, 'X-Thanaweya-Session': sessionToken };
+
+  // /api/health stays accessible for local readiness polling
+  const healthRes = await requestHttp({
+    port: running.port,
+    path: '/api/health',
+    headers: baseHeaders
+  });
+  assert.equal(healthRes.statusCode, 200);
+
+  // Protected API routes reject missing or wrong session token
+  const missingTokenRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/mistakes',
+    headers: baseHeaders
+  });
+  assert.equal(missingTokenRes.statusCode, 403);
+
+  const wrongTokenRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/mistakes',
+    headers: { ...baseHeaders, 'X-Thanaweya-Session': 'wrong-token' }
+  });
+  assert.equal(wrongTokenRes.statusCode, 403);
+
+  // Matching session token succeeds
+  const okMistakesRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/mistakes',
+    headers: authHeaders
+  });
+  assert.equal(okMistakesRes.statusCode, 200);
+
+  // /api/tutor-chat validates empty prompt (400) and missing Gemini key (503)
+  const emptyTutorRes = await requestHttp({
+    port: running.port,
+    path: '/api/tutor-chat',
+    method: 'POST',
+    headers: authHeaders,
+    body: { message: '   ' }
+  });
+  assert.equal(emptyTutorRes.statusCode, 400);
+  assert.equal(JSON.parse(emptyTutorRes.body).code, 'MESSAGE_REQUIRED');
+
+  const missingKeyTutorRes = await requestHttp({
+    port: running.port,
+    path: '/api/tutor-chat',
+    method: 'POST',
+    headers: authHeaders,
+    body: { message: 'اشرح مشتقة الدالة الضمنية', subjectNameAr: 'التفاضل والتكامل' }
+  });
+  assert.equal(missingKeyTutorRes.statusCode, 503);
+  assert.equal(JSON.parse(missingKeyTutorRes.body).code, 'MISSING_API_KEY');
+});
+

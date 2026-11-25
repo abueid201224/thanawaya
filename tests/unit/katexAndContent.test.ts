@@ -187,15 +187,16 @@ test('independent numerical verification of all reviewed math questions matches 
   ].filter(isQuestionApprovedForStudents);
 
   const byId = new Map(allReviewed.map((q) => [q.id, q]));
+  assert.equal(new Set(allReviewed.map((q) => q.correctKey)).size, 4);
 
   // 1. pq_calc_1_1: d/dx cot^2(3x) = -6 cot(3x) csc^2(3x)
   {
     const x = 0.4;
     const f = (t: number) => Math.pow(1 / Math.tan(3 * t), 2);
     const numDeriv = (f(x + h) - f(x - h)) / (2 * h);
-    const optionA = -6 * (1 / Math.tan(3 * x)) * Math.pow(1 / Math.sin(3 * x), 2);
-    assert.ok(Math.abs(numDeriv - optionA) < 1e-5);
-    assert.equal(byId.get('pq_calc_1_1')?.correctKey, 'A');
+    const optionC = -6 * (1 / Math.tan(3 * x)) * Math.pow(1 / Math.sin(3 * x), 2);
+    assert.ok(Math.abs(numDeriv - optionC) < 1e-5);
+    assert.equal(byId.get('pq_calc_1_1')?.correctKey, 'C');
   }
 
   // 2. pq_calc_1_2: ladder L=10, x=6, dx/dt=2 => dy/dt = -1.5
@@ -206,7 +207,7 @@ test('independent numerical verification of all reviewed math questions matches 
     const y = Math.sqrt(L * L - x * x);
     const dyDt = -(x * dxDt) / y;
     assert.equal(dyDt, -1.5);
-    assert.equal(byId.get('pq_calc_1_2')?.correctKey, 'A');
+    assert.equal(byId.get('pq_calc_1_2')?.correctKey, 'B');
   }
 
   // 3. pq_calc_1_3: x = t^2 - 1, y = t^3 - 4 at t = 2 => dy/dx = 3
@@ -216,7 +217,7 @@ test('independent numerical verification of all reviewed math questions matches 
     const y = (u: number) => u * u * u - 4;
     const slope = (y(t + h) - y(t - h)) / (x(t + h) - x(t - h));
     assert.ok(Math.abs(slope - 3) < 1e-6);
-    assert.equal(byId.get('pq_calc_1_3')?.correctKey, 'A');
+    assert.equal(byId.get('pq_calc_1_3')?.correctKey, 'D');
   }
 
   // 4. pq_calc_2_1: d/dx ln|x^2 + 3x + 5| = (2x+3)/(x^2+3x+5)
@@ -235,13 +236,13 @@ test('independent numerical verification of all reviewed math questions matches 
     const anti = (u: number) => u * Math.exp(u) - Math.exp(u);
     const deriv = (anti(x + h) - anti(x - h)) / (2 * h);
     assert.ok(Math.abs(deriv - x * Math.exp(x)) < 1e-6);
-    assert.equal(byId.get('pq_calc_2_2')?.correctKey, 'A');
+    assert.equal(byId.get('pq_calc_2_2')?.correctKey, 'B');
   }
 
   // 6. pq_stat_1_1: F = mu_s * W = 0.25 * 40 = 10 N
   {
     assert.equal(0.25 * 40, 10);
-    assert.equal(byId.get('pq_stat_1_1')?.correctKey, 'A');
+    assert.equal(byId.get('pq_stat_1_1')?.correctKey, 'D');
   }
 
   // 7. mq_oct_1: d/dx (sec(x)tan(x)) at x = 0 => 1
@@ -249,7 +250,7 @@ test('independent numerical verification of all reviewed math questions matches 
     const f = (u: number) => (1 / Math.cos(u)) * Math.tan(u);
     const derivAt0 = (f(h) - f(-h)) / (2 * h);
     assert.ok(Math.abs(derivAt0 - 1) < 1e-6);
-    assert.equal(byId.get('mq_oct_1')?.correctKey, 'A');
+    assert.equal(byId.get('mq_oct_1')?.correctKey, 'B');
   }
 
   // 8. mq_oct_2: P = 60 sin(30) + (sqrt(3)/3) * 60 cos(30) = 60
@@ -257,6 +258,6 @@ test('independent numerical verification of all reviewed math questions matches 
     const rad = (30 * Math.PI) / 180;
     const P = 60 * Math.sin(rad) + (Math.sqrt(3) / 3) * 60 * Math.cos(rad);
     assert.ok(Math.abs(P - 60) < 1e-9);
-    assert.equal(byId.get('mq_oct_2')?.correctKey, 'A');
+    assert.equal(byId.get('mq_oct_2')?.correctKey, 'C');
   }
 });

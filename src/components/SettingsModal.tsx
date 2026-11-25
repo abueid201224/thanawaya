@@ -61,6 +61,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [testResult, setTestResult] = useState<ApiKeyTestResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState(false);
 
   // Model state
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
@@ -164,9 +165,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // Handle Deleting Gemini Key
   const handleDeleteKey = async () => {
-    if (!confirm('هل أنت متأكد من رغبتك في حذف المفتاح المخزن في الجهاز؟')) return;
-
     setIsSaving(true);
+    setConfirmDeleteKey(false);
     try {
       const result = await nativeDesktop.removeApiKey();
       setStatusMessage({
@@ -413,16 +413,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>{isTesting ? 'جارٍ اختبار الاتصال...' : 'اختبار صلاحية المفتاح'}</span>
                 </button>
 
-                {keyStatus?.isConfigured && (
+                {keyStatus?.isConfigured && !confirmDeleteKey && (
                   <button
                     type="button"
-                    onClick={handleDeleteKey}
+                    onClick={() => setConfirmDeleteKey(true)}
                     disabled={isSaving}
                     className="px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 font-bold border border-rose-800/40 transition-all cursor-pointer flex items-center gap-1 mr-auto"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                     <span>حذف المفتاح</span>
                   </button>
+                )}
+
+                {keyStatus?.isConfigured && confirmDeleteKey && (
+                  <div className="flex items-center gap-1.5 mr-auto">
+                    <button
+                      type="button"
+                      onClick={handleDeleteKey}
+                      disabled={isSaving}
+                      className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all cursor-pointer"
+                    >
+                      تأكيد الحذف
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteKey(false)}
+                      disabled={isSaving}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 transition-all cursor-pointer"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -544,11 +565,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  الحساب المعتمد للمشرف العام في النظام هو <strong className="text-white font-mono">ahmed.hamada.gana.2012@gmail.com</strong>.
-                  يمكنك التبديل بين واجهة الطالب ولوحة تحكم المشرف للمعاينة والاختبار.
+                  يتم تحديد رتبة المستخدم وصلاحيات الإشراف حصراً من قاعدة البيانات (Supabase RLS &amp; auth metadata).
                 </p>
 
-                {onSwitchRole && (
+                {onSwitchRole && currentUser.role === 'admin' && (
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
@@ -556,27 +576,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onSwitchRole('student');
                         resilientAudio.playClickSound();
                       }}
-                      className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
-                        currentUser.role === 'student'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
+                      className="px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
                     >
-                      صلاحية طالب (Student)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSwitchRole('admin');
-                        resilientAudio.playClickSound();
-                      }}
-                      className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
-                        currentUser.role === 'admin'
-                          ? 'bg-purple-600 text-white shadow-xs'
-                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
-                    >
-                      صلاحية مشرف عام (Admin)
+                      معاينة واجهة الطالب (Student Preview)
                     </button>
                   </div>
                 )}
@@ -685,7 +687,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
                   <li>يتم حفظ الجلسة محلياً عبر التخزين المشفر ولا يُعاد طلب كلمة المرور في كل تشغيل.</li>
                   <li>كافة استعلامات قاعدة البيانات محمية بـ Row Level Security (RLS).</li>
-                  <li>الحساب الأساسي المسجل: ahmed.hamada.gana.2012@gmail.com.</li>
+                  <li>تُسجل محاولات التدريب والأخطاء محلياً في SQLite مع إمكانية المزامنة السحابية.</li>
                 </ul>
               </div>
             </div>

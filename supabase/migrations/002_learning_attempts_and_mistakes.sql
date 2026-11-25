@@ -54,9 +54,7 @@ CREATE POLICY "study_attempts_insert_own"
     ON public.study_attempts FOR INSERT TO authenticated
     WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "study_attempts_delete_own"
-    ON public.study_attempts FOR DELETE TO authenticated
-    USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "study_attempts_delete_own" ON public.study_attempts;
 
 CREATE POLICY "mistake_notebook_select_own"
     ON public.mistake_notebook FOR SELECT TO authenticated

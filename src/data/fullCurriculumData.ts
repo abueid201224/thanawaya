@@ -36,12 +36,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionNumber: 1,
         questionText: 'إذا كانت $y = \\cot^2(3x)$، فإن $\\frac{dy}{dx}$ تساوي:',
         options: [
-          { key: 'A', text: '$-6\\cot(3x)\\csc^2(3x)$' },
+          { key: 'A', text: '$-3\\cot(3x)\\csc^2(3x)$' },
           { key: 'B', text: '$6\\cot(3x)\\csc(3x)$' },
-          { key: 'C', text: '$-3\\cot(3x)\\csc^2(3x)$' },
+          { key: 'C', text: '$-6\\cot(3x)\\csc^2(3x)$' },
           { key: 'D', text: '$-6\\cot^2(3x)\\csc^2(3x)$' }
         ],
-        correctKey: 'A',
+        correctKey: 'C',
         explanation:
           'بتطبيق قاعدة السلسلة: $\\frac{dy}{dx} = 2\\cot(3x) \\cdot (-\\csc^2(3x)) \\cdot 3 = -6\\cot(3x)\\csc^2(3x)$.',
         solutionSteps: [
@@ -70,12 +70,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionText:
           'سلم طوله $10$ أمتار يستند بطرفه العلوي على حائط رأسي وبطرفه السفلي على أرض أفقية، فإذا انزلق الطرف السفلي مبتعداً عن الحائط بمعدل $2\\text{ m/s}$، فإن معدل تغير ارتفاع الطرف العلوي عندما يبعد الطرف السفلي $6$ أمتار عن الحائط يساوي:',
         options: [
-          { key: 'A', text: '$-1.5\\text{ m/s}$' },
-          { key: 'B', text: '$-2\\text{ m/s}$' },
+          { key: 'A', text: '$-2\\text{ m/s}$' },
+          { key: 'B', text: '$-1.5\\text{ m/s}$' },
           { key: 'C', text: '$1.5\\text{ m/s}$' },
           { key: 'D', text: '$-0.75\\text{ m/s}$' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           'من نظرية فيثاغورس: $x^2 + y^2 = 100$. عندما $x = 6$ يكون $y = 8$. بالاشتقاق بالنسبة للزمن: $2x\\frac{dx}{dt} + 2y\\frac{dy}{dt} = 0 \\implies 6(2) + 8\\frac{dy}{dt} = 0 \\implies \\frac{dy}{dt} = -1.5\\text{ m/s}$.',
         solutionSteps: [
@@ -103,12 +103,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionNumber: 3,
         questionText: 'ميل المماس للمنحنى البارامتري $x = t^2 - 1$ ، $y = t^3 - 4$ عند $t = 2$ يساوي:',
         options: [
-          { key: 'A', text: '$3$' },
+          { key: 'A', text: '$6$' },
           { key: 'B', text: '$4$' },
           { key: 'C', text: '$1.5$' },
-          { key: 'D', text: '$6$' }
+          { key: 'D', text: '$3$' }
         ],
-        correctKey: 'A',
+        correctKey: 'D',
         explanation:
           '$\\frac{dx}{dt} = 2t$ و $\\frac{dy}{dt} = 3t^2$. إذن $\\frac{dy}{dx} = \\frac{3t^2}{2t} = \\frac{3}{2}t$. عند $t = 2$: ميل المماس يساوي $\\frac{3}{2}(2) = 3$.',
         solutionSteps: [
@@ -193,12 +193,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionNumber: 2,
         questionText: 'ناتج التكامل بالتجزيء $\\int x e^x\\,dx$ يساوي:',
         options: [
-          { key: 'A', text: '$x e^x - e^x + C$' },
-          { key: 'B', text: '$x e^x + e^x + C$' },
+          { key: 'A', text: '$x e^x + e^x + C$' },
+          { key: 'B', text: '$x e^x - e^x + C$' },
           { key: 'C', text: '$\\frac{1}{2}x^2 e^x + C$' },
           { key: 'D', text: '$e^x - x + C$' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           'نفرض $u = x \\implies du = dx$، و $dv = e^x\\,dx \\implies v = e^x$. إذن التكامل $= u v - \\int v\\,du = x e^x - \\int e^x\\,dx = x e^x - e^x + C$.',
         solutionSteps: [
@@ -246,12 +246,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionNumber: 1,
         questionText: 'نقطة الانقلاب للمنحنى $y = x^3 - 3x^2 + 5$ هي:',
         options: [
-          { key: 'A', text: '$(1, 3)$' },
-          { key: 'B', text: '$(0, 5)$' },
+          { key: 'A', text: '$(0, 5)$' },
+          { key: 'B', text: '$(1, 3)$' },
           { key: 'C', text: '$(2, 1)$' },
           { key: 'D', text: '$(-1, 1)$' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           '$y\' = 3x^2 - 6x$ و $y\'\' = 6x - 6 = 0 \\implies x = 1$. بالتعويض في الدالة الأصلية: $y = 1 - 3 + 5 = 3$.',
         difficulty: 'C',
@@ -296,12 +296,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionText:
           'جسم وزنه $40\\text{ N}$ موضوع على مستوى أفقي خشن معامل الاحتكاك السكوني بينهما $\\mu_s = 0.25$. فإن أقل قوة أفقية تجعل الجسم على وشك الحركة تساوي:',
         options: [
-          { key: 'A', text: '$10\\text{ N}$' },
+          { key: 'A', text: '$20\\text{ N}$' },
           { key: 'B', text: '$40\\text{ N}$' },
           { key: 'C', text: '$160\\text{ N}$' },
-          { key: 'D', text: '$20\\text{ N}$' }
+          { key: 'D', text: '$10\\text{ N}$' }
         ],
-        correctKey: 'A',
+        correctKey: 'D',
         explanation:
           'من الاتزان الرأسي: رد الفعل العمودي $R = W = 40\\text{ N}$. القوة الأفقية اللازمة لوشك الحركة تساوي قوة الاحتكاك السكوني النهائي: $F = f_s = \\mu_s R = 0.25 \\times 40 = 10\\text{ N}$.',
         solutionSteps: [
@@ -347,12 +347,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionText:
           'قضيب منتظم $AB$ وزنه $W$ متزن في وضع أفقي على وتدين عند $A$ و $C$ (حيث $C$ تبعد ربع طول القضيب عن $B$). فإن النسبة $R_A : R_C$ تساوي:',
         options: [
-          { key: 'A', text: '$1 : 2$' },
+          { key: 'A', text: '$2 : 3$' },
           { key: 'B', text: '$1 : 3$' },
-          { key: 'C', text: '$2 : 3$' },
+          { key: 'C', text: '$1 : 2$' },
           { key: 'D', text: '$1 : 1$' }
         ],
-        correctKey: 'A',
+        correctKey: 'C',
         explanation:
           'بأخذ العزوم حول $A$ لطول $4L$: $R_C(3L) = W(2L) \\implies R_C = \\frac{2}{3}W$ و $R_A = \\frac{1}{3}W$.',
         difficulty: 'B',
@@ -392,12 +392,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionText:
           'جسيم يتحرك في خط مستقيم بحيث كانت سرعته $v$ تعطى بالعلاقة $v^2 = 9 - x^2$، فإن عجلته $a$ عند $x = 2$ تساوي:',
         options: [
-          { key: 'A', text: '$-2\\text{ m/s}^2$' },
-          { key: 'B', text: '$2\\text{ m/s}^2$' },
+          { key: 'A', text: '$2\\text{ m/s}^2$' },
+          { key: 'B', text: '$-2\\text{ m/s}^2$' },
           { key: 'C', text: '$-4\\text{ m/s}^2$' },
           { key: 'D', text: '$5\\text{ m/s}^2$' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           'باشتقاق الطرفين بالنسبة إلى $x$: $2v\\frac{dv}{dx} = -2x \\implies a = -x = -2\\text{ m/s}^2$.',
         difficulty: 'A',
@@ -437,12 +437,12 @@ export const initialCurriculumUnits: CurriculumUnit[] = [
         questionText:
           'سُحب سلك معدني بانتظام حتى زاد طوله بنسبة $50\\%$ من طوله الأصلي، فإن مقاومته الكهربية تصبح:',
         options: [
-          { key: 'A', text: '$2.25$ من قيمتها الأصلية' },
+          { key: 'A', text: '$0.5$ من قيمتها الأصلية' },
           { key: 'B', text: '$1.5$ من قيمتها الأصلية' },
           { key: 'C', text: '$3$ من قيمتها الأصلية' },
-          { key: 'D', text: '$0.5$ من قيمتها الأصلية' }
+          { key: 'D', text: '$2.25$ من قيمتها الأصلية' }
         ],
-        correctKey: 'A',
+        correctKey: 'D',
         explanation:
           'بثبات الحجم: $L_2 = 1.5 L_1$ و $A_2 = \\frac{A_1}{1.5}$، وبالتالي $R_2 / R_1 = (1.5)^2 = 2.25$.',
         difficulty: 'B',
@@ -475,12 +475,12 @@ export const initialMonthlyExams: MonthlyExam[] = [
         questionNumber: 1,
         questionText: 'إذا كانت $y = \\sec(x)\\tan(x)$، فإن $\\frac{dy}{dx}$ عند $x = 0$ تساوي:',
         options: [
-          { key: 'A', text: '$1$' },
-          { key: 'B', text: '$0$' },
+          { key: 'A', text: '$0$' },
+          { key: 'B', text: '$1$' },
           { key: 'C', text: '$2$' },
           { key: 'D', text: '$-1$' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           'بقاعدة مشتقة الضرب: $\\frac{dy}{dx} = \\sec(x)\\tan^2(x) + \\sec^3(x)$. عند $x = 0$: $\\tan(0) = 0$ و $\\sec(0) = 1$، إذن الناتج $0 + 1^3 = 1$.',
         solutionSteps: [
@@ -508,12 +508,12 @@ export const initialMonthlyExams: MonthlyExam[] = [
         questionText:
           'جسم وزنه $60\\text{ kg.wt}$ موضوع على مستوى خشن يميل على الأفقي بزاوية $30^\\circ$، فإذا كان معامل الاحتكاك السكوني $\\mu_s = \\frac{\\sqrt{3}}{3}$، فإن القوة الموازية لخط أكبر ميل وتجعل الجسم على وشك الحركة لأعلى تساوي:',
         options: [
-          { key: 'A', text: '$60\\text{ kg.wt}$' },
+          { key: 'A', text: '$40\\text{ kg.wt}$' },
           { key: 'B', text: '$30\\text{ kg.wt}$' },
-          { key: 'C', text: '$40\\text{ kg.wt}$' },
+          { key: 'C', text: '$60\\text{ kg.wt}$' },
           { key: 'D', text: '$50\\text{ kg.wt}$' }
         ],
-        correctKey: 'A',
+        correctKey: 'C',
         explanation:
           '$R = 60\\cos 30^\\circ = 30\\sqrt{3}$، وقوة الاحتكاك $f_s = \\frac{\\sqrt{3}}{3}\\cdot 30\\sqrt{3} = 30$. إذن $P = 60\\sin 30^\\circ + f_s = 30 + 30 = 60\\text{ kg.wt}$.',
         solutionSteps: [
@@ -551,12 +551,12 @@ export const initialMonthlyExams: MonthlyExam[] = [
         questionText:
           'قطار كتلته $200$ طن يتحرك على طريق أفقي بسرعة منتظمة $72\\text{ km/h}$ ضد مقاومات تعادل $5\\text{ kg.wt}$ لكل طن، فإن قدرة آلة القطار بالحصان تساوي تقريباً:',
         options: [
-          { key: 'A', text: '$266.7$ حصان' },
+          { key: 'A', text: '$150$ حصان' },
           { key: 'B', text: '$200$ حصان' },
-          { key: 'C', text: '$150$ حصان' },
+          { key: 'C', text: '$266.7$ حصان' },
           { key: 'D', text: '$350$ حصان' }
         ],
-        correctKey: 'A',
+        correctKey: 'C',
         explanation:
           'السرعة $v = 72 \\times \\frac{5}{18} = 20\\text{ m/s}$، والمقاومة $R = 1000\\text{ kg.wt}$، إذن القدرة $= \\frac{1000 \\times 20}{75} \\approx 266.7$ حصان.',
         difficulty: 'B',
@@ -582,12 +582,12 @@ export const initialMonthlyExams: MonthlyExam[] = [
         questionNumber: 1,
         questionText: 'في مفكوك $(x + \\frac{1}{x})^{10}$، الحد الخالي من $x$ هو الحد رقم:',
         options: [
-          { key: 'A', text: 'السادس ($T_6$)' },
-          { key: 'B', text: 'الخامس ($T_5$)' },
+          { key: 'A', text: 'الخامس ($T_5$)' },
+          { key: 'B', text: 'السادس ($T_6$)' },
           { key: 'C', text: 'السابع ($T_7$)' },
           { key: 'D', text: 'الرابع ($T_4$)' }
         ],
-        correctKey: 'A',
+        correctKey: 'B',
         explanation:
           'الحد العام $T_{r+1} = \\binom{10}{r} x^{10-2r}$؛ وبوضع $10 - 2r = 0$ ينتج $r = 5$ أي الحد السادس.',
         difficulty: 'C',

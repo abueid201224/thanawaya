@@ -134,6 +134,21 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
   };
 
   useEffect(() => {
+    let active = true;
+    studyPersistenceService.hydrateFromStore().then((hydrated) => {
+      if (active && hydrated) {
+        setMistakes(studyPersistenceService.getMistakes());
+        const loadedIntervals = studyPersistenceService.getSpacedIntervals();
+        setSpacedIntervals(loadedIntervals);
+        setIntervalDraftText(loadedIntervals.join(', '));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!reviewedUnits.some((u) => u.id === selectedUnitId)) {
       setSelectedUnitId(reviewedUnits[0]?.id || '');
       setQuestionIndex(0);

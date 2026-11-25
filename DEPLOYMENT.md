@@ -22,10 +22,10 @@
 
 ## 2. تهيئة قاعدة بيانات Supabase
 1. إنشاء مشروع على منصة Supabase.
-2. تشغيل نصوص SQL الموجودة في:
-   - `database/supabase/001_create_student_profiles_table.sql`
-   - `database/supabase/002_enable_rls.sql`
-   - `database/supabase/003_seed_admin_user.sql`
+2. تشغيل نصوص الترحيل المعتمدة (Canonical Migrations) بالترتيب:
+   - `supabase/migrations/001_student_auth.sql`
+   - `supabase/migrations/002_learning_attempts_and_mistakes.sql`
+   *(مجلد `database/supabase/` مخصص للنصوص اليدوية التوافقية فقط).*
 3. ضبط متغيرات البيئة في `.env.production`:
    ```env
    VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
@@ -36,8 +36,8 @@
 
 ## 3. بناء حزم ويندوز
 ```bash
-# 1. تثبيت الحزم
-npm install
+# 1. تثبيت الحزم بصرامة وفق lockfile
+npm ci
 
 # 2. فحص الأخطاء والنقاء البرمجي
 npm run lint
@@ -86,5 +86,5 @@ npm run verify-build
 يتحقق الفحص من:
 - جاهزية العمل دون اتصال (Offline-ready) بدون روابط CDN خارجية.
 - خلو الحزم تماماً من تسريب مفاتيح `service_role` أو الأسرار.
-- تطبيق سياسات CSP وقفل النسخة المفردة.
-- تطبيق حماية التخزين المشفر DPAPI لمفاتيح API.
+- تطبيق سياسات CSP وقفل النسخة المفردة وعزل رمز الجلسة المحلي `X-Thanaweya-Session` على loopback (`127.0.0.1`).
+- تطبيق حماية التخزين المشفر DPAPI لمفاتيح API وحظر الكتابة لملفات SQLite وHTML/SVG داخل الـ Sandbox.

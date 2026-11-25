@@ -72,6 +72,26 @@ import { nativeDesktop } from './services/nativeDesktopBridge';
 import { authService } from './services/authService';
 import { getReviewedExamsForStudent, getReviewedUnitsForStudent } from './services/contentGate';
 
+const STORAGE_KEYS = {
+  schedule: 'thanaweya_schedule_v1',
+  units: 'thanaweya_units_state_v1',
+  exams: 'thanaweya_exams_state_v1',
+  progress: 'thanaweya_subject_progress_v1',
+  library: 'thanaweya_library_items_v1',
+  scouted: 'thanaweya_scouted_resources_v1'
+};
+
+function loadJsonState<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function App() {
   // Navigation: Active Service Only (No clutter)
   const [activeService, setActiveService] = useState<ActiveNavService>('planner');
@@ -79,14 +99,48 @@ export default function App() {
 
   // App State
   const [user, setUser] = useState<UserProfile>(initialUser);
-  const [schedule, setSchedule] = useState<DailyScheduleSlot[]>(initialDailySchedule);
-  const [activeSlotForTutor, setActiveSlotForTutor] = useState<DailyScheduleSlot | null>(schedule[0]);
-  const [libraryItems, setLibraryItems] = useState<MultimediaLibraryItem[]>(initialMultimediaLibrary);
-  const [curriculumUnits, setCurriculumUnits] = useState<CurriculumUnit[]>(initialCurriculumUnits);
-  const [monthlyExams, setMonthlyExams] = useState<MonthlyExam[]>(initialMonthlyExams);
-  const [subjectProgressList, setSubjectProgressList] = useState<SubjectProgress[]>(initialSubjectProgress);
-  const [disciplineMetrics, setDisciplineMetrics] = useState<DisciplineMetrics>(initialDisciplineMetrics);
-  const [scoutedResources, setScoutedResources] = useState<ScoutedOfficialResource[]>(initialScoutedResources);
+  const [verifiedAdmin, setVerifiedAdmin] = useState<boolean>(false);
+  const [schedule, setSchedule] = useState<DailyScheduleSlot[]>(() =>
+    loadJsonState<DailyScheduleSlot[]>(STORAGE_KEYS.schedule, initialDailySchedule)
+  );
+  const [activeSlotForTutor, setActiveSlotForTutor] = useState<DailyScheduleSlot | null>(schedule[0] || null);
+  const [libraryItems, setLibraryItems] = useState<MultimediaLibraryItem[]>(() =>
+    loadJsonState<MultimediaLibraryItem[]>(STORAGE_KEYS.library, initialMultimediaLibrary)
+  );
+  const [curriculumUnits, setCurriculumUnits] = useState<CurriculumUnit[]>(() => {
+    const saved = loadJsonState<Array<{ id: string; status: CurriculumUnit['status']; skipExamScore?: number; lastAssessmentDate?: string; localResourcesCount: number; lastUpdatedDate?: string }>>(STORAGE_KEYS.units, []);
+    if (!Array.isArray(saved) || saved.length === 0) return initialCurriculumUnits;
+    const byId = new Map(saved.map((item) => [item.id, item]));
+    return initialCurriculumUnits.map((unit) => {
+      const match = byId.get(unit.id);
+      return match
+        ? {
+            ...unit,
+            status: match.status,
+            skipExamScore: match.skipExamScore,
+            lastAssessmentDate: match.lastAssessmentDate,
+            localResourcesCount: match.localResourcesCount,
+            lastUpdatedDate: match.lastUpdatedDate ?? unit.lastUpdatedDate
+          }
+        : unit;
+    });
+  });
+  const [monthlyExams, setMonthlyExams] = useState<MonthlyExam[]>(() => {
+    const saved = loadJsonState<Array<{ id: string; isCompleted: boolean; scoreAwarded?: number }>>(STORAGE_KEYS.exams, []);
+    if (!Array.isArray(saved) || saved.length === 0) return initialMonthlyExams;
+    const byId = new Map(saved.map((item) => [item.id, item]));
+    return initialMonthlyExams.map((exam) => {
+      const match = byId.get(exam.id);
+      return match ? { ...exam, isCompleted: match.isCompleted, scoreAwarded: match.scoreAwarded } : exam;
+    });
+  });
+  const [subjectProgressList, setSubjectProgressList] = useState<SubjectProgress[]>(() =>
+    loadJsonState<SubjectProgress[]>(STORAGE_KEYS.progress, initialSubjectProgress)
+  );
+  const [disciplineMetrics] = useState<DisciplineMetrics>(initialDisciplineMetrics);
+  const [scoutedResources, setScoutedResources] = useState<ScoutedOfficialResource[]>(() =>
+    loadJsonState<ScoutedOfficialResource[]>(STORAGE_KEYS.scouted, initialScoutedResources)
+  );
 
   // Skip assessment target
   const [targetSkipUnit, setTargetSkipUnit] = useState<CurriculumUnit | null>(null);
@@ -102,9 +156,63 @@ export default function App() {
   const [activeVideoModal, setActiveVideoModal] = useState<MultimediaLibraryItem | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
+  // Persist mutable curriculum/schedule/progress slices locally
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.schedule, JSON.stringify(schedule));
+    } catch { /* ignore quota error */ }
+  }, [schedule]);
+
+  React.useEffect(() => {
+    try {
+      const compactUnits = curriculumUnits.map((u) => ({
+        id: u.id,
+        status: u.status,
+        skipExamScore: u.skipExamScore,
+        lastAssessmentDate: u.lastAssessmentDate,
+        localResourcesCount: u.localResourcesCount,
+        lastUpdatedDate: u.lastUpdatedDate
+      }));
+      window.localStorage.setItem(STORAGE_KEYS.units, JSON.stringify(compactUnits));
+    } catch { /* ignore */ }
+  }, [curriculumUnits]);
+
+  React.useEffect(() => {
+    try {
+      const compactExams = monthlyExams.map((e) => ({
+        id: e.id,
+        isCompleted: e.isCompleted,
+        scoreAwarded: e.scoreAwarded
+      }));
+      window.localStorage.setItem(STORAGE_KEYS.exams, JSON.stringify(compactExams));
+    } catch { /* ignore */ }
+  }, [monthlyExams]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(subjectProgressList));
+    } catch { /* ignore */ }
+  }, [subjectProgressList]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.library, JSON.stringify(libraryItems));
+    } catch { /* ignore */ }
+  }, [libraryItems]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.scouted, JSON.stringify(scoutedResources));
+    } catch { /* ignore */ }
+  }, [scoutedResources]);
+
   // Handlers
   const handleSwitchRole = (newRole: UserRole) => {
-    setUser({ ...user, role: newRole });
+    // Only an authenticated server-verified admin can toggle between admin and student preview
+    if (newRole === 'admin' && !verifiedAdmin) {
+      return;
+    }
+    setUser((prev) => ({ ...prev, role: newRole }));
   };
 
   const handleUpdateSchedule = (newSchedule: DailyScheduleSlot[]) => {
@@ -272,9 +380,9 @@ export default function App() {
     setSchedule((prev) => [slot, ...prev]);
   };
 
-  // Register PWA Service Worker
+  // Register PWA Service Worker (web runtime only, skipped in Electron desktop)
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    if (!nativeDesktop.isNativeDesktop && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
         console.warn('Service worker registration failed:', err);
       });
@@ -286,6 +394,7 @@ export default function App() {
     authService.getInitialSession().then(({ user: authUser }) => {
       if (authUser) {
         setUser(authUser);
+        setVerifiedAdmin(authUser.role === 'admin');
       }
     }).catch(() => {
       // offline fallback
@@ -293,10 +402,14 @@ export default function App() {
       setIsCheckingSession(false);
     });
 
-    // Subscribe to session transitions
+    // Subscribe to session transitions (reset to default profile on sign-out)
     const unsubAuth = authService.onAuthStateChange((authUser) => {
       if (authUser) {
         setUser(authUser);
+        setVerifiedAdmin(authUser.role === 'admin');
+      } else {
+        setUser(initialUser);
+        setVerifiedAdmin(false);
       }
     });
 
@@ -633,7 +746,14 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={user}
-        onUpdateUser={(updated) => setUser(updated)}
+        onUpdateUser={(updated) => {
+          setUser(updated);
+          if (updated.role === 'admin') {
+            setVerifiedAdmin(true);
+          } else if (updated.id === initialUser.id) {
+            setVerifiedAdmin(false);
+          }
+        }}
       />
 
       {/* Offline Storage & PWA Sync Modal */}

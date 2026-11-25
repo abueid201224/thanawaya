@@ -50,6 +50,15 @@ export interface PrintableAuditReport {
 }
 
 export class DocumentExportService {
+  private escapeHtml(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /**
    * Direct PDF Generator: Renders an HTML DOM Element into a real multi-page A4 PDF file using jsPDF and html2canvas
    */
@@ -124,8 +133,7 @@ export class DocumentExportService {
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>${doc.title} - طباعة معتمدة A4</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <title>${this.escapeHtml(doc.title)} - طباعة معتمدة A4</title>
   <style>
     @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -258,8 +266,8 @@ export class DocumentExportService {
       <div>
         <div class="gov-title">جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</div>
         <div class="sub-title">امتحانات شهادة إتمام الثانوية العامة - الشعبة العلمية (رياضيات)</div>
-        <div class="main-title">${doc.title}</div>
-        <div class="sub-title">${doc.subjectAr} ${doc.branchAr ? `• ${doc.branchAr}` : ''} • المرجع: ${doc.authorOrSource}</div>
+        <div class="main-title">${this.escapeHtml(doc.title)}</div>
+        <div class="sub-title">${this.escapeHtml(doc.subjectAr)} ${doc.branchAr ? `• ${this.escapeHtml(doc.branchAr)}` : ''} • المرجع: ${this.escapeHtml(doc.authorOrSource)}</div>
       </div>
       <div>
         <span class="badge">A4 Standard</span>
@@ -271,25 +279,25 @@ export class DocumentExportService {
         (sec) => `
       <div class="section-card">
         <div class="section-title">
-          <span>${sec.heading}</span>
-          ${sec.badge ? `<span style="font-size: 9pt; color: #047857; margin-right: 8px;">[${sec.badge}]</span>` : ''}
+          <span>${this.escapeHtml(sec.heading)}</span>
+          ${sec.badge ? `<span style="font-size: 9pt; color: #047857; margin-right: 8px;">[${this.escapeHtml(sec.badge)}]</span>` : ''}
         </div>
-        ${sec.items.map((item) => `<div class="item-row">${item}</div>`).join('')}
+        ${sec.items.map((item) => `<div class="item-row">${this.escapeHtml(item)}</div>`).join('')}
         ${
           sec.latexFormulas && sec.latexFormulas.length > 0
-            ? sec.latexFormulas.map((f) => `<div class="formula-row">الصيغة الرياضية: ${f}</div>`).join('')
+            ? sec.latexFormulas.map((f) => `<div class="formula-row">الصيغة الرياضية: ${this.escapeHtml(f)}</div>`).join('')
             : ''
         }
-        ${sec.notes ? `<div class="notes-box">⚠️ تنبيه وزاري: ${sec.notes}</div>` : ''}
+        ${sec.notes ? `<div class="notes-box">⚠️ تنبيه وزاري: ${this.escapeHtml(sec.notes)}</div>` : ''}
       </div>
     `
       )
       .join('')}
 
     <div class="footer-row">
-      <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</span>
+      <span>تاريخ الإصدار: ${this.escapeHtml(new Date().toLocaleDateString('ar-EG'))}</span>
       <span>منظومة المخطط الذكي للثانوية العامة • الدفعة الرسمية 2026/2027</span>
-      <span style="font-family: monospace;">THN-${doc.id.toUpperCase()}</span>
+      <span style="font-family: monospace;">THN-${this.escapeHtml(doc.id.toUpperCase())}</span>
     </div>
   </div>
 
@@ -352,8 +360,7 @@ export class DocumentExportService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${doc.title} - منظومة المخطط الذكي للثانوية العامة</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <title>${this.escapeHtml(doc.title)} - منظومة المخطط الذكي للثانوية العامة</title>
   <style>
     :root {
       --primary: #064e3b;
@@ -482,8 +489,8 @@ export class DocumentExportService {
       <div>
         <div class="gov-title">جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني</div>
         <div class="subtitle">امتحانات شهادة إتمام الثانوية العامة - الشعبة العلمية (رياضيات)</div>
-        <h1 class="main-title">${doc.title}</h1>
-        <div class="subtitle">${doc.subjectAr} ${doc.branchAr ? `• ${doc.branchAr}` : ''} • المرجع: ${doc.authorOrSource}</div>
+        <h1 class="main-title">${this.escapeHtml(doc.title)}</h1>
+        <div class="subtitle">${this.escapeHtml(doc.subjectAr)} ${doc.branchAr ? `• ${this.escapeHtml(doc.branchAr)}` : ''} • المرجع: ${this.escapeHtml(doc.authorOrSource)}</div>
       </div>
       <div>
         <span class="badge">وثيقة A4 معتمدة</span>
@@ -495,18 +502,18 @@ export class DocumentExportService {
         (sec) => `
       <div class="section-card">
         <div class="section-title">
-          <span>${sec.heading}</span>
-          ${sec.badge ? `<span class="badge">${sec.badge}</span>` : ''}
+          <span>${this.escapeHtml(sec.heading)}</span>
+          ${sec.badge ? `<span class="badge">${this.escapeHtml(sec.badge)}</span>` : ''}
         </div>
-        ${sec.subheading ? `<div class="subtitle" style="margin-bottom: 10px;">${sec.subheading}</div>` : ''}
+        ${sec.subheading ? `<div class="subtitle" style="margin-bottom: 10px;">${this.escapeHtml(sec.subheading)}</div>` : ''}
         <div class="section-content">
-          ${sec.items.map((item) => `<div class="list-item">${item}</div>`).join('')}
+          ${sec.items.map((item) => `<div class="list-item">${this.escapeHtml(item)}</div>`).join('')}
           ${
             sec.latexFormulas && sec.latexFormulas.length > 0
-              ? sec.latexFormulas.map((f) => `<div class="formula-box">LaTeX Formula: ${f}</div>`).join('')
+              ? sec.latexFormulas.map((f) => `<div class="formula-box">LaTeX Formula: ${this.escapeHtml(f)}</div>`).join('')
               : ''
           }
-          ${sec.notes ? `<div style="font-size: 12px; color: #b45309; margin-top: 8px;">تنبيه فخ وزاري: ${sec.notes}</div>` : ''}
+          ${sec.notes ? `<div style="font-size: 12px; color: #b45309; margin-top: 8px;">تنبيه فخ وزاري: ${this.escapeHtml(sec.notes)}</div>` : ''}
         </div>
       </div>
     `
@@ -514,9 +521,9 @@ export class DocumentExportService {
       .join('')}
 
     <div class="footer-bar">
-      <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</span>
+      <span>تاريخ الإصدار: ${this.escapeHtml(new Date().toLocaleDateString('ar-EG'))}</span>
       <span>منظومة المخطط الذكي للثانوية العامة • الدفعة الرسمية 2026/2027</span>
-      <span>كود الوثيقة: THN-${doc.id.toUpperCase()}</span>
+      <span>كود الوثيقة: THN-${this.escapeHtml(doc.id.toUpperCase())}</span>
     </div>
   </div>
 

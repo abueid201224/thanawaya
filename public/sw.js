@@ -1,11 +1,10 @@
 // Service Worker for Offline-First Math Copilot PWA
-const CACHE_NAME = 'math-copilot-cache-v1';
+const CACHE_NAME = 'math-copilot-cache-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-  'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,6 +32,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -48,7 +51,10 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       }).catch(() => {
-        return caches.match('/');
+        if (event.request.mode === 'navigate') {
+          return caches.match('./');
+        }
+        return new Response('', { status: 503, statusText: 'Offline' });
       });
     })
   );

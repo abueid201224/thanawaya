@@ -13,19 +13,19 @@
 
 ### خطوات التثبيت والتشغيل المحلي:
 ```bash
-# 1. تثبيت الاعتماديات مع معالجة حزم الأقران
-npm ci --legacy-peer-deps
+# 1. تثبيت الاعتماديات الرسمية وفق lockfile
+npm ci
 
 # 2. توليد الأيقونات المتعددة الدقة (16x16 حتى 256x256)
 npm run icons
 
-# 3. فحص الأنواع والتحقق من الشيفرة المصدرية
+# 3. فحص الأنواع والتحقق من الشيفرة المصدرية والاختبارات
 npm run lint
 npm test
 
 # 4. تشغيل التطبيق في وضع التطوير السريع
-#    الخادم يستمع افتراضياً على 127.0.0.1 فقط. لتعريضه للشبكة عيّن HOST صراحة
-#    (مثل HOST=0.0.0.0)، وانتبه: لا توجد مصادقة ولا تحديد معدل على مسارات الـ API.
+#    الخادم يستمع افتراضياً على 127.0.0.1 فقط ومحمي برمز جلسة محلي X-Thanaweya-Session.
+#    لتعريضه للشبكة عيّن HOST صراحة، وتتطلب المسارات المحمية رأس التفويض المناسب.
 npm run dev
 
 # 5. تجميع الواجهة وعملية Electron معاً
@@ -144,21 +144,21 @@ npm run package:win
 3. من صفحة **Project Settings -> API**، انسخ:
    - **Project URL** (يبدأ بـ `https://YOUR-PROJECT-REF.supabase.co`).
    - **anon public key** (المفتاح العام فقط، واحذر نسخ `service_role`).
-4. الاتصال بقاعدة البيانات عبر أداة `psql` وتنفيذ نصوص الهجرة المنظمة:
+4. الاتصال بقاعدة البيانات عبر أداة `psql` وتنفيذ نصوص الترحيل القياسية (Canonical Migrations):
    ```bash
    # الاتصال بقاعدة البيانات المباشرة
    psql -h YOUR-PROJECT-REF.supabase.co -p 5432 -U postgres -d postgres
 
-   # تنفيذ نصوص الجداول وسياسات الأمان
-   \i database/supabase/001_create_student_profiles_table.sql
-   \i database/supabase/002_enable_rls.sql
-   \i database/supabase/003_seed_admin_user.sql
+   # تنفيذ نصوص الترحيل المعتمدة (الجداول، الصلاحيات، وسجل المحاولات والأخطاء)
+   \i supabase/migrations/001_student_auth.sql
+   \i supabase/migrations/002_learning_attempts_and_mistakes.sql
    ```
-5. لتحديث وترقية حساب المشرف العام يدوياً في أي وقت:
+   *(ملاحظة: توجد نصوص منفصلة للاستخدام اليدوي القديم في مجلد `database/supabase/`، إلا أن `supabase/migrations/` هو المسار المرجعي المعتمد).*
+5. لترقية حساب مشرف معتمد من جانب قاعدة البيانات في أي وقت:
    ```sql
    UPDATE auth.users 
    SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
-   WHERE email = 'ahmed.hamada.gana.2012@gmail.com';
+   WHERE email = '<ADMIN_EMAIL>';
    ```
 6. ضع القيم في ملف `.env.production` (أو أسرار مستودع GitHub):
    ```env

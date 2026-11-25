@@ -69,16 +69,35 @@ class NativeDesktopBridge {
    * Opens web link securely in default OS browser
    */
   public async openExternalUrl(url: string): Promise<boolean> {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return false;
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+
     if (this.isNativeDesktop && window.electronAPI) {
       try {
-        return await window.electronAPI.openExternalUrl(url);
+        return await window.electronAPI.openExternalUrl(parsed.toString());
       } catch (err) {
         console.warn('Failed to open external url:', err);
       }
     }
-    // Web fallback
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return true;
+
+    if (typeof document !== 'undefined') {
+      const a = document.createElement('a');
+      a.href = parsed.toString();
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    }
+    return false;
   }
 
   /**

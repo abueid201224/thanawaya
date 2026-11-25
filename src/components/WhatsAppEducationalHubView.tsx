@@ -797,7 +797,9 @@ export const WhatsAppEducationalHubView: React.FC<WhatsAppEducationalHubViewProp
                           onClick={(e) => {
                             if (nativeDesktop.isNativeDesktop) {
                               e.preventDefault();
-                              nativeDesktop.openExternalUrl(chatUrl).catch(() => window.open(chatUrl, '_blank'));
+                              nativeDesktop.openExternalUrl(chatUrl).then((ok) => {
+                                if (!ok) handleCopyText(`wa_chat_${teacher.id}`, chatUrl, 'رابط WhatsApp Web');
+                              }).catch(() => handleCopyText(`wa_chat_${teacher.id}`, chatUrl, 'رابط WhatsApp Web'));
                             }
                           }}
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -823,7 +825,9 @@ export const WhatsAppEducationalHubView: React.FC<WhatsAppEducationalHubViewProp
                           onClick={(e) => {
                             if (nativeDesktop.isNativeDesktop) {
                               e.preventDefault();
-                              nativeDesktop.openExternalUrl(homeworkUrl).catch(() => window.open(homeworkUrl, '_blank'));
+                              nativeDesktop.openExternalUrl(homeworkUrl).then((ok) => {
+                                if (!ok) handleCopyText(`wa_hw_${teacher.id}`, homeworkUrl, 'رابط إرسال الواجب');
+                              }).catch(() => handleCopyText(`wa_hw_${teacher.id}`, homeworkUrl, 'رابط إرسال الواجب'));
                             }
                           }}
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold transition-all shadow-xs"

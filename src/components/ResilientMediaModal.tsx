@@ -37,6 +37,31 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
   onOpenDocumentExport
 }) => {
   if (!item) return null;
+  return (
+    <ResilientMediaModalContent
+      key={item.id}
+      item={item}
+      onClose={onClose}
+      onOpenDocumentExport={onOpenDocumentExport}
+    />
+  );
+};
+
+function isSafeHttpUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+const ResilientMediaModalContent: React.FC<{
+  item: MultimediaLibraryItem;
+  onClose: () => void;
+  onOpenDocumentExport?: (subjectCode: string) => void;
+}> = ({ item, onClose, onOpenDocumentExport }) => {
+  const safeHref = isSafeHttpUrl(item.url) ? item.url : '#';
 
   const [playerMode, setPlayerMode] = useState<PlayerMode>(() => {
     if (item.fileType === 'printable_doc') return 'capsule_interactive';
@@ -64,21 +89,22 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
     };
   }, []);
 
-  // Format embed URL for YouTube if applicable
+  // Format embed URL for YouTube (privacy-enhanced youtube-nocookie) if applicable
   const getEmbedUrl = (rawUrl: string): string => {
     try {
+      if (!isSafeHttpUrl(rawUrl)) return 'about:blank';
       if (rawUrl.includes('youtube.com/watch')) {
         const urlObj = new URL(rawUrl);
         const v = urlObj.searchParams.get('v');
-        if (v) return `https://www.youtube.com/embed/${v}?autoplay=1&enablejsapi=1`;
+        if (v) return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v)}?rel=0`;
       }
       if (rawUrl.includes('youtu.be/')) {
         const id = rawUrl.split('youtu.be/')[1]?.split('?')[0];
-        if (id) return `https://www.youtube.com/embed/${id}?autoplay=1&enablejsapi=1`;
+        if (id) return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0`;
       }
       return rawUrl;
     } catch {
-      return rawUrl;
+      return 'about:blank';
     }
   };
 
@@ -250,7 +276,7 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
             )}
 
             <a
-              href={item.url}
+              href={safeHref}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium cursor-pointer"
@@ -301,7 +327,8 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
               <iframe
                 src={getEmbedUrl(item.url)}
                 title={item.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                sandbox="allow-scripts allow-same-origin allow-presentation"
+                allow="encrypted-media; picture-in-picture"
                 allowFullScreen
                 className="w-full flex-1 border-0"
               />

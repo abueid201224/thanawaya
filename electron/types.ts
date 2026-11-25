@@ -101,7 +101,10 @@ export interface ElectronAPIContract {
     getAttempts: (limit?: number) => Promise<{ ok: boolean; attempts?: any[]; error?: string }>;
     captureMistake: (payload: any) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
     getMistakes: () => Promise<{ ok: boolean; mistakes?: any[]; error?: string }>;
+    updateMistake: (mistakeId: string, errorType: string, studentNote?: string) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
     recordReview: (mistakeId: string, wasCorrect: boolean) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
+    getSpacedIntervals: () => Promise<{ ok: boolean; intervals?: number[]; error?: string }>;
+    saveSpacedIntervals: (intervals: number[]) => Promise<{ ok: boolean; intervals?: number[]; error?: string }>;
   };
   isElectron: boolean;
 }
