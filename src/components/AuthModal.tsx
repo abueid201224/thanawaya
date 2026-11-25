@@ -22,7 +22,7 @@ import { authService, normalizePhoneDigits } from '../services/authService';
 import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR_ARABIC } from '../services/supabaseClient';
 import { resilientAudio } from '../services/resilientAudioService';
 
-interface AuthModalProps {
+export interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: UserProfile;
