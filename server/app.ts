@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import { GoogleGenAI } from '@google/genai';
+import { isAllowedHostHeader, isAllowedOrigin } from './hostGuard.ts';
 
 export interface AppServerOptions {
   staticDir?: string;
@@ -121,6 +122,15 @@ export function createExpressApp(options: {
       const remote = req.socket.remoteAddress || '';
       if (remote !== '127.0.0.1' && remote !== '::1' && remote !== '::ffff:127.0.0.1') {
         res.status(403).json({ error: 'Access denied: loopback interface only' });
+        return;
+      }
+      // Defend against DNS rebinding: a browser page on another site can resolve to 127.0.0.1
+      if (!isAllowedHostHeader(req.headers.host)) {
+        res.status(403).json({ error: 'Access denied: unexpected Host header' });
+        return;
+      }
+      if (!isAllowedOrigin(req.headers.origin)) {
+        res.status(403).json({ error: 'Access denied: cross-origin request' });
         return;
       }
       res.setHeader('X-Frame-Options', 'DENY');

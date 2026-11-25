@@ -22,3 +22,8 @@ export function resolveListenHost(env: { HOST?: string | undefined }): ListenHos
   const host = requested === '' ? DEFAULT_LISTEN_HOST : requested;
   return { host, isLoopback: isLoopbackHost(host) };
 }
+
+/** Binding to a non-loopback interface is refused unless the operator opts in explicitly. */
+export function isNetworkBindAllowed(env: { ALLOW_NETWORK_BIND?: string | undefined }): boolean {
+  return (env.ALLOW_NETWORK_BIND ?? '').trim() === '1';
+}

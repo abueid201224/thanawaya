@@ -15,8 +15,40 @@ import * as fs from 'fs';
 export const FORBIDDEN_EXTENSIONS: ReadonlySet<string> = new Set([
   '.exe', '.bat', '.cmd', '.ps1', '.vbs', '.vbe', '.js', '.jse',
   '.wsf', '.wsh', '.msc', '.msi', '.msp', '.com', '.scr', '.pif',
-  '.reg', '.hta', '.cpl', '.jar', '.dll', '.sys', '.drv'
+  '.reg', '.hta', '.cpl', '.jar', '.dll', '.sys', '.drv',
+  // shortcuts, installers and launchers
+  '.lnk', '.url', '.appref-ms', '.application', '.msix', '.msixbundle', '.appx',
+  '.appxbundle', '.inf', '.scf', '.chm',
+  // scripts and macro-enabled Office files
+  '.mjs', '.cjs', '.vb', '.wsc', '.sct', '.psm1', '.ps1xml', '.gadget',
+  '.docm', '.xlsm', '.pptm'
 ]);
+
+const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])$/i;
+
+/**
+ * Windows-only syntax that Win32 rewrites or interprets in surprising ways. The app never
+ * needs any of it, so it is refused outright (on every OS, so behaviour is testable):
+ *  - `\\?\` / `\\.\` device-namespace prefixes;
+ *  - a colon anywhere except the drive letter (NTFS alternate data streams such as
+ *    `evil.exe::$DATA`, which `path.extname` reports as `.exe::$DATA`);
+ *  - segments ending in a dot or a space (Win32 strips them: `evil.exe.` becomes `evil.exe`);
+ *  - reserved device names (CON, NUL, COM1, ... with or without an extension);
+ *  - characters Windows forbids in file names.
+ */
+export function hasUnsafeWindowsSyntax(p: string): boolean {
+  if (/^[\\/]{2}[?.][\\/]/.test(p)) return true;
+  const rest = /^[a-zA-Z]:/.test(p) ? p.slice(2) : p;
+  if (rest.includes(':')) return true;
+  for (const segment of rest.split(/[\\/]+/)) {
+    if (segment === '' || segment === '.' || segment === '..') continue;
+    if (/[. ]$/.test(segment)) return true;
+    if (/[<>"|?*]/.test(segment)) return true;
+    const stem = segment.split('.')[0].trimEnd();
+    if (WINDOWS_RESERVED_NAME.test(stem)) return true;
+  }
+  return false;
+}
 
 /** Whole folder name only: `ThanaweyaAmma` or `ThanaweyaAmma_2027` (no open-ended prefix). */
 export const STUDENT_FOLDER_NAME = /^ThanaweyaAmma(?:_\d{4})?$/i;
@@ -106,6 +138,7 @@ export function evaluatePath(targetPath: unknown, options: PathSandboxOptions): 
     return { allowed: false, reason: 'invalid' };
   }
   if (targetPath.indexOf('\0') !== -1) return { allowed: false, reason: 'invalid' };
+  if (hasUnsafeWindowsSyntax(targetPath)) return { allowed: false, reason: 'invalid' };
 
   const forbidden = options.forbiddenExtensions ?? FORBIDDEN_EXTENSIONS;
   const lexical = path.resolve(targetPath);

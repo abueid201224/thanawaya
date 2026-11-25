@@ -7,7 +7,8 @@ import {
   evaluatePath,
   isPathAllowed,
   isInsideDir,
-  isUnderStudentDriveFolder
+  isUnderStudentDriveFolder,
+  hasUnsafeWindowsSyntax
 } from '../electron/pathSandbox.ts';
 
 function makeSandbox(t) {
@@ -145,4 +146,35 @@ test('win32: only whole ThanaweyaAmma[_YYYY] folders on a drive root are student
 
 test('posix paths are never student drive folders', () => {
   assert.equal(isUnderStudentDriveFolder('/ThanaweyaAmma_2027/x', path.posix), false);
+});
+
+test('hardening: NTFS alternate data streams and colons are rejected', (t) => {
+  const { documents, options } = makeSandbox(t);
+  for (const name of ['evil.exe::$DATA', 'note.txt:hidden', 'a:b.txt']) {
+    assert.equal(evaluatePath(path.join(documents, name), options).allowed, false, name);
+  }
+});
+
+test('hardening: trailing dot or space, reserved device names and illegal characters are rejected', (t) => {
+  const { documents, options } = makeSandbox(t);
+  for (const name of ['evil.exe.', 'evil.exe ', 'CON', 'nul.txt', 'COM1', 'lpt9.log', 'a*b.txt', 'a?b.txt']) {
+    assert.equal(evaluatePath(path.join(documents, name), options).allowed, false, name);
+  }
+  assert.equal(evaluatePath(path.join(documents, 'console.txt'), options).allowed, true);
+  assert.equal(evaluatePath(path.join(documents, 'notes.v2.txt'), options).allowed, true);
+});
+
+test('hardening: device-namespace prefixes and drive-letter colon handling', () => {
+  assert.equal(hasUnsafeWindowsSyntax('\\\\?\\C:\\x\\a.txt'), true);
+  assert.equal(hasUnsafeWindowsSyntax('\\\\.\\PhysicalDrive0'), true);
+  assert.equal(hasUnsafeWindowsSyntax('C:\\Users\\me\\a.txt'), false);
+  assert.equal(hasUnsafeWindowsSyntax('/home/me/a.txt'), false);
+});
+
+test('hardening: extended denylist covers shortcuts, installers and macro files', (t) => {
+  const { documents, options } = makeSandbox(t);
+  for (const ext of ['.lnk', '.url', '.appref-ms', '.application', '.msix', '.inf', '.scf', '.chm', '.docm', '.xlsm', '.psm1']) {
+    assert.equal(evaluatePath(path.join(documents, 'x' + ext), options).allowed, false, ext);
+  }
+  assert.equal(evaluatePath(path.join(documents, 'x.pdf'), options).allowed, true);
 });

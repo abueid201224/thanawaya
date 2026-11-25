@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createExpressApp } from './server/app.ts';
-import { resolveListenHost } from './server/listenHost.ts';
+import { resolveListenHost, isNetworkBindAllowed } from './server/listenHost.ts';
 
 dotenv.config();
 
@@ -16,8 +16,17 @@ async function startServer() {
   const PORT = parseInt(process.env.PORT || '3000', 10);
   const apiKey = process.env.GEMINI_API_KEY;
 
+  const { host: HOST, isLoopback } = resolveListenHost(process.env);
+  if (!isLoopback && !isNetworkBindAllowed(process.env)) {
+    console.error(
+      `Refusing to bind to HOST=${HOST}: the API has no authentication. Set ALLOW_NETWORK_BIND=1 to confirm you want network exposure.`
+    );
+    process.exit(1);
+  }
+
   const { app } = createExpressApp({
-    initialApiKey: apiKey
+    initialApiKey: apiKey,
+    loopbackOnly: isLoopback
   });
 
   // In production, serve static build; in development, mount Vite middleware
@@ -34,7 +43,6 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  const { host: HOST, isLoopback } = resolveListenHost(process.env);
   if (!isLoopback) {
     console.warn(
       `⚠️  HOST=${HOST} exposes this server to the network. The API has no authentication or rate limiting; use only on a trusted network.`
