@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import { GoogleGenAI } from '@google/genai';
-import { isAllowedHostHeader, isAllowedOrigin } from './hostGuard';
+import { isAllowedHostHeader, isAllowedOrigin } from './hostGuard.ts';
 
 export interface AppServerOptions {
   staticDir?: string;

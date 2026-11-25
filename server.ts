@@ -1,6 +1,5 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,9 +14,15 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const PORT = parseInt(process.env.PORT || '3000', 10);
   const apiKey = process.env.GEMINI_API_KEY;
+  const isCloudRun = Boolean(process.env.K_SERVICE || process.env.K_REVISION);
 
-  const { host: HOST, isLoopback } = resolveListenHost(process.env);
-  if (!isLoopback && !isNetworkBindAllowed(process.env)) {
+  const effectiveEnv =
+    isCloudRun && !(process.env.HOST ?? '').trim()
+      ? { ...process.env, HOST: '0.0.0.0' }
+      : process.env;
+
+  const { host: HOST, isLoopback } = resolveListenHost(effectiveEnv);
+  if (!isLoopback && !isCloudRun && !isNetworkBindAllowed(process.env)) {
     console.error(
       `Refusing to bind to HOST=${HOST}: the API has no authentication. Set ALLOW_NETWORK_BIND=1 to confirm you want network exposure.`
     );
@@ -36,6 +41,7 @@ async function startServer() {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -43,7 +49,7 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  if (!isLoopback) {
+  if (!isLoopback && !isCloudRun) {
     console.warn(
       `⚠️  HOST=${HOST} exposes this server to the network. The API has no authentication or rate limiting; use only on a trusted network.`
     );
