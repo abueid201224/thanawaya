@@ -154,3 +154,175 @@ test('real HTTP: loopbackOnly=false (Cloud Run / network mode) accepts cloud Hos
   assert.equal(res.statusCode, 200);
   assert.equal(JSON.parse(res.body).status, 'ok');
 });
+
+test('real HTTP: /api/study/* endpoints persist MOE schema, attempts, mistakes, and spaced reviews in SQLite', async (t) => {
+  const running = await startEmbeddedServer({
+    host: '127.0.0.1',
+    preferredPort: 47940,
+    loopbackOnly: true
+  });
+  t.after(async () => {
+    await running.close();
+  });
+
+  const hostHeaders = { Host: `127.0.0.1:${running.port}` };
+
+  // 1. Official MOE sources pre-seeded
+  const srcRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/sources',
+    headers: hostHeaders
+  });
+  assert.equal(srcRes.statusCode, 200);
+  const srcJson = JSON.parse(srcRes.body);
+  assert.equal(srcJson.sources.length, 3);
+
+  // 2. Reject untrusted source URL with 400
+  const badSource = await requestHttp({
+    port: running.port,
+    path: '/api/study/sources',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      id: 'evil_src',
+      titleAr: 'غير موثوق',
+      portalType: 'student_books',
+      url: 'https://evil.example/book.pdf',
+      academicYear: '2026/2027'
+    }
+  });
+  assert.equal(badSource.statusCode, 400);
+
+  // 3. Upsert curriculum unit + 1 reviewed + 1 unreviewed question; GET /api/study/curriculum exposes only reviewed
+  const unitRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/curriculum/unit',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      id: 'unit_stat_01',
+      subjectCode: 'STATICS',
+      subjectNameAr: 'الاستاتيكا',
+      unitNumber: 1,
+      title: 'الاحتكاك',
+      description: 'اتزان جسم على مستوى أفقي خشن',
+      learningOutcomes: ['حساب قوة الاحتكاك السكوني النهائي'],
+      sourceId: 'moe_studentbooks_sec',
+      academicYear: '2026/2027'
+    }
+  });
+  assert.equal(unitRes.statusCode, 201);
+
+  const qRev = await requestHttp({
+    port: running.port,
+    path: '/api/study/curriculum/question',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      id: 'q_stat_http_1',
+      questionVersion: 1,
+      unitId: 'unit_stat_01',
+      subjectCode: 'STATICS',
+      questionNumber: 1,
+      questionText: 'احسب قوة الاحتكاك السكوني النهائي',
+      options: [
+        { key: 'A', text: '$10\\text{ N}$' },
+        { key: 'B', text: '$20\\text{ N}$' }
+      ],
+      correctKey: 'A',
+      explanation: '$f_s = \\mu_s R$',
+      difficulty: 'C',
+      targetedLearningOutcome: 'قوة الاحتكاك النهائي',
+      sourceId: 'moe_performance_assessments',
+      reviewStatus: 'reviewed',
+      reviewedBy: 'موجه الاستاتيكا',
+      verifiedBySympy: true
+    }
+  });
+  assert.equal(qRev.statusCode, 201);
+
+  const qUnrev = await requestHttp({
+    port: running.port,
+    path: '/api/study/curriculum/question',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      id: 'q_stat_http_unrev',
+      questionVersion: 1,
+      unitId: 'unit_stat_01',
+      subjectCode: 'STATICS',
+      questionNumber: 2,
+      questionText: 'سؤال قيد المراجعة',
+      options: [
+        { key: 'A', text: '1' },
+        { key: 'B', text: '2' }
+      ],
+      correctKey: 'A',
+      explanation: 'مسودة',
+      difficulty: 'B',
+      targetedLearningOutcome: 'مسودة',
+      reviewStatus: 'unreviewed'
+    }
+  });
+  assert.equal(qUnrev.statusCode, 201);
+
+  const curRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/curriculum',
+    headers: hostHeaders
+  });
+  assert.equal(curRes.statusCode, 200);
+  const curJson = JSON.parse(curRes.body);
+  assert.equal(curJson.units[0].questions.length, 1);
+  assert.equal(curJson.units[0].questions[0].id, 'q_stat_http_1');
+
+  // 4. Record study attempt and capture mistake over real HTTP
+  const attRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/attempts',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      questionId: 'q_stat_http_1',
+      questionVersion: 1,
+      unitId: 'unit_stat_01',
+      subjectCode: 'STATICS',
+      mode: 'practice',
+      selectedKey: 'B',
+      isCorrect: false,
+      hintTierUsed: 1
+    }
+  });
+  assert.equal(attRes.statusCode, 201);
+
+  const mstRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/mistakes',
+    method: 'POST',
+    headers: hostHeaders,
+    body: {
+      questionId: 'q_stat_http_1',
+      questionVersion: 1,
+      unitId: 'unit_stat_01',
+      subjectCode: 'STATICS',
+      subjectNameAr: 'الاستاتيكا',
+      questionText: 'احسب قوة الاحتكاك السكوني النهائي',
+      selectedKey: 'B',
+      correctKey: 'A',
+      explanation: '$f_s = \\mu_s R$',
+      errorType: 'rule'
+    }
+  });
+  assert.equal(mstRes.statusCode, 201);
+  const mistakeId = JSON.parse(mstRes.body).mistake.id;
+
+  const revRes = await requestHttp({
+    port: running.port,
+    path: `/api/study/mistakes/${encodeURIComponent(mistakeId)}/review`,
+    method: 'POST',
+    headers: hostHeaders,
+    body: { wasCorrect: true }
+  });
+  assert.equal(revRes.statusCode, 200);
+  assert.equal(JSON.parse(revRes.body).mistake.reviewIntervalDays, 3);
+});

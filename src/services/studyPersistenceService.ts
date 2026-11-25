@@ -84,6 +84,30 @@ export class StudyPersistenceService {
     this.storage = storage;
   }
 
+  private mirrorToSqlite(
+    ipcCall: (db: NonNullable<Window['electronAPI']>['studyDb']) => Promise<unknown> | undefined,
+    apiPath: string,
+    payload: unknown
+  ): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const studyDb = window.electronAPI?.studyDb;
+      if (studyDb) {
+        void ipcCall(studyDb)?.catch(() => {});
+        return;
+      }
+      if (typeof fetch === 'function' && window.location?.protocol?.startsWith('http')) {
+        void fetch(apiPath, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      }
+    } catch {
+      // Non-blocking background sync to SQLite
+    }
+  }
+
   public getSpacedIntervals(): SpacedReviewIntervalDays[] {
     try {
       const raw = this.storage.getItem(SPACED_INTERVALS_KEY);
@@ -107,6 +131,7 @@ export class StudyPersistenceService {
       if (verify !== serialized) {
         return { ok: false, error: 'تعذر التحقق من حفظ فترات المراجعة محلياً.' };
       }
+      this.mirrorToSqlite(() => undefined, '/api/study/spaced-intervals', { intervals });
       return { ok: true, data: intervals, savedAt: new Date().toISOString() };
     } catch (err: any) {
       return { ok: false, error: err?.message || 'فشل الحفظ المحلي لفترات المراجعة.' };
@@ -160,6 +185,12 @@ export class StudyPersistenceService {
       if (readBack !== serialized) {
         return { ok: false, error: 'تعذر التحقق من حفظ المحاولة على القرص المحلي.' };
       }
+
+      this.mirrorToSqlite(
+        (db) => db?.recordAttempt(attempt),
+        '/api/study/attempts',
+        attempt
+      );
 
       return { ok: true, data: attempt, savedAt: attempt.timestamp };
     } catch (err: any) {
@@ -246,6 +277,12 @@ export class StudyPersistenceService {
         return { ok: false, error: 'تعذر التحقق من حفظ الخطأ في الدفتر المحلي.' };
       }
 
+      this.mirrorToSqlite(
+        (db) => db?.captureMistake(savedEntry),
+        '/api/study/mistakes',
+        savedEntry
+      );
+
       return { ok: true, data: savedEntry, savedAt: nowIso };
     } catch (err: any) {
       return { ok: false, error: err?.message || 'فشل حفظ الخطأ في الدفتر.' };
@@ -326,6 +363,12 @@ export class StudyPersistenceService {
       if (this.storage.getItem(MISTAKES_KEY) !== serialized) {
         return { ok: false, error: 'تعذر التحقق من حفظ نتيجة المراجعة.' };
       }
+
+      this.mirrorToSqlite(
+        (db) => db?.recordReview(mistakeId, wasCorrect),
+        `/api/study/mistakes/${encodeURIComponent(mistakeId)}/review`,
+        { wasCorrect }
+      );
 
       return { ok: true, data: mistakes[idx], savedAt: nowIso };
     } catch (err: any) {

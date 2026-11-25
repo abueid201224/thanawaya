@@ -25,7 +25,7 @@ async function buildElectron() {
     format: 'cjs',
     sourcemap: true,
     minify: false,
-    external: ['electron']
+    external: ['electron', 'node:sqlite']
   });
 
   // 2. Bundle Preload Process
@@ -38,7 +38,7 @@ async function buildElectron() {
     format: 'cjs',
     sourcemap: true,
     minify: false,
-    external: ['electron']
+    external: ['electron', 'node:sqlite']
   });
 
   console.log('✅ Electron main and preload processes compiled successfully to dist-electron/');

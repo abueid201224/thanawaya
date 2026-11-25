@@ -29,9 +29,14 @@ async function startServer() {
     process.exit(1);
   }
 
+  const sqlitePath =
+    process.env.SQLITE_DB_PATH ||
+    (isCloudRun ? ':memory:' : path.resolve(__dirname, 'data', 'thanaweya_study.sqlite'));
+
   const { app } = createExpressApp({
     initialApiKey: apiKey,
-    loopbackOnly: isLoopback
+    loopbackOnly: isLoopback,
+    sqlitePath
   });
 
   // In production, serve static build; in development, mount Vite middleware

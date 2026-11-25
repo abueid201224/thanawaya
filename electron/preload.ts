@@ -114,6 +114,17 @@ const api: ElectronAPIContract = {
 
   getEmbeddedServerUrl: () => {
     return ipcRenderer.invoke('app:get-embedded-server-url');
+  },
+
+  studyDb: {
+    getSources: () => ipcRenderer.invoke('study:get-sources'),
+    getCurriculum: () => ipcRenderer.invoke('study:get-curriculum'),
+    recordAttempt: (payload: any) => ipcRenderer.invoke('study:record-attempt', payload),
+    getAttempts: (limit?: number) => ipcRenderer.invoke('study:get-attempts', limit),
+    captureMistake: (payload: any) => ipcRenderer.invoke('study:capture-mistake', payload),
+    getMistakes: () => ipcRenderer.invoke('study:get-mistakes'),
+    recordReview: (mistakeId: string, wasCorrect: boolean) =>
+      ipcRenderer.invoke('study:record-review', { mistakeId, wasCorrect })
   }
 };
 

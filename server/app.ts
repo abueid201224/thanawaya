@@ -5,6 +5,10 @@ import fs from 'fs';
 import net from 'net';
 import { GoogleGenAI } from '@google/genai';
 import { isAllowedHostHeader, isAllowedOrigin } from './hostGuard.ts';
+import {
+  SqliteStudyStore,
+  isValidSpacedIntervalTuple
+} from './sqliteStore.ts';
 
 export interface AppServerOptions {
   staticDir?: string;
@@ -12,6 +16,8 @@ export interface AppServerOptions {
   preferredPort?: number;
   host?: string;
   loopbackOnly?: boolean;
+  sqlitePath?: string;
+  sqliteStore?: SqliteStudyStore;
 }
 
 export interface RunningEmbeddedServer {
@@ -63,10 +69,23 @@ export function createExpressApp(options: {
   staticDir?: string;
   initialApiKey?: string;
   loopbackOnly?: boolean;
+  sqlitePath?: string;
+  sqliteStore?: SqliteStudyStore;
 }) {
   const app = express();
   let currentApiKey = options.initialApiKey || process.env.GEMINI_API_KEY || '';
   let aiClient: GoogleGenAI | null = currentApiKey ? createAiInstance(currentApiKey) : null;
+  let studyStore: SqliteStudyStore | null = options.sqliteStore ?? null;
+  let ownsStore = false;
+  if (!studyStore) {
+    try {
+      studyStore = new SqliteStudyStore(options.sqlitePath || ':memory:');
+      ownsStore = true;
+    } catch (err) {
+      console.warn('[SQLite] node:sqlite unavailable; study persistence API disabled:', err);
+      studyStore = null;
+    }
+  }
 
   function createAiInstance(key: string): GoogleGenAI | null {
     if (!key) return null;
@@ -415,7 +434,190 @@ export function createExpressApp(options: {
     });
   });
 
-  // 6. Static file serving (Production dist directory)
+  // 6. Local SQLite Study Persistence & MOE Content Schema Endpoints
+  function requireStudyStore(res: Response): SqliteStudyStore | null {
+    if (!studyStore) {
+      res.status(503).json({
+        error: 'وحدة التخزين المحلية SQLite غير متاحة حالياً.',
+        code: 'SQLITE_UNAVAILABLE'
+      });
+      return null;
+    }
+    return studyStore;
+  }
+
+  app.get('/api/study/sources', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    res.json({ sources: store.listOfficialSources() });
+  });
+
+  app.post('/api/study/sources', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    try {
+      const saved = store.upsertOfficialSource(req.body);
+      return res.status(201).json({ source: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err?.message || 'Invalid source payload' });
+    }
+  });
+
+  app.get('/api/study/curriculum', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    res.json({ units: store.getStudentApprovedCurriculum() });
+  });
+
+  app.post('/api/study/curriculum/unit', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    try {
+      const unit = store.upsertCurriculumUnit(req.body);
+      return res.status(201).json({ unit });
+    } catch (err: any) {
+      return res.status(400).json({ error: err?.message || 'Invalid unit payload' });
+    }
+  });
+
+  app.post('/api/study/curriculum/question', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    try {
+      const question = store.upsertContentQuestion(req.body);
+      return res.status(201).json({ question });
+    } catch (err: any) {
+      return res.status(400).json({ error: err?.message || 'Invalid question payload' });
+    }
+  });
+
+  app.get('/api/study/attempts', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const rawLimit = Number(req.query.limit ?? 200);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : 200;
+    res.json({ attempts: store.getAttempts(limit) });
+  });
+
+  app.post('/api/study/attempts', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    try {
+      const body = req.body || {};
+      if (
+        typeof body.questionId !== 'string' ||
+        typeof body.unitId !== 'string' ||
+        typeof body.subjectCode !== 'string' ||
+        typeof body.selectedKey !== 'string' ||
+        typeof body.isCorrect !== 'boolean'
+      ) {
+        return res.status(400).json({ error: 'Missing required study attempt fields' });
+      }
+      const attempt = store.recordAttempt({
+        id: typeof body.id === 'string' ? body.id : undefined,
+        questionId: body.questionId,
+        questionVersion: Number(body.questionVersion ?? 1),
+        unitId: body.unitId,
+        subjectCode: body.subjectCode,
+        mode: body.mode,
+        selectedKey: body.selectedKey,
+        isCorrect: body.isCorrect,
+        hintTierUsed: body.hintTierUsed
+      });
+      return res.status(201).json({ ok: true, attempt });
+    } catch (err: any) {
+      return res.status(400).json({ ok: false, error: err?.message || 'Invalid study attempt' });
+    }
+  });
+
+  app.get('/api/study/mistakes', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    res.json({ mistakes: store.getMistakes() });
+  });
+
+  app.get('/api/study/mistakes/due', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    res.json({ dueReviews: store.getDueReviews() });
+  });
+
+  app.post('/api/study/mistakes', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    try {
+      const body = req.body || {};
+      if (
+        typeof body.questionId !== 'string' ||
+        typeof body.unitId !== 'string' ||
+        typeof body.subjectCode !== 'string' ||
+        typeof body.subjectNameAr !== 'string' ||
+        typeof body.questionText !== 'string' ||
+        typeof body.selectedKey !== 'string' ||
+        typeof body.correctKey !== 'string' ||
+        typeof body.explanation !== 'string'
+      ) {
+        return res.status(400).json({ error: 'Missing required mistake notebook fields' });
+      }
+      const mistake = store.captureMistake({
+        id: typeof body.id === 'string' ? body.id : undefined,
+        questionId: body.questionId,
+        questionVersion: Number(body.questionVersion ?? 1),
+        unitId: body.unitId,
+        subjectCode: body.subjectCode,
+        subjectNameAr: body.subjectNameAr,
+        questionText: body.questionText,
+        selectedKey: body.selectedKey,
+        correctKey: body.correctKey,
+        explanation: body.explanation,
+        solutionSteps: Array.isArray(body.solutionSteps) ? body.solutionSteps : undefined,
+        errorType: body.errorType,
+        studentNote: typeof body.studentNote === 'string' ? body.studentNote : ''
+      });
+      return res.status(201).json({ ok: true, mistake });
+    } catch (err: any) {
+      return res.status(400).json({ ok: false, error: err?.message || 'Invalid mistake payload' });
+    }
+  });
+
+  app.post('/api/study/mistakes/:id/review', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const mistakeId = String(req.params.id || '').trim();
+    if (!mistakeId) {
+      return res.status(400).json({ error: 'Missing mistake id' });
+    }
+    if (typeof req.body?.wasCorrect !== 'boolean') {
+      return res.status(400).json({ error: 'wasCorrect boolean is required' });
+    }
+    try {
+      const mistake = store.recordSpacedReviewOutcome(mistakeId, req.body.wasCorrect);
+      return res.json({ ok: true, mistake });
+    } catch (err: any) {
+      return res.status(404).json({ ok: false, error: err?.message || 'Mistake entry not found' });
+    }
+  });
+
+  app.get('/api/study/spaced-intervals', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    res.json({ intervals: store.getSpacedIntervals() });
+  });
+
+  app.post('/api/study/spaced-intervals', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const intervals = req.body?.intervals;
+    if (!isValidSpacedIntervalTuple(intervals)) {
+      return res.status(400).json({
+        error: 'intervals must be a 4-element array of values from [1, 3, 7, 14]'
+      });
+    }
+    const saved = store.saveSpacedIntervals(intervals);
+    return res.json({ ok: true, intervals: saved });
+  });
+
+  // 7. Static file serving (Production dist directory)
   if (options.staticDir && fs.existsSync(options.staticDir)) {
     app.use(express.static(options.staticDir));
 
@@ -435,7 +637,17 @@ export function createExpressApp(options: {
     setApiKey,
     getApiKeyStatus,
     getModel,
-    setModel
+    setModel,
+    studyStore,
+    closeStore: () => {
+      if (ownsStore && studyStore) {
+        try {
+          studyStore.close();
+        } catch {
+          // ignore close errors
+        }
+      }
+    }
   };
 }
 
@@ -448,10 +660,12 @@ export async function startEmbeddedServer(options: AppServerOptions = {}): Promi
   const preferredPort = options.preferredPort || 47321;
   const boundPort = await findAvailablePort(preferredPort, host);
 
-  const { app, setApiKey, getApiKeyStatus, getModel, setModel } = createExpressApp({
+  const { app, setApiKey, getApiKeyStatus, getModel, setModel, closeStore } = createExpressApp({
     staticDir: options.staticDir,
     initialApiKey: options.initialApiKey,
-    loopbackOnly: options.loopbackOnly ?? true
+    loopbackOnly: options.loopbackOnly ?? true,
+    sqlitePath: options.sqlitePath,
+    sqliteStore: options.sqliteStore
   });
 
   const server = await new Promise<any>((resolve, reject) => {
@@ -476,6 +690,7 @@ export async function startEmbeddedServer(options: AppServerOptions = {}): Promi
     getModel,
     setModel,
     close: async () => {
+      closeStore();
       return new Promise<void>((resolve, reject) => {
         server.close((err: any) => {
           if (err) reject(err);

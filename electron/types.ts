@@ -94,5 +94,14 @@ export interface ElectronAPIContract {
   getModelConfig: () => Promise<ModelConfig>;
   saveModelConfig: (model: string) => Promise<{ success: boolean; currentModel: string; error?: string }>;
   getEmbeddedServerUrl: () => Promise<string>;
+  studyDb?: {
+    getSources: () => Promise<{ ok: boolean; sources?: any[]; error?: string }>;
+    getCurriculum: () => Promise<{ ok: boolean; units?: any[]; error?: string }>;
+    recordAttempt: (payload: any) => Promise<{ ok: boolean; attempt?: any; error?: string }>;
+    getAttempts: (limit?: number) => Promise<{ ok: boolean; attempts?: any[]; error?: string }>;
+    captureMistake: (payload: any) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
+    getMistakes: () => Promise<{ ok: boolean; mistakes?: any[]; error?: string }>;
+    recordReview: (mistakeId: string, wasCorrect: boolean) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
+  };
   isElectron: boolean;
 }

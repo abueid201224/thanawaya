@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import { evaluatePath } from './pathSandbox';
 import { GoogleGenAI } from '@google/genai';
 import { startEmbeddedServer, RunningEmbeddedServer } from '../server/app';
+import { SqliteStudyStore } from '../server/sqliteStore';
 import type {
   SystemInfo,
   FileWriteOptions,
@@ -33,6 +34,7 @@ if (!gotTheLock) {
 
 let mainWindow: BrowserWindow | null = null;
 let embeddedServer: RunningEmbeddedServer | null = null;
+let studyStore: SqliteStudyStore | null = null;
 let boundServerUrl: string = '';
 
 // Determine environment
@@ -746,6 +748,63 @@ function setupIpcHandlers(): void {
     if (!isTrustedSender(event)) return;
     mainWindow?.close();
   });
+  // 14. Local SQLite Study Persistence & MOE Content Schema IPC Handlers
+  ipcMain.handle('study:get-sources', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, sources: studyStore.listOfficialSources() };
+  });
+
+  ipcMain.handle('study:get-curriculum', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, units: studyStore.getStudentApprovedCurriculum() };
+  });
+
+  ipcMain.handle('study:record-attempt', (event, payload: any) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    try {
+      const attempt = studyStore.recordAttempt(payload);
+      return { ok: true, attempt };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to record attempt' };
+    }
+  });
+
+  ipcMain.handle('study:get-attempts', (event, limit?: number) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, attempts: studyStore.getAttempts(limit) };
+  });
+
+  ipcMain.handle('study:capture-mistake', (event, payload: any) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    try {
+      const mistake = studyStore.captureMistake(payload);
+      return { ok: true, mistake };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to capture mistake' };
+    }
+  });
+
+  ipcMain.handle('study:get-mistakes', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, mistakes: studyStore.getMistakes() };
+  });
+
+  ipcMain.handle('study:record-review', (event, args: { mistakeId: string; wasCorrect: boolean }) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    try {
+      const mistake = studyStore.recordSpacedReviewOutcome(args.mistakeId, Boolean(args.wasCorrect));
+      return { ok: true, mistake };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to record review' };
+    }
+  });
 }
 
 if (gotTheLock) {
@@ -780,6 +839,21 @@ if (gotTheLock) {
       }
     });
 
+    // 3. Initialize sandboxed local SQLite study store inside student_workspace
+    try {
+      const sqliteDbPath = path.join(
+        app.getPath('userData'),
+        'student_workspace',
+        'thanaweya_study.sqlite'
+      );
+      if (isPathInSandbox(sqliteDbPath)) {
+        studyStore = new SqliteStudyStore(sqliteDbPath);
+      }
+    } catch (err) {
+      logToMainLog('Failed to initialize SQLite study store (continuing with renderer storage):', err);
+      studyStore = null;
+    }
+
     setupIpcHandlers();
 
     // Initialize embedded Express server on neutral loopback 127.0.0.1
@@ -791,7 +865,8 @@ if (gotTheLock) {
         preferredPort: 47321,
         staticDir,
         initialApiKey: initialKey,
-        host: '127.0.0.1'
+        host: '127.0.0.1',
+        sqliteStore: studyStore ?? undefined
       });
       embeddedServer.setModel(getEffectiveModel());
       boundServerUrl = embeddedServer.url;
@@ -820,6 +895,14 @@ if (gotTheLock) {
     globalShortcut.unregisterAll();
     if (embeddedServer) {
       embeddedServer.close().catch(() => {});
+    }
+    if (studyStore) {
+      try {
+        studyStore.close();
+      } catch {
+        // ignore close errors
+      }
+      studyStore = null;
     }
   });
 }
