@@ -1,7 +1,7 @@
 import React from 'react';
 import { MathRenderer, MixedTextRenderer } from './MathRenderer';
 import { BookletPageData, HighlightAnnotation, StickyNoteAnnotation } from '../types/bookletAnnotations';
-import { OFFICIAL_BOOKLET_PAGES } from '../data/conceptBookletPages';
+import { TRAINING_BOOKLET_PAGES } from '../data/conceptBookletPages';
 
 export interface PrintSettings {
   scope: 'all' | 'current' | 'calculus' | 'statics' | 'dynamics' | 'algebra_geo' | 'appendix' | 'cards';
@@ -12,7 +12,6 @@ export interface PrintSettings {
   studentName?: string;
   seatingNumber?: string;
   schoolName?: string;
-  includeOfficialSeal: boolean;
 }
 
 interface BookletStandardPrintDocumentProps {
@@ -32,29 +31,29 @@ export const BookletStandardPrintDocument: React.FC<BookletStandardPrintDocument
   const targetPages: BookletPageData[] = React.useMemo(() => {
     switch (settings.scope) {
       case 'all':
-        return OFFICIAL_BOOKLET_PAGES;
+        return TRAINING_BOOKLET_PAGES;
       case 'current':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === settings.currentPageNumber);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === settings.currentPageNumber);
       case 'calculus':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === 2 || p.pageNumber === 3);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === 2 || p.pageNumber === 3);
       case 'statics':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === 4 || p.pageNumber === 5);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === 4 || p.pageNumber === 5);
       case 'dynamics':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === 6 || p.pageNumber === 7);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === 6 || p.pageNumber === 7);
       case 'algebra_geo':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === 8 || p.pageNumber === 9);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === 8 || p.pageNumber === 9);
       case 'appendix':
-        return OFFICIAL_BOOKLET_PAGES.filter((p) => p.pageNumber === 10);
+        return TRAINING_BOOKLET_PAGES.filter((p) => p.pageNumber === 10);
       case 'cards':
         return []; // handled in cards block
       default:
-        return OFFICIAL_BOOKLET_PAGES;
+        return TRAINING_BOOKLET_PAGES;
     }
   }, [settings.scope, settings.currentPageNumber]);
 
   return (
     <div className="booklet-print-container">
-      {/* 1. RENDER OFFICIAL BOOKLET PAGES */}
+      {/* 1. Render unofficial training pages with a visible provenance notice. */}
       {settings.scope !== 'cards' &&
         targetPages.map((page, pageIdx) => {
           const pageHighlights = settings.includeHighlights
@@ -66,25 +65,14 @@ export const BookletStandardPrintDocument: React.FC<BookletStandardPrintDocument
 
           return (
             <div key={page.pageNumber} className="booklet-print-page">
-              {/* Background Official Watermark */}
-              {settings.includeOfficialSeal && (
-                <div className="print-watermark">
-                  <div className="watermark-inner">
-                    <span>جمهورية مصر العربية</span>
-                    <span>وزارة التربية والتعليم والتعليم الفني</span>
-                    <span>نسخة رسمية معتمدة للامتحان 2026/2027</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Official Ministry Header */}
+              {/* Training-material header: intentionally avoids government branding. */}
               <div className="print-header-row">
                 <div className="print-header-titles">
                   <div className="print-gov-title">
-                    جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني
+                    مادة تدريبية من التطبيق — غير صادرة عن وزارة التربية والتعليم
                   </div>
                   <div className="print-sub-gov-title">
-                    الإدارة المركزية لتطوير المناهج • قطاع التعليم العام
+                    تحقّق من الكتاب والمصادر الرسمية للعام الدراسي الحالي
                   </div>
                   <h1 className="print-main-title">{page.title}</h1>
                   <div className="print-branch-title">{page.subtitle}</div>
@@ -93,7 +81,7 @@ export const BookletStandardPrintDocument: React.FC<BookletStandardPrintDocument
                 {/* Right / Left Info Badges */}
                 <div className="print-header-meta">
                   <div className="print-page-badge">
-                    <span className="badge-label">الصفحة الرسمية</span>
+                    <span className="badge-label">صفحة تدريبية</span>
                     <span className="badge-num">{page.pageNumber}</span>
                   </div>
                   <div className="print-code-tag">{page.subjectCode}</div>
@@ -207,9 +195,7 @@ export const BookletStandardPrintDocument: React.FC<BookletStandardPrintDocument
                 <div className="footer-right">
                   <span>{page.footerNote}</span>
                 </div>
-                <div className="footer-center">
-                  <span className="barcode-sim">||||| | |||| ||| ||||| || |||||| | |||||</span>
-                </div>
+                <div className="footer-center">نسخة تدريبية غير رسمية</div>
                 <div className="footer-left">
                   <span>صفحة {page.pageNumber} من {targetPages.length > 1 ? 10 : page.pageNumber}</span>
                 </div>
@@ -223,7 +209,7 @@ export const BookletStandardPrintDocument: React.FC<BookletStandardPrintDocument
         <div className="booklet-print-page">
           <div className="print-header-row">
             <div className="print-header-titles">
-              <div className="print-gov-title">جمهورية مصر العربية • وزارة التربية والتعليم والتعليم الفني</div>
+              <div className="print-gov-title">بطاقات مراجعة تدريبية — غير صادرة عن الوزارة</div>
               <h1 className="print-main-title">بنك القوانين والكبسولات الامتحانية الشاملة</h1>
               <div className="print-branch-title">مرجع القوانين السريعة للثانوية العامة (علمي رياضة)</div>
             </div>

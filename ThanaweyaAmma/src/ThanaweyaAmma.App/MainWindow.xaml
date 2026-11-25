@@ -40,12 +40,12 @@
 
                 <!-- Profile Header -->
                 <Border Grid.Row="0" Padding="18,20" Background="#161F30" BorderBrush="#1F2937" BorderThickness="0,0,0,1">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Border Width="38" Height="38" CornerRadius="10" Background="#2563EB">
                                 <TextBlock Text="📐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <StackPanel>
+                            <StackPanel Margin="10,0,0,0">
                                 <TextBlock Text="ثانوية عامة | علمي رياضة" Foreground="White" FontWeight="Bold" FontSize="14"/>
                                 <TextBlock Text="دفعة 2026 / 2027" Foreground="#60A5FA" FontSize="11" FontWeight="Medium"/>
                             </StackPanel>
@@ -53,43 +53,43 @@
 
                         <!-- Academic Progress bar -->
                         <Border Background="#1F2937" CornerRadius="8" Padding="10,8" Margin="0,10,0,0">
-                            <StackPanel Spacing="4">
+                            <StackPanel>
                                 <Grid>
                                     <TextBlock Text="مسار إنجاز المنهج" Foreground="#9CA3AF" FontSize="10"/>
                                     <TextBlock Text="38% مكتمل" Foreground="#10B981" FontSize="10" FontWeight="Bold" HorizontalAlignment="Left"/>
                                 </Grid>
-                                <ProgressBar Height="5" Value="38" Maximum="100" Foreground="#10B981" Background="#374151" BorderThickness="0"/>
+                                <ProgressBar Margin="0,4,0,0" Height="5" Value="38" Maximum="100" Foreground="#10B981" Background="#374151" BorderThickness="0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
                 </Border>
 
                 <!-- Navigation Tabs -->
-                <StackPanel Grid.Row="1" Margin="10,14" Spacing="4">
+                <StackPanel Grid.Row="1" Margin="10,14">
                     <Button Content="📊 لوحة المتابعة والجدول الزمني" 
                             Command="{Binding NavigateCommand}" CommandParameter="Dashboard"
                             Background="#1F2937" Foreground="White" FontWeight="SemiBold" 
-                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Margin="0,2" Cursor="Hand"/>
 
                     <Button Content="💬 محادثة المعلم الذكي التخصصي" 
                             Command="{Binding NavigateCommand}" CommandParameter="Chat"
                             Background="Transparent" Foreground="#D1D5DB" 
-                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Margin="0,2" Cursor="Hand"/>
 
                     <Button Content="🎥 مشغل وسائط المنهج المعتمد" 
                             Command="{Binding NavigateCommand}" CommandParameter="VideoPlayer"
                             Background="Transparent" Foreground="#D1D5DB" 
-                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Margin="0,2" Cursor="Hand"/>
 
                     <Button Content="📝 بنك الامتحانات والتصحيح المقالي" 
                             Command="{Binding NavigateCommand}" CommandParameter="Quiz"
                             Background="Transparent" Foreground="#D1D5DB" 
-                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Margin="0,2" Cursor="Hand"/>
 
                     <Button Content="🤖 كشاف المشرف الذكي (moe.gov.eg)" 
                             Command="{Binding NavigateCommand}" CommandParameter="AdminCoPilot"
                             Background="Transparent" Foreground="#D1D5DB" 
-                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Cursor="Hand"/>
+                            BorderThickness="0" Padding="12,10" HorizontalContentAlignment="Right" Margin="0,2" Cursor="Hand"/>
                 </StackPanel>
 
                 <!-- Subjects List in Sidebar -->
@@ -104,9 +104,9 @@
                                  Background="Transparent" BorderThickness="0" Foreground="White">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                                    <StackPanel Orientation="Horizontal" Margin="0,3">
                                         <Border Width="8" Height="8" CornerRadius="4" Background="#3B82F6" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding NameAr}" FontSize="12" Foreground="#F1F5F9"/>
+                                        <TextBlock Text="{Binding NameAr}" FontSize="12" Foreground="#F1F5F9" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -116,12 +116,12 @@
 
                 <!-- Bottom DPAPI Security Status -->
                 <Border Grid.Row="3" Padding="14,10" Background="#0D131F" BorderBrush="#1F2937" BorderThickness="0,1,0,0">
-                    <StackPanel Spacing="3">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🛡" FontSize="12"/>
-                            <TextBlock Text="أمان المفاتيح: DPAPI مشفر محلياً" Foreground="#10B981" FontSize="10" FontWeight="SemiBold"/>
+                            <TextBlock Text="أمان المفاتيح: DPAPI مشفر محلياً" Foreground="#10B981" FontSize="10" FontWeight="SemiBold" Margin="6,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="Groq (Failover → Gemini 1.5 Flash)" Foreground="#64748B" FontSize="9"/>
+                        <TextBlock Text="Groq (Failover → Gemini 1.5 Flash)" Foreground="#64748B" FontSize="9" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -138,17 +138,17 @@
             <!-- Interactive Views Switched By MainViewModel.ActiveView -->
             <!-- 1. DASHBOARD VIEW -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20">
-                <StackPanel Spacing="20">
+                <StackPanel>
                     <!-- Hero Header Card -->
-                    <Border CornerRadius="14" Background="#161F30" BorderBrush="#2563EB" BorderThickness="1" Padding="20">
+                    <Border Margin="0,10" CornerRadius="14" Background="#161F30" BorderBrush="#2563EB" BorderThickness="1" Padding="20">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="6">
+                            <StackPanel>
                                 <TextBlock Text="مرحباً بك في منصتك المتكاملة للثانوية العامة 2026/2027" Foreground="White" FontSize="18" FontWeight="Bold"/>
-                                <TextBlock Text="تابع خطتك الممتدة من 1 أكتوبر 2026 حتى امتحانات يوليو 2027 مع التوجيه الذكي ونواتج التعلم." Foreground="#94A3B8" FontSize="13"/>
+                                <TextBlock Text="تابع خطتك الممتدة من 1 أكتوبر 2026 حتى امتحانات يوليو 2027 مع التوجيه الذكي ونواتج التعلم." Foreground="#94A3B8" FontSize="13" Margin="0,6,0,0"/>
                             </StackPanel>
                             <Button Grid.Column="1" Content="بدء المذاكرة والتوجيه 🚀" 
                                     Command="{Binding NavigateCommand}" CommandParameter="Chat"
@@ -158,10 +158,10 @@
                     </Border>
 
                     <!-- Milestones Timeline Box -->
-                    <Border CornerRadius="12" Background="#111827" BorderBrush="#1F2937" BorderThickness="1" Padding="16">
-                        <StackPanel Spacing="12">
+                    <Border Margin="0,10" CornerRadius="12" Background="#111827" BorderBrush="#1F2937" BorderThickness="1" Padding="16">
+                        <StackPanel>
                             <TextBlock Text="📅 مسار الخطة الزمنية لشعبة علمي رياضة (أكتوبر 2026 - يوليو 2027)" Foreground="#F3F4F6" FontSize="15" FontWeight="Bold"/>
-                            <ItemsControl ItemsSource="{Binding Milestones}">
+                            <ItemsControl ItemsSource="{Binding Milestones}" Margin="0,12,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,4" Padding="12" Background="#1A2234" CornerRadius="8" BorderBrush="#2D3748" BorderThickness="1">
@@ -198,7 +198,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding StatusMessage, FallbackValue='المنظومة جاهزة لاستقبال استفساراتك.'}" 
                                Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="قاعدة البيانات: متصلة بـ Supabase pgvector" Foreground="#10B981" FontSize="11"/>
                     </StackPanel>
                 </Grid>

@@ -101,7 +101,7 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
       name: 'مشاهد التضمين والويب الآمن (Iframe Sandbox & YouTube)',
       category: 'video',
       status: 'idle',
-      details: 'فحص التوافق مع مشغلات وزارة التربية والتعليم ومنصات الفيديو الخارجية'
+      details: 'فحص عام لتشغيل الصوت والفيديو والروابط الخارجية؛ لا يوجد اختبار تكامل خاص بالوزارة'
     },
     {
       id: 'test_katex_math',
@@ -253,7 +253,7 @@ export const ServiceDiagnosticsModal: React.FC<ServiceDiagnosticsModalProps> = (
     updateTestStatus('test_video_embed', { status: 'running', details: 'فحص إمكانية تضمين Iframe...' });
     updateTestStatus('test_video_embed', {
       status: 'success',
-      details: 'وضع التضمين الآمن وقنوات يوتيوب وبنك المعرفة EKB مدعومة وجاهزة مع وضع العزل Sandbox.'
+      details: 'وضع التضمين العام متاح؛ توافق كل رابط خارجي يعتمد على الموقع نفسه وسياساته.'
     });
   };
 

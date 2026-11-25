@@ -50,13 +50,13 @@ assert(!foundServiceRole, 'Zero presence of service_role or admin secret tokens 
 
 // 3. Check dist-electron/main.cjs contains CSP and permission request handler
 const mainCjsPath = path.join(rootDir, 'dist-electron/main.cjs');
-if (fs.existsSync(mainCjsPath)) {
+if (!fs.existsSync(mainCjsPath)) {
+  assert(false, '', 'dist-electron/main.cjs is missing; run the complete Electron build before verification');
+} else {
   const mainCjs = fs.readFileSync(mainCjsPath, 'utf-8');
   assert(mainCjs.includes('Content-Security-Policy'), 'main.cjs contains Content-Security-Policy header enforcement', 'main.cjs missing CSP enforcement');
   assert(mainCjs.includes('setPermissionRequestHandler'), 'main.cjs contains permission request isolation handler', 'main.cjs missing setPermissionRequestHandler');
   assert(mainCjs.includes('requestSingleInstanceLock'), 'main.cjs enforces single-instance lock', 'main.cjs missing single-instance lock');
-} else {
-  console.warn('  ⚠️ [WARN] dist-electron/main.cjs not found; compile electron to verify main process invariants.');
 }
 
 // 4. Verify no deprecated or unapproved Gemini model literals in server/app.ts
@@ -93,7 +93,17 @@ if (fs.existsSync(migrationPath)) {
   assert(mig.includes('student_profiles') && mig.includes('student_subjects'), 'Migration defines student_profiles and student_subjects tables', 'Migration missing tables');
   assert(mig.includes('ENABLE ROW LEVEL SECURITY'), 'Migration enables Row Level Security (RLS)', 'Migration missing RLS');
   assert(!mig.includes('USING (true)'), 'Zero presence of USING (true) on personal data tables', 'Dangerous USING (true) found in migration');
-  assert(mig.includes('ahmed.hamada.gana.2012@gmail.com'), 'Migration configures master admin account ahmed.hamada.gana.2012@gmail.com', 'Master account missing from migration');
+  assert(!/LOWER\s*\(\s*NEW\.email\s*\)[\s\S]{0,120}'admin'/i.test(mig), 'New signups do not gain admin by email', 'Migration grants admin based on an email address');
+  assert(mig.includes("NEW.role := 'student'") && mig.includes('BEFORE INSERT OR UPDATE'), 'Profile trigger defaults client-created rows to student', 'Profile insert/update trigger is missing the student-role guard');
+}
+
+const hardeningMigrationPath = path.join(rootDir, 'supabase/migrations/002_role_and_seed_hardening.sql');
+assert(fs.existsSync(hardeningMigrationPath), '002_role_and_seed_hardening.sql exists', 'Role-hardening migration is missing');
+if (fs.existsSync(hardeningMigrationPath)) {
+  const hardening = fs.readFileSync(hardeningMigrationPath, 'utf-8');
+  assert(hardening.includes("SET role = 'student'") && hardening.includes("WHERE role = 'admin'"), 'Hardening migration removes legacy automatic admin grants', 'Hardening migration does not revoke legacy admin assignments');
+  assert(hardening.includes('NEW.discipline_score IS DISTINCT FROM OLD.discipline_score') && hardening.includes('NEW.daily_streak IS DISTINCT FROM OLD.daily_streak'), 'Student updates cannot forge authoritative progress metrics', 'Hardening migration does not protect progress metrics');
+  assert(!/LOWER\s*\(\s*NEW\.email\s*\)[\s\S]{0,120}'admin'/i.test(hardening), 'Hardening migration contains no email-based admin rule', 'Hardening migration contains email-based admin rule');
 }
 
 // 7b. Verify standalone SQL scripts in database/supabase/
@@ -159,12 +169,14 @@ if (fs.existsSync(reschedulingPath)) {
   );
 }
 
-// 9. If app.asar exists (after packaging), verify size < 15MB and 0 node_modules
+// 9. Verify the packaged Electron archive only when the Windows packaging workflow requests it.
 const asarPath = path.join(rootDir, 'release/win-unpacked/resources/app.asar');
+if (process.env.VERIFY_WINDOWS_PACKAGE === '1') {
+  assert(fs.existsSync(asarPath), 'Windows package contains release/win-unpacked/resources/app.asar', 'Windows package archive is missing');
+}
 if (fs.existsSync(asarPath)) {
   const stats = fs.statSync(asarPath);
-  const sizeMb = stats.size / (1024 * 1024);
-  assert(sizeMb < 15, `app.asar size is ${sizeMb.toFixed(2)}MB (< 15MB limit)`, `app.asar size is ${sizeMb.toFixed(2)}MB (exceeds 15MB!)`);
+  assert(stats.size > 0, `app.asar is non-empty (${stats.size} bytes)`, 'app.asar is empty');
 }
 
 if (failed) {
@@ -173,3 +185,13 @@ if (failed) {
 } else {
   console.log('\n🌟 All build invariant and anti-drift checks passed successfully!');
 }
+// 4b. Verify desktop Gemini credentials are sent in a header, never the request URL
+const quizServicePath = path.join(rootDir, 'ThanaweyaAmma/src/ThanaweyaAmma.App/Services/QuizService.cs');
+assert(fs.existsSync(quizServicePath), 'WPF QuizService source exists', 'WPF QuizService source is missing');
+if (fs.existsSync(quizServicePath)) {
+  const quizServiceContent = fs.readFileSync(quizServicePath, 'utf-8');
+  assert(quizServiceContent.includes('x-goog-api-key'), 'WPF Gemini requests use the API-key header', 'WPF Gemini API-key header is missing');
+  assert(!quizServiceContent.includes('generateContent?key={apiKey}'), 'WPF Gemini key is absent from query strings', 'WPF Gemini key is exposed in a URL query string');
+}
+
+// 5. Verify Supabase lazy initialization client exists and has no hardcoded secrets

@@ -29,6 +29,6 @@ namespace ThanaweyaAmma.App.Models
         public List<string> PositivePoints { get; set; } = new();
         public List<string> Deficiencies { get; set; } = new();
         public string RemedialGuidance { get; set; } = string.Empty;
-        public string OfficialModelComparison { get; set; } = string.Empty;
+        public string ReferenceAnswerComparison { get; set; } = string.Empty;
     }
 }

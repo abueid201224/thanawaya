@@ -340,7 +340,7 @@ export const InteractiveGrapherView: React.FC = () => {
               </div>
 
               <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 text-[11px] text-slate-300 space-y-1 leading-relaxed">
-                <span className="font-bold text-amber-400">فائدة وزارية: </span>
+                <span className="font-bold text-amber-400">فائدة تطبيقية: </span>
                 عندما يكون ميل المماس = 0، يكون المماس أفقياً وتكون النقطة حرجة (عظمى أو صغرى محلية).
               </div>
             </div>

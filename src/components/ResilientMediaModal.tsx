@@ -13,7 +13,6 @@ import {
   Printer,
   Headphones,
   AlertTriangle,
-  Check,
   ChevronRight,
   ChevronLeft,
   Download,
@@ -39,8 +38,8 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
   if (!item) return null;
 
   const [playerMode, setPlayerMode] = useState<PlayerMode>(() => {
-    if (item.fileType === 'printable_doc') return 'capsule_interactive';
-    if (item.url.includes('youtube') || item.url.includes('youtu.be') || item.url.includes('moe.gov.eg')) {
+    if (item.fileType === 'printable_doc' || !item.url) return 'capsule_interactive';
+    if (item.url.includes('youtube') || item.url.includes('youtu.be')) {
       return 'embed_web';
     }
     return 'direct_video';
@@ -128,8 +127,8 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
     ? item.printableCheatSheet
     : [
         item.description,
-        'قاعدة ذهبية: تأكد دائماً من كتابة خطوات الحل كاملة في كراسة الإجابة للحصول على درجات خطوات باريم الوزارة.',
-        'ملاحظة: هذا الدرس مرتبط بأسئلة الامتحان الوزاري الرسمي للثانوية العامة.'
+        'تدرّب على كتابة خطوات الحل كاملة، ثم راجع صحة كل خطوة بنفسك أو مع معلمك.',
+        'هذا محتوى تدريبي أولي؛ لم يُتحقق من مطابقته للمنهج أو الامتحانات الرسمية.'
       ];
 
   return (
@@ -190,7 +189,7 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
         {/* View Mode Switcher */}
         <div className="px-5 py-2.5 bg-slate-950/70 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800">
-            {item.fileType !== 'printable_doc' && (
+            {item.fileType !== 'printable_doc' && item.url && (
               <button
                 onClick={() => {
                   setPlayerMode('direct_video');
@@ -206,6 +205,7 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
               </button>
             )}
 
+            {item.url && (
             <button
               onClick={() => {
                 setPlayerMode('embed_web');
@@ -219,6 +219,7 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
             >
               مشاهد الويب / التضمين
             </button>
+            )}
 
             <button
               onClick={() => setPlayerMode('capsule_interactive')}
@@ -249,15 +250,17 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
               </button>
             )}
 
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium cursor-pointer"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>فتح الرابط الأصلي</span>
-            </a>
+            {item.url && (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>فتح المصدر</span>
+              </a>
+            )}
           </div>
         </div>
 
@@ -403,13 +406,14 @@ export const ResilientMediaModal: React.FC<ResilientMediaModalProps> = ({
 
           <div className="flex items-center gap-4 text-slate-400">
             <span>المدة أو الصفحات: <strong className="text-slate-200">{item.durationOrPages}</strong></span>
-            <span>التقييم: <strong className="text-amber-400">★ {item.rating}</strong></span>
-            {item.isVerifiedByMinistry && (
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" />
-                معتمد وزارياً
-              </span>
-            )}
+            {typeof item.rating === 'number' && <span>التقييم: <strong className="text-amber-400">★ {item.rating}</strong></span>}
+            <span className="text-amber-300">
+              {item.sourceStatus === 'official_source_verified'
+                ? 'مصدر رسمي موثّق'
+                : item.sourceStatus === 'third_party_source_verified'
+                ? 'مصدر خارجي موثّق'
+                : 'محتوى تدريبي — غير موثّق'}
+            </span>
           </div>
         </div>
       </div>

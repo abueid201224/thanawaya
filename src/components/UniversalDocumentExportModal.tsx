@@ -185,7 +185,7 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
                   مركز تصدير PDF وإتاحة الطباعة المعيارية A4
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono">
-                  Verified PDF Engine
+                  محرّك تصدير PDF
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -380,17 +380,17 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
                   >
                     {/* Watermark */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none select-none text-center font-black text-3xl rotate-[-25deg] text-emerald-950">
-                      جمهورية مصر العربية<br />وزارة التربية والتعليم<br />الثانوية العامة
+                      مادة تدريبية<br />من التطبيق<br />غير رسمية
                     </div>
 
                     {/* Header Row */}
                     <div className="flex items-start justify-between border-b-2 border-emerald-800 pb-4 mb-5 relative z-10">
                       <div>
                         <div className="text-xs font-bold text-emerald-900">
-                          جمهورية مصر العربية - وزارة التربية والتعليم والتعليم الفني
+                          محتوى تدريبي من التطبيق — غير صادر عن الوزارة
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          المركز القومي للامتحانات والتقويم التربوي • قطاع الكتب المدرسية
+                          مراجعة أولية؛ تحقّق من المحتوى في الكتاب الرسمي
                         </div>
                         <h2 className="text-xl font-black text-slate-900 mt-1.5">
                           {selectedDoc.title}
@@ -401,7 +401,7 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
                       </div>
 
                       <div className="border-2 border-emerald-800 bg-emerald-50 rounded-xl px-3 py-1.5 text-center">
-                        <div className="text-[10px] font-bold text-emerald-900">وثيقة رسمية</div>
+                        <div className="text-[10px] font-bold text-emerald-900">ملخص تدريبي</div>
                         <div className="text-xs font-black text-emerald-800 font-mono">A4 PDF READY</div>
                       </div>
                     </div>
@@ -446,7 +446,7 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
 
                           {sec.notes && (
                             <div className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded">
-                              <strong>⚠️ تنبيه وزاري هام:</strong> {sec.notes}
+                              <strong>⚠️ تنبيه تدريبي:</strong> {sec.notes}
                             </div>
                           )}
                         </div>
@@ -455,9 +455,9 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
 
                     {/* Footer */}
                     <div className="mt-6 pt-3 border-t border-slate-300 flex justify-between items-center text-[10px] text-slate-500">
-                      <span>المصدر المعتمد: {selectedDoc.authorOrSource}</span>
+                      <span>المصدر/المرجع: {selectedDoc.authorOrSource}</span>
                       <span>تاريخ الوثيقة: {new Date().toLocaleDateString('ar-EG')}</span>
-                      <span className="font-mono">THN-2026-VERIFIED</span>
+                      <span className="font-mono">THN-TRAINING</span>
                     </div>
                   </div>
                 )}
@@ -472,11 +472,11 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-400" />
                   <h4 className="text-base font-bold text-white">
-                    لوحة فحص وتأكيد جاهزية كافة الماتريال القابل للطباعة والتصدير
+                    فحص تجهيز المستندات للطباعة والتصدير
                   </h4>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  التحقق البرمجي التام من مطابقة المستندات والكبسولات لمعايير وزارة التربية والتعليم، صياغة KaTeX، وتقسيم A4.
+                  يفحص هذا القسم تنسيق الصفحات والصيغ فقط؛ ولا يتحقق من صحة المعلومات أو مطابقتها للمنهج الرسمي.
                 </p>
               </div>
 
@@ -549,7 +549,7 @@ export const UniversalDocumentExportModal: React.FC<UniversalDocumentExportModal
         <div className="px-6 py-3.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span>نظام التصدير يتبع معايير A4 الرسمية لوزارة التربية والتعليم (نسخة معتمدة لدفعة 2026/2027).</span>
+            <span>تنسيق A4 عام للطباعة؛ هذه المستندات تدريبية وليست معتمدة من الوزارة.</span>
           </div>
 
           <button

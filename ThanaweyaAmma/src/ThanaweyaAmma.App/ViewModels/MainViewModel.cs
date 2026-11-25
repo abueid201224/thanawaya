@@ -86,10 +86,10 @@ namespace ThanaweyaAmma.App.ViewModels
             _appConfig = appConfig ?? throw new ArgumentNullException(nameof(appConfig));
 
             NavigateCommand = new RelayCommand(p => ActiveView = p?.ToString() ?? "Dashboard");
-            SendChatMessageCommand = new AsyncRelayCommand(ExecuteSendChatMessageAsync, () => !string.IsNullOrWhiteSpace(UserChatInput));
+            SendChatMessageCommand = new AsyncRelayCommand(ExecuteSendChatMessageAsync, _ => !string.IsNullOrWhiteSpace(UserChatInput));
             ScoutWebCommand = new AsyncRelayCommand(ExecuteScoutWebAsync);
             ApproveNotificationCommand = new AsyncRelayCommand(ExecuteApproveNotificationAsync);
-            RefreshMilestonesCommand = new AsyncRelayCommand(LoadInitialDataAsync);
+            RefreshMilestonesCommand = new AsyncRelayCommand((_, cancellationToken) => LoadInitialDataAsync(cancellationToken));
 
             // Add Welcome Message
             ChatMessages.Add(new ChatMessageDto

@@ -144,33 +144,33 @@ namespace ThanaweyaAmma.Tests
         }
 
         [Fact]
-        public async Task Phase8_QuizService_Should_Generate_MCQs_And_Grade_Essay_Vision()
+        public async Task QuizService_Should_NotReturnUnreviewedFallbackQuestions_WhenAiIsUnavailable()
         {
-            _output.WriteLine("[TEST 5/7] Testing Quiz Generation & Multimodal Vision Essay Grading...");
+            _appConfig.SaveCredentials(new SecureCredentials { GeminiApiKey = string.Empty });
+            var quizService = new QuizService(_appConfig, new Mock<ISupabaseService>().Object);
 
-            var mockSupabase = new Mock<ISupabaseService>();
-            var quizService = new QuizService(_appConfig, mockSupabase.Object);
+            var questions = await quizService.GenerateConceptMcqExamAsync("CALCULUS", "المعدلات الزمنية المرتبطة", 2);
 
-            // 1. Dynamic MCQs
-            var mcqs = await quizService.GenerateConceptMcqExamAsync("CALCULUS", "المعدلات الزمنية المرتبطة", 2);
-            mcqs.Should().NotBeEmpty();
-            mcqs.First().Options.Count.Should().Be(4);
-            mcqs.First().CorrectOptionKey.Should().NotBeNullOrEmpty();
+            questions.Should().BeEmpty();
+        }
 
-            // 2. Vision Essay Grading
-            using var sampleStream = new MemoryStream(Encoding.UTF8.GetBytes("FakeJpegImageBytesForTest"));
-            var gradeResult = await quizService.GradeHandwrittenEssayAsync(
+        [Fact]
+        public async Task QuizService_Should_NotAwardEssayGrade_WhenAiIsUnavailable()
+        {
+            _appConfig.SaveCredentials(new SecureCredentials { GeminiApiKey = string.Empty });
+            var quizService = new QuizService(_appConfig, new Mock<ISupabaseService>().Object);
+            using var sampleStream = new MemoryStream(Encoding.UTF8.GetBytes("not-an-image"));
+
+            Func<Task> action = () => quizService.GradeHandwrittenEssayAsync(
                 sampleStream,
                 "image/jpeg",
-                "أوجد مساحة المنطقة المحصورة بين المنحنيين ص = س² و ص = ٤س",
-                "نموذج الوزارة: إيجاد نقط التقاطع (٠، ٠) و (٤، ١٦). التكامل من ٠ إلى ٤ لـ (٤س - س²) دس = [٢س² - س³/٣] من ٠ إلى ٤ = ٣٢ - ٦٤/٣ = ٣٢/٣ وحدة مربعة.",
+                "سؤال تجريبي",
+                "نموذج إجابة تجريبي",
                 maxScore: 4.0);
 
-            gradeResult.Should().NotBeNull();
-            gradeResult.ScoreAwarded.Should().BeInRange(0, 4.0);
-            gradeResult.OfficialModelComparison.Should().NotBeNullOrEmpty();
-
-            _output.WriteLine($"-> MCQs verified: {mcqs.Count}. Essay evaluated: {gradeResult.ScoreAwarded}/{gradeResult.MaxPossibleScore}");
+            await action.Should()
+                .ThrowAsync<InvalidOperationException>()
+                .WithMessage("*لم تُمنح أي درجة*");
         }
 
         [Fact]
@@ -207,7 +207,8 @@ namespace ThanaweyaAmma.Tests
             // 4. Student takes diagnostic quiz
             var quizService = new QuizService(_appConfig, mockSupabase.Object);
             var exam = await quizService.GenerateConceptMcqExamAsync("STATICS", "مركز الثقل", 2);
-            exam.Should().NotBeEmpty();
+            // The test vault intentionally has no Gemini key; never accept fabricated offline questions.
+            exam.Should().BeEmpty();
 
             // 5. Save Quiz Result
             var resultRecord = new QuizResult
@@ -221,7 +222,7 @@ namespace ThanaweyaAmma.Tests
             };
             await mockSupabase.Object.InsertQuizResultAsync(resultRecord);
 
-            _output.WriteLine("-> End-to-End System Simulation executed successfully with 0 defects.");
+            _output.WriteLine("-> Offline integration harness completed; no real Gemini response was asserted.");
         }
     }
 }

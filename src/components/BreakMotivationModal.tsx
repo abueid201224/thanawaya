@@ -107,7 +107,7 @@ export const BreakMotivationModal: React.FC<BreakMotivationModalProps> = ({
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
               <Brain className="w-4 h-4" />
-              أفضل الطرق العلمية المعتمدة للمذاكرة والمراجعة وتلخيص الدروس:
+              أفكار عملية للمذاكرة والمراجعة خلال الاستراحة:
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">

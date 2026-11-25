@@ -8,7 +8,6 @@ import {
   Layers,
   BookOpen,
   User,
-  ShieldCheck,
   Eye,
   Download,
   AlertCircle,
@@ -38,7 +37,6 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
   const [studentName, setStudentName] = useState<string>('');
   const [seatingNumber, setSeatingNumber] = useState<string>('');
   const [schoolName, setSchoolName] = useState<string>('');
-  const [includeOfficialSeal, setIncludeOfficialSeal] = useState<boolean>(true);
 
   // Keyboard navigation: Esc to close, Ctrl+Enter to trigger export
   React.useEffect(() => {
@@ -66,8 +64,7 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
     includeStudentInfo,
     studentName: studentName.trim() || undefined,
     seatingNumber: seatingNumber.trim() || undefined,
-    schoolName: schoolName.trim() || undefined,
-    includeOfficialSeal
+    schoolName: schoolName.trim() || undefined
   });
 
   const handleStartPdfExport = () => {
@@ -89,9 +86,9 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span>أداة تصدير وطباعة كتيب المفاهيم (A4 PDF)</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
-                  معايير الوزارة
+                  <span>طباعة مذكرة التدريب (A4 PDF)</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                  مادة تدريبية غير رسمية
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
@@ -127,8 +124,8 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
                 },
                 {
                   id: 'all',
-                  title: 'الكتيب كاملاً (10 صفحات معتمدة)',
-                  subtitle: 'النسخة الكاملة للثانوية العامة'
+                  title: 'المذكرة التدريبية كاملة (10 صفحات)',
+                  subtitle: 'محتوى للمراجعة فقط — غير صادر عن الوزارة'
                 },
                 {
                   id: 'calculus',
@@ -275,23 +272,12 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
             )}
           </div>
 
-          {/* 4. Official Seal & Watermark */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <div>
-                <div className="font-bold text-slate-200">الترويسة الرسمية والعلامة المائية المعتمدة</div>
-                <div className="text-[11px] text-slate-400">
-                  تضمين شعار جمهورية مصر العربية وباركود لجان الامتحان.
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={includeOfficialSeal}
-              onChange={(e) => setIncludeOfficialSeal(e.target.checked)}
-              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-900"
-            />
+          {/* Content provenance disclosure: never imitate a government document. */}
+          <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/50 text-amber-100">
+            <div className="font-bold">تنبيه المصدر</div>
+            <p className="mt-1 text-[11px] leading-relaxed text-amber-200">
+              هذه مذكرة تدريبية من التطبيق، وليست كتيباً أو وثيقة صادرة عن الوزارة. تحقّق من الكتاب والمصادر الرسمية للعام الدراسي الحالي قبل الاعتماد على المعلومات.
+            </p>
           </div>
 
           {/* Quick Print Tip */}
