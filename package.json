@@ -21,7 +21,7 @@
     "start": "node server.ts",
     "clean": "node --input-type=module -e \"import{rmSync}from'node:fs';['dist','dist-electron','release','server.js'].forEach(p=>rmSync(p,{recursive:true,force:true}))\"",
     "lint": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "test:unit": "node --import tsx --test tests/unit/assessmentScoring.test.ts",
+    "test:unit": "node --import tsx --test tests/unit/assessmentScoring.test.ts \"tests/**/*.test.mjs\"",
     "test": "npm run lint && npm run test:unit"
   },
   "dependencies": {
