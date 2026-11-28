@@ -559,7 +559,7 @@ export function createExpressApp(options: {
   app.get('/api/study/sources', (_req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
-    res.json({ sources: store.listOfficialSources() });
+    res.json({ ok: true, sources: store.listOfficialSources() });
   });
 
   app.post('/api/study/sources', requireAdminIfRemote, (req: Request, res: Response) => {
@@ -576,7 +576,7 @@ export function createExpressApp(options: {
   app.get('/api/study/curriculum', (_req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
-    res.json({ units: store.getStudentApprovedCurriculum() });
+    res.json({ ok: true, units: store.getStudentApprovedCurriculum() });
   });
 
   app.post('/api/study/curriculum/unit', requireAdminIfRemote, (req: Request, res: Response) => {
@@ -606,7 +606,7 @@ export function createExpressApp(options: {
     if (!store) return;
     const rawLimit = Number(req.query.limit ?? 200);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 200;
-    res.json({ attempts: store.getAttempts(limit) });
+    res.json({ ok: true, attempts: store.getAttempts(limit) });
   });
 
   app.post('/api/study/attempts', (req: Request, res: Response) => {
@@ -643,13 +643,13 @@ export function createExpressApp(options: {
   app.get('/api/study/mistakes', (_req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
-    res.json({ mistakes: store.getMistakes() });
+    res.json({ ok: true, mistakes: store.getMistakes() });
   });
 
   app.get('/api/study/mistakes/due', (_req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
-    res.json({ dueReviews: store.getDueReviews() });
+    res.json({ ok: true, dueReviews: store.getDueReviews() });
   });
 
   app.post('/api/study/mistakes', (req: Request, res: Response) => {
@@ -682,6 +682,7 @@ export function createExpressApp(options: {
         explanation: body.explanation,
         solutionSteps: Array.isArray(body.solutionSteps) ? body.solutionSteps : undefined,
         errorType: body.errorType,
+        conceptualHint: typeof body.conceptualHint === 'string' ? body.conceptualHint : undefined,
         studentNote: typeof body.studentNote === 'string' ? body.studentNote : ''
       });
       return res.status(201).json({ ok: true, mistake });
@@ -732,7 +733,7 @@ export function createExpressApp(options: {
   app.get('/api/study/spaced-intervals', (_req: Request, res: Response) => {
     const store = requireStudyStore(res);
     if (!store) return;
-    res.json({ intervals: store.getSpacedIntervals() });
+    res.json({ ok: true, intervals: store.getSpacedIntervals() });
   });
 
   app.post('/api/study/spaced-intervals', (req: Request, res: Response) => {
@@ -746,6 +747,61 @@ export function createExpressApp(options: {
     }
     const saved = store.saveSpacedIntervals(intervals);
     return res.json({ ok: true, intervals: saved });
+  });
+
+  app.get('/api/study/sync-outbox', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const rawLimit = Number(req.query.limit ?? 50);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : 50;
+    return res.json({
+      ok: true,
+      entries: store.getPendingOutboxEntries(new Date(), limit),
+      stats: store.getOutboxStats()
+    });
+  });
+
+  app.post('/api/study/sync-outbox/:id/ack', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const outboxId = String(req.params.id || '').trim();
+    if (!outboxId) {
+      return res.status(400).json({ ok: false, error: 'Missing outbox id' });
+    }
+    store.markOutboxSynced(outboxId);
+    return res.json({ ok: true, stats: store.getOutboxStats() });
+  });
+
+  app.post('/api/study/sync-outbox/:id/fail', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    const outboxId = String(req.params.id || '').trim();
+    if (!outboxId) {
+      return res.status(400).json({ ok: false, error: 'Missing outbox id' });
+    }
+    try {
+      const errorMsg = typeof req.body?.error === 'string' ? req.body.error : 'Sync failed';
+      const result = store.markOutboxFailed(outboxId, errorMsg);
+      return res.json({ ok: true, ...result, stats: store.getOutboxStats() });
+    } catch (err: any) {
+      return res.status(404).json({ ok: false, error: err?.message || 'Outbox entry not found' });
+    }
+  });
+
+  app.get('/api/study/schedule', (_req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    return res.json({ ok: true, ...store.getStudentSchedule() });
+  });
+
+  app.post('/api/study/schedule', (req: Request, res: Response) => {
+    const store = requireStudyStore(res);
+    if (!store) return;
+    if (!Array.isArray(req.body?.slots)) {
+      return res.status(400).json({ ok: false, error: 'slots array is required' });
+    }
+    const saved = store.saveStudentSchedule(req.body.slots);
+    return res.json({ ok: true, ...saved });
   });
 
   // 7. Static file serving (Production dist directory)

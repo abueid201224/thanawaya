@@ -97,7 +97,7 @@
     margin-bottom: 15mm !important;
     position: relative !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .booklet-print-page:last-child {
@@ -240,9 +240,12 @@
     page-break-inside: avoid !important;
   }
 
-  .print-math-latex, .katex, .katex * {
+  .print-math-latex, .katex {
     color: #064e3b !important;
     font-size: 1.05em !important;
+  }
+  .katex * {
+    color: inherit !important;
   }
 
   .print-section-desc {

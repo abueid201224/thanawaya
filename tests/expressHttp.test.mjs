@@ -336,8 +336,56 @@ test('real HTTP: /api/study/* endpoints persist MOE schema, attempts, mistakes, 
   });
   assert.equal(patchRes.statusCode, 200);
   const patchedMistake = JSON.parse(patchRes.body).mistake;
-  assert.equal(patchedMistake.errorType, 'sign_unit');
+  assert.equal(patchedMistake.errorType, 'MISREAD_GIVENS');
   assert.equal(patchedMistake.studentNote, 'تعديل إشارة الاحتكاك');
+
+  // 6. Schedule & Sync Outbox endpoints over real HTTP
+  const schedSave = await requestHttp({
+    port: running.port,
+    path: '/api/study/schedule',
+    method: 'POST',
+    headers: hostHeaders,
+    body: { slots: [{ id: 's1', topic: 'الاحتكاك', subjectCode: 'STATICS' }] }
+  });
+  assert.equal(schedSave.statusCode, 200);
+
+  const schedGet = await requestHttp({
+    port: running.port,
+    path: '/api/study/schedule',
+    headers: hostHeaders
+  });
+  assert.equal(schedGet.statusCode, 200);
+  assert.equal(JSON.parse(schedGet.body).slots.length, 1);
+
+  const outboxRes = await requestHttp({
+    port: running.port,
+    path: '/api/study/sync-outbox?limit=20',
+    headers: hostHeaders
+  });
+  assert.equal(outboxRes.statusCode, 200);
+  const outboxJson = JSON.parse(outboxRes.body);
+  assert.ok(outboxJson.entries.length >= 3);
+
+  const firstId = outboxJson.entries[0].id;
+  const failRes = await requestHttp({
+    port: running.port,
+    path: `/api/study/sync-outbox/${encodeURIComponent(firstId)}/fail`,
+    method: 'POST',
+    headers: hostHeaders,
+    body: { error: 'simulated offline failure' }
+  });
+  assert.equal(failRes.statusCode, 200);
+  assert.equal(JSON.parse(failRes.body).retryCount, 1);
+
+  const secondId = outboxJson.entries[1].id;
+  const ackRes = await requestHttp({
+    port: running.port,
+    path: `/api/study/sync-outbox/${encodeURIComponent(secondId)}/ack`,
+    method: 'POST',
+    headers: hostHeaders
+  });
+  assert.equal(ackRes.statusCode, 200);
+  assert.ok(JSON.parse(ackRes.body).stats.syncedCount >= 1);
 
   const patchNotFound = await requestHttp({
     port: running.port,

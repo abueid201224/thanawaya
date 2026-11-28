@@ -71,6 +71,8 @@ import { SplashLoader } from './components/SplashLoader';
 import { nativeDesktop } from './services/nativeDesktopBridge';
 import { authService } from './services/authService';
 import { getReviewedExamsForStudent, getReviewedUnitsForStudent } from './services/contentGate';
+import { studyPersistenceService } from './services/studyPersistenceService';
+import { hybridSyncService } from './services/hybridSyncService';
 
 const STORAGE_KEYS = {
   schedule: 'thanaweya_schedule_v1',
@@ -217,6 +219,7 @@ export default function App() {
 
   const handleUpdateSchedule = (newSchedule: DailyScheduleSlot[]) => {
     setSchedule(newSchedule);
+    studyPersistenceService.mirrorScheduleToStore(newSchedule);
   };
 
   const handleSelectSlotForTutor = (slot: DailyScheduleSlot) => {
@@ -377,12 +380,21 @@ export default function App() {
   };
 
   const handleAddToDailySchedule = (slot: DailyScheduleSlot) => {
-    setSchedule((prev) => [slot, ...prev]);
+    setSchedule((prev) => {
+      const next = [slot, ...prev];
+      studyPersistenceService.mirrorScheduleToStore(next);
+      return next;
+    });
   };
 
-  // Register PWA Service Worker (web runtime only, skipped in Electron desktop)
+  // Register PWA Service Worker (production web runtime only, skipped in dev/preview & Electron desktop)
   React.useEffect(() => {
-    if (!nativeDesktop.isNativeDesktop && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    if (
+      import.meta.env.PROD &&
+      !nativeDesktop.isNativeDesktop &&
+      typeof window !== 'undefined' &&
+      'serviceWorker' in navigator
+    ) {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
         console.warn('Service worker registration failed:', err);
       });
@@ -413,8 +425,16 @@ export default function App() {
       }
     });
 
+    // Start Local-First Hybrid Sync background worker & initial store hydration
+    const stopSyncWorker = hybridSyncService.startBackgroundWorker(45_000);
+    void studyPersistenceService
+      .hydrateFromStore()
+      .then(() => hybridSyncService.syncNow())
+      .catch(() => {});
+
     return () => {
       unsubAuth();
+      stopSyncWorker();
     };
   }, []);
 

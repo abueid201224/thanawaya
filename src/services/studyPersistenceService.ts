@@ -1,10 +1,14 @@
 import type {
+  AnyMistakeErrorType,
+  CurriculumUnit,
+  InterleavedQuestionItem,
   MistakeEntry,
   MistakeErrorType,
   PracticeQuestion,
   SpacedReviewIntervalDays,
   StudyAttempt
 } from '../types';
+import { offlineStorage } from './offlineStorage';
 
 const ATTEMPTS_KEY = 'thanaweya_study_attempts_v1';
 const MISTAKES_KEY = 'thanaweya_mistake_notebook_v1';
@@ -25,7 +29,6 @@ export interface StorageBackend {
   setItem: (key: string, value: string) => void;
 }
 
-// In-memory fallback for Node/test environments when localStorage is unavailable
 const memoryFallbackStore = new Map<string, string>();
 
 function getDefaultStorage(): StorageBackend {
@@ -41,11 +44,148 @@ function getDefaultStorage(): StorageBackend {
 }
 
 export const MISTAKE_ERROR_LABELS: Record<MistakeErrorType, string> = {
-  rule: 'خطأ في القاعدة / القانون',
-  algebra: 'خطأ جبري أو حسابي',
-  sign_unit: 'خطأ إشارة أو وحدة قياس',
-  unjustified_step: 'خطوة غير مبررة / إهمال شرط'
+  CONCEPTUAL: 'فهم مفاهيمي / إهمال شرط',
+  FORMULA_SELECTION: 'اختيار القانون أو القاعدة',
+  ALGEBRAIC_CALC: 'تبسيط جبري أو حسابي',
+  MISREAD_GIVENS: 'قراءة المعطيات / إشارة أو وحدة'
 };
+
+const LEGACY_TO_CANONICAL_ERROR: Record<string, MistakeErrorType> = {
+  CONCEPTUAL: 'CONCEPTUAL',
+  FORMULA_SELECTION: 'FORMULA_SELECTION',
+  ALGEBRAIC_CALC: 'ALGEBRAIC_CALC',
+  MISREAD_GIVENS: 'MISREAD_GIVENS',
+  rule: 'FORMULA_SELECTION',
+  algebra: 'ALGEBRAIC_CALC',
+  sign_unit: 'MISREAD_GIVENS',
+  unjustified_step: 'CONCEPTUAL'
+};
+
+export function normalizeMistakeErrorType(value: unknown): MistakeErrorType {
+  if (typeof value === 'string') {
+    const mapped = LEGACY_TO_CANONICAL_ERROR[value.trim()];
+    if (mapped) return mapped;
+  }
+  return 'CONCEPTUAL';
+}
+
+export function generateConceptualScaffoldingHint(input: {
+  subjectNameAr: string;
+  question?: Pick<PracticeQuestion, 'targetedLearningOutcome' | 'hints' | 'correctKey'>;
+  explanation?: string;
+}): string {
+  const outcome = input.question?.targetedLearningOutcome?.trim();
+  const firstHint = input.question?.hints?.[0]?.trim();
+  if (firstHint && (!input.question?.correctKey || !firstHint.includes(input.question.correctKey))) {
+    return `توجيه مفاهيمي (${input.subjectNameAr}): ${firstHint}`;
+  }
+  if (outcome) {
+    return `راجع المفهوم الأساسي لـ «${outcome}» في ${input.subjectNameAr} وتحقق من شروط التطبيق قبل التعويض.`;
+  }
+  const cleanExp = (input.explanation || '').trim();
+  return cleanExp
+    ? `فكّر في سبب صحة القاعدة في ${input.subjectNameAr}: ${cleanExp.slice(0, 120)}`
+    : `تأكد من التعريف وشروط المبرهنة في ${input.subjectNameAr} قبل بدء الحل الجبري.`;
+}
+
+export function generateInterleavedSession(input: {
+  reviewedUnits: CurriculumUnit[];
+  activeUnitId?: string;
+  dueMistakes: MistakeEntry[];
+  totalQuestions?: number;
+}): InterleavedQuestionItem[] {
+  const total = Math.max(1, Math.min(20, Math.floor(input.totalQuestions ?? 10)));
+  const reviewedUnits = input.reviewedUnits.filter((u) => u.practiceQuestions.length > 0);
+  if (reviewedUnits.length === 0) return [];
+
+  const activeUnit =
+    reviewedUnits.find((u) => u.id === input.activeUnitId) || reviewedUnits[0];
+
+  const currentQuota = Math.round(total * 0.5);
+  const spacedQuota = Math.round(total * 0.3);
+  const cumulativeQuota = Math.max(0, total - currentQuota - spacedQuota);
+
+  const selected: InterleavedQuestionItem[] = [];
+  const usedQuestionIds = new Set<string>();
+
+  const questionLookup = new Map<string, { unit: CurriculumUnit; question: PracticeQuestion }>();
+  for (const unit of reviewedUnits) {
+    for (const q of unit.practiceQuestions) {
+      questionLookup.set(q.id, { unit, question: q });
+    }
+  }
+
+  // 1. 50% Current Unit
+  for (const q of activeUnit.practiceQuestions) {
+    if (selected.length >= currentQuota) break;
+    if (!usedQuestionIds.has(q.id)) {
+      usedQuestionIds.add(q.id);
+      selected.push({ unit: activeUnit, question: q, interleavingBucket: 'current_unit' });
+    }
+  }
+
+  // 2. 30% Spaced Due Mistakes
+  let spacedAdded = 0;
+  for (const mistake of input.dueMistakes) {
+    if (spacedAdded >= spacedQuota) break;
+    const match = questionLookup.get(mistake.questionId);
+    if (match && !usedQuestionIds.has(match.question.id)) {
+      usedQuestionIds.add(match.question.id);
+      selected.push({
+        unit: match.unit,
+        question: match.question,
+        interleavingBucket: 'spaced_mistake',
+        dueMistakeId: mistake.id
+      });
+      spacedAdded += 1;
+    }
+  }
+
+  // 3. 20% Cumulative High-Weight Questions from other/previous units (prefer difficulty C, then B, then A)
+  const difficultyRank: Record<'A' | 'B' | 'C', number> = { C: 0, B: 1, A: 2 };
+  const otherPool = reviewedUnits
+    .filter((u) => u.id !== activeUnit.id)
+    .flatMap((unit) => unit.practiceQuestions.map((question) => ({ unit, question })))
+    .sort((a, b) => difficultyRank[a.question.difficulty] - difficultyRank[b.question.difficulty]);
+
+  let cumulativeAdded = 0;
+  for (const item of otherPool) {
+    if (cumulativeAdded >= cumulativeQuota) break;
+    if (!usedQuestionIds.has(item.question.id)) {
+      usedQuestionIds.add(item.question.id);
+      selected.push({
+        unit: item.unit,
+        question: item.question,
+        interleavingBucket: 'cumulative_high_weight'
+      });
+      cumulativeAdded += 1;
+    }
+  }
+
+  // Deterministic fill if any bucket had fewer items than its target quota
+  if (selected.length < total) {
+    for (const item of otherPool) {
+      if (selected.length >= total) break;
+      if (!usedQuestionIds.has(item.question.id)) {
+        usedQuestionIds.add(item.question.id);
+        selected.push({
+          unit: item.unit,
+          question: item.question,
+          interleavingBucket: 'cumulative_high_weight'
+        });
+      }
+    }
+    for (const q of activeUnit.practiceQuestions) {
+      if (selected.length >= total) break;
+      if (!usedQuestionIds.has(q.id)) {
+        usedQuestionIds.add(q.id);
+        selected.push({ unit: activeUnit, question: q, interleavingBucket: 'current_unit' });
+      }
+    }
+  }
+
+  return selected;
+}
 
 export function computeNextReviewDate(
   intervalDays: SpacedReviewIntervalDays,
@@ -58,10 +198,14 @@ export function computeNextReviewDate(
 export function getNextIntervalDays(
   current: SpacedReviewIntervalDays,
   wasCorrect: boolean,
-  intervals: SpacedReviewIntervalDays[] = DEFAULT_SPACED_INTERVALS
+  intervals: SpacedReviewIntervalDays[] = DEFAULT_SPACED_INTERVALS,
+  errorType?: MistakeErrorType
 ): { nextInterval: SpacedReviewIntervalDays; resolved: boolean } {
   if (!wasCorrect) {
-    return { nextInterval: intervals[0] || 1, resolved: false };
+    return {
+      nextInterval: errorType === 'CONCEPTUAL' ? 1 : (intervals[0] || 1),
+      resolved: false
+    };
   }
   const idx = intervals.indexOf(current);
   if (idx === -1) {
@@ -81,13 +225,14 @@ export interface ElectronStudyDbBridge {
   recordReview?: (mistakeId: string, wasCorrect: boolean) => Promise<{ ok?: boolean; error?: string }>;
   updateMistake?: (
     mistakeId: string,
-    errorType: MistakeErrorType,
+    errorType: AnyMistakeErrorType,
     studentNote?: string
   ) => Promise<{ ok?: boolean; error?: string }>;
   getSpacedIntervals?: () => Promise<{ ok?: boolean; intervals?: SpacedReviewIntervalDays[] }>;
   saveSpacedIntervals?: (
     intervals: SpacedReviewIntervalDays[]
   ) => Promise<{ ok?: boolean; error?: string }>;
+  saveSchedule?: (slots: unknown[]) => Promise<{ ok?: boolean; error?: string }>;
 }
 
 function getElectronStudyDb(): ElectronStudyDbBridge | undefined {
@@ -96,6 +241,20 @@ function getElectronStudyDb(): ElectronStudyDbBridge | undefined {
     electronAPI?: { studyDb?: ElectronStudyDbBridge };
   };
   return g.window?.electronAPI?.studyDb ?? g.electronAPI?.studyDb;
+}
+
+async function safeFetchJson<T>(url: string): Promise<T | null> {
+  if (typeof fetch !== 'function') return null;
+  try {
+    const res = await fetch(url);
+    const contentType = res.headers?.get?.('content-type') || '';
+    if (!res.ok || !contentType.toLowerCase().includes('application/json')) {
+      return null;
+    }
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
 }
 
 export class StudyPersistenceService {
@@ -145,11 +304,32 @@ export class StudyPersistenceService {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        }).catch(() => {});
+        })
+          .then((res) => {
+            const contentType = res.headers?.get?.('content-type') || '';
+            if (!res.ok || !contentType.toLowerCase().includes('application/json')) {
+              this.lastSyncWarning = 'تم الحفظ محلياً في المتصفح وتعذّر التأكيد من الخادم المحلي.';
+              offlineStorage.queuePendingSync('sqlite_mirror', { apiPath, method, payload });
+            } else {
+              this.lastSyncWarning = null;
+            }
+          })
+          .catch(() => {
+            this.lastSyncWarning = 'تم الحفظ محلياً في وضع عدم الاتصال وستتم المزامنة لاحقاً.';
+            offlineStorage.queuePendingSync('sqlite_mirror', { apiPath, method, payload });
+          });
       }
     } catch {
       // Non-blocking background sync to SQLite
     }
+  }
+
+  public mirrorScheduleToStore(slots: unknown[]): void {
+    this.mirrorToSqlite(
+      (db) => db.saveSchedule?.(slots),
+      '/api/study/schedule',
+      { slots }
+    );
   }
 
   public async hydrateFromStore(): Promise<boolean> {
@@ -183,15 +363,20 @@ export class StudyPersistenceService {
       }
 
       if (typeof fetch === 'function' && window.location?.protocol?.startsWith('http')) {
-        const [mistakesRes, intervalsRes] = await Promise.all([
-          fetch('/api/study/mistakes').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          fetch('/api/study/spaced-intervals').then((r) => (r.ok ? r.json() : null)).catch(() => null)
+        const [mistakesRes, attemptsRes, intervalsRes] = await Promise.all([
+          safeFetchJson<{ ok?: boolean; mistakes?: MistakeEntry[] }>('/api/study/mistakes'),
+          safeFetchJson<{ ok?: boolean; attempts?: StudyAttempt[] }>('/api/study/attempts?limit=200'),
+          safeFetchJson<{ ok?: boolean; intervals?: SpacedReviewIntervalDays[] }>('/api/study/spaced-intervals')
         ]);
-        if (mistakesRes?.ok && Array.isArray(mistakesRes.mistakes) && mistakesRes.mistakes.length > 0) {
+        if (mistakesRes && mistakesRes.ok !== false && Array.isArray(mistakesRes.mistakes) && mistakesRes.mistakes.length > 0) {
           this.mergeMistakesFromStore(mistakesRes.mistakes);
           updated = true;
         }
-        if (intervalsRes?.ok && Array.isArray(intervalsRes.intervals) && intervalsRes.intervals.length === 4) {
+        if (attemptsRes && attemptsRes.ok !== false && Array.isArray(attemptsRes.attempts) && attemptsRes.attempts.length > 0) {
+          this.mergeAttemptsFromStore(attemptsRes.attempts);
+          updated = true;
+        }
+        if (intervalsRes && intervalsRes.ok !== false && Array.isArray(intervalsRes.intervals) && intervalsRes.intervals.length === 4) {
           this.storage.setItem(SPACED_INTERVALS_KEY, JSON.stringify(intervalsRes.intervals));
           updated = true;
         }
@@ -202,13 +387,23 @@ export class StudyPersistenceService {
     return updated;
   }
 
+  private normalizeStoredMistake(m: MistakeEntry): MistakeEntry {
+    return {
+      ...m,
+      errorType: normalizeMistakeErrorType(m.errorType),
+      conceptualHint: m.conceptualHint || ''
+    };
+  }
+
   private mergeMistakesFromStore(remoteMistakes: MistakeEntry[]): void {
     const local = this.getMistakes();
     const byKey = new Map<string, MistakeEntry>();
-    for (const m of remoteMistakes) {
+    for (const raw of remoteMistakes) {
+      const m = this.normalizeStoredMistake(raw);
       byKey.set(`${m.questionId}::${m.questionVersion}`, m);
     }
-    for (const m of local) {
+    for (const raw of local) {
+      const m = this.normalizeStoredMistake(raw);
       const key = `${m.questionId}::${m.questionVersion}`;
       const existing = byKey.get(key);
       if (!existing || new Date(m.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
@@ -251,7 +446,6 @@ export class StudyPersistenceService {
     try {
       const serialized = JSON.stringify(intervals);
       this.storage.setItem(SPACED_INTERVALS_KEY, serialized);
-      // Verify read-back before reporting ok
       const verify = this.storage.getItem(SPACED_INTERVALS_KEY);
       if (verify !== serialized) {
         return { ok: false, error: 'تعذر التحقق من حفظ فترات المراجعة محلياً.' };
@@ -278,10 +472,6 @@ export class StudyPersistenceService {
     }
   }
 
-  /**
-   * Records a student attempt bound strictly to (questionId, questionVersion).
-   * Returns ok: true ONLY after read-back verification succeeds.
-   */
   public recordAttempt(input: {
     question: PracticeQuestion;
     unitId: string;
@@ -332,7 +522,9 @@ export class StudyPersistenceService {
       const raw = this.storage.getItem(MISTAKES_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed)
+        ? parsed.map((m) => this.normalizeStoredMistake(m as MistakeEntry))
+        : [];
     } catch {
       return [];
     }
@@ -344,7 +536,7 @@ export class StudyPersistenceService {
     subjectCode: string;
     subjectNameAr: string;
     selectedKey: string;
-    errorType: MistakeErrorType;
+    errorType: AnyMistakeErrorType;
     studentNote?: string;
     now?: Date;
   }): PersistenceResult<MistakeEntry> {
@@ -352,7 +544,17 @@ export class StudyPersistenceService {
       const nowDate = input.now || new Date();
       const nowIso = nowDate.toISOString();
       const intervals = this.getSpacedIntervals();
-      const firstInterval = intervals[0] || 1;
+      const normalizedErrorType = normalizeMistakeErrorType(input.errorType);
+      const firstInterval: SpacedReviewIntervalDays =
+        normalizedErrorType === 'CONCEPTUAL' ? 1 : (intervals[0] || 1);
+      const conceptualHint =
+        normalizedErrorType === 'CONCEPTUAL'
+          ? generateConceptualScaffoldingHint({
+              subjectNameAr: input.subjectNameAr,
+              question: input.question,
+              explanation: input.question.explanation
+            })
+          : '';
 
       const mistakes = this.getMistakes();
       const existingIndex = mistakes.findIndex(
@@ -366,7 +568,8 @@ export class StudyPersistenceService {
         savedEntry = {
           ...mistakes[existingIndex],
           selectedKey: input.selectedKey,
-          errorType: input.errorType,
+          errorType: normalizedErrorType,
+          conceptualHint: conceptualHint || mistakes[existingIndex].conceptualHint || '',
           studentNote: input.studentNote ?? mistakes[existingIndex].studentNote,
           reviewIntervalDays: firstInterval,
           nextReviewAt: computeNextReviewDate(firstInterval, nowDate),
@@ -387,7 +590,8 @@ export class StudyPersistenceService {
           correctKey: input.question.correctKey,
           explanation: input.question.explanation,
           solutionSteps: input.question.solutionSteps,
-          errorType: input.errorType,
+          errorType: normalizedErrorType,
+          conceptualHint,
           studentNote: input.studentNote || '',
           reviewIntervalDays: firstInterval,
           reviewCount: 0,
@@ -420,8 +624,9 @@ export class StudyPersistenceService {
 
   public updateMistakeClassification(
     mistakeId: string,
-    errorType: MistakeErrorType,
-    studentNote?: string
+    errorType: AnyMistakeErrorType,
+    studentNote?: string,
+    now: Date = new Date()
   ): PersistenceResult<MistakeEntry> {
     try {
       const mistakes = this.getMistakes();
@@ -430,11 +635,29 @@ export class StudyPersistenceService {
         return { ok: false, error: 'لم يتم العثور على الخطأ المحدد.' };
       }
 
-      const nowIso = new Date().toISOString();
+      const normalizedErrorType = normalizeMistakeErrorType(errorType);
+      const nowIso = now.toISOString();
+      const existing = mistakes[idx];
+      const nextHint =
+        normalizedErrorType === 'CONCEPTUAL'
+          ? (existing.conceptualHint ||
+              generateConceptualScaffoldingHint({
+                subjectNameAr: existing.subjectNameAr,
+                explanation: existing.explanation
+              }))
+          : existing.conceptualHint || '';
+
       mistakes[idx] = {
-        ...mistakes[idx],
-        errorType,
-        studentNote: studentNote !== undefined ? studentNote : mistakes[idx].studentNote,
+        ...existing,
+        errorType: normalizedErrorType,
+        conceptualHint: nextHint,
+        studentNote: studentNote !== undefined ? studentNote : existing.studentNote,
+        reviewIntervalDays:
+          normalizedErrorType === 'CONCEPTUAL' ? 1 : existing.reviewIntervalDays,
+        nextReviewAt:
+          normalizedErrorType === 'CONCEPTUAL'
+            ? computeNextReviewDate(1, now)
+            : existing.nextReviewAt,
         updatedAt: nowIso
       };
 
@@ -445,9 +668,9 @@ export class StudyPersistenceService {
       }
 
       this.mirrorToSqlite(
-        (db) => db.updateMistake?.(mistakeId, errorType, studentNote),
+        (db) => db.updateMistake?.(mistakeId, normalizedErrorType, studentNote),
         `/api/study/mistakes/${encodeURIComponent(mistakeId)}`,
-        { errorType, studentNote },
+        { errorType: normalizedErrorType, studentNote },
         'PATCH'
       );
 
@@ -481,7 +704,8 @@ export class StudyPersistenceService {
       const { nextInterval, resolved } = getNextIntervalDays(
         current.reviewIntervalDays,
         wasCorrect,
-        intervals
+        intervals,
+        current.errorType
       );
       const nowIso = now.toISOString();
 

@@ -129,7 +129,13 @@ const api: ElectronAPIContract = {
       ipcRenderer.invoke('study:record-review', { mistakeId, wasCorrect }),
     getSpacedIntervals: () => ipcRenderer.invoke('study:get-spaced-intervals'),
     saveSpacedIntervals: (intervals: number[]) =>
-      ipcRenderer.invoke('study:save-spaced-intervals', intervals)
+      ipcRenderer.invoke('study:save-spaced-intervals', intervals),
+    getOutbox: (limit?: number) => ipcRenderer.invoke('study:get-outbox', limit),
+    ackOutbox: (outboxId: string) => ipcRenderer.invoke('study:ack-outbox', outboxId),
+    failOutbox: (outboxId: string, error: string) =>
+      ipcRenderer.invoke('study:fail-outbox', { outboxId, error }),
+    getSchedule: () => ipcRenderer.invoke('study:get-schedule'),
+    saveSchedule: (slots: unknown[]) => ipcRenderer.invoke('study:save-schedule', slots)
   }
 };
 

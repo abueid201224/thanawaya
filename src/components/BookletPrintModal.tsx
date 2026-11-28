@@ -40,7 +40,29 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
   const [schoolName, setSchoolName] = useState<string>('');
   const [includeOfficialSeal, setIncludeOfficialSeal] = useState<boolean>(true);
 
-  // Keyboard navigation: Esc to close, Ctrl+Enter to trigger export
+  const getSettings = React.useCallback((): PrintSettings => ({
+    scope,
+    currentPageNumber,
+    includeHighlights,
+    includeStickyNotes,
+    includeStudentInfo,
+    studentName: studentName.trim() || undefined,
+    seatingNumber: seatingNumber.trim() || undefined,
+    schoolName: schoolName.trim() || undefined,
+    includeOfficialSeal
+  }), [
+    scope,
+    currentPageNumber,
+    includeHighlights,
+    includeStickyNotes,
+    includeStudentInfo,
+    studentName,
+    seatingNumber,
+    schoolName,
+    includeOfficialSeal
+  ]);
+
+  // Keyboard navigation: Esc to close, Ctrl+P to trigger export
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,21 +76,9 @@ export const BookletPrintModal: React.FC<BookletPrintModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onConfirmPrint, getSettings]);
 
   if (!isOpen) return null;
-
-  const getSettings = (): PrintSettings => ({
-    scope,
-    currentPageNumber,
-    includeHighlights,
-    includeStickyNotes,
-    includeStudentInfo,
-    studentName: studentName.trim() || undefined,
-    seatingNumber: seatingNumber.trim() || undefined,
-    schoolName: schoolName.trim() || undefined,
-    includeOfficialSeal
-  });
 
   const handleStartPdfExport = () => {
     onConfirmPrint(getSettings(), 'pdf_download');

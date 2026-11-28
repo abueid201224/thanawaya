@@ -934,6 +934,51 @@ function setupIpcHandlers(): void {
     const saved = studyStore.saveSpacedIntervals(intervals);
     return { ok: true, intervals: saved };
   });
+
+  ipcMain.handle('study:get-outbox', (event, limit?: number) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return {
+      ok: true,
+      entries: studyStore.getPendingOutboxEntries(new Date(), limit ?? 50),
+      stats: studyStore.getOutboxStats()
+    };
+  });
+
+  ipcMain.handle('study:ack-outbox', (event, outboxId: string) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    studyStore.markOutboxSynced(outboxId);
+    return { ok: true, stats: studyStore.getOutboxStats() };
+  });
+
+  ipcMain.handle('study:fail-outbox', (event, args: { outboxId: string; error: string }) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    try {
+      const result = studyStore.markOutboxFailed(args.outboxId, args.error || 'Sync failed');
+      return { ok: true, ...result, stats: studyStore.getOutboxStats() };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to update outbox' };
+    }
+  });
+
+  ipcMain.handle('study:get-schedule', (event) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    return { ok: true, ...studyStore.getStudentSchedule() };
+  });
+
+  ipcMain.handle('study:save-schedule', (event, slots: unknown[]) => {
+    if (!isTrustedSender(event)) throw new Error('Unauthorized IPC sender');
+    if (!studyStore) return { ok: false, error: 'SQLite store unavailable' };
+    try {
+      const saved = studyStore.saveStudentSchedule(slots);
+      return { ok: true, ...saved };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to save schedule' };
+    }
+  });
 }
 
 if (gotTheLock) {

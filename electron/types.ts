@@ -105,6 +105,11 @@ export interface ElectronAPIContract {
     recordReview: (mistakeId: string, wasCorrect: boolean) => Promise<{ ok: boolean; mistake?: any; error?: string }>;
     getSpacedIntervals: () => Promise<{ ok: boolean; intervals?: number[]; error?: string }>;
     saveSpacedIntervals: (intervals: number[]) => Promise<{ ok: boolean; intervals?: number[]; error?: string }>;
+    getOutbox?: (limit?: number) => Promise<{ ok: boolean; entries?: any[]; stats?: { pendingCount: number; syncedCount: number; failedCount: number }; error?: string }>;
+    ackOutbox?: (outboxId: string) => Promise<{ ok: boolean; stats?: { pendingCount: number; syncedCount: number; failedCount: number }; error?: string }>;
+    failOutbox?: (outboxId: string, error: string) => Promise<{ ok: boolean; retryCount?: number; nextRetryAt?: string; status?: string; stats?: { pendingCount: number; syncedCount: number; failedCount: number }; error?: string }>;
+    getSchedule?: () => Promise<{ ok: boolean; slots?: any[]; updatedAt?: string | null; error?: string }>;
+    saveSchedule?: (slots: unknown[]) => Promise<{ ok: boolean; slots?: any[]; updatedAt?: string; error?: string }>;
   };
   isElectron: boolean;
 }

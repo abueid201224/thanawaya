@@ -13,6 +13,18 @@ import type {
   ModelConfig
 } from '../../electron/types';
 
+async function parseJsonIfJsonResponse<T>(res: Response): Promise<T | null> {
+  const contentType = res.headers?.get?.('content-type') || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    return null;
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 class NativeDesktopBridge {
   public get isNativeDesktop(): boolean {
     return typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
@@ -164,12 +176,14 @@ class NativeDesktopBridge {
     try {
       const res = await fetch('/api/key-status');
       if (res.ok) {
-        const data = await res.json();
-        return {
-          isConfigured: Boolean(data.isConfigured),
-          isEncryptionAvailable: false,
-          storageType: 'unconfigured'
-        };
+        const data = await parseJsonIfJsonResponse<{ isConfigured?: boolean }>(res);
+        if (data) {
+          return {
+            isConfigured: Boolean(data.isConfigured),
+            isEncryptionAvailable: false,
+            storageType: 'unconfigured'
+          };
+        }
       }
     } catch {
       // ignore
@@ -198,7 +212,8 @@ class NativeDesktopBridge {
     try {
       const res = await fetch('/api/model-config');
       if (res.ok) {
-        return await res.json();
+        const data = await parseJsonIfJsonResponse<ModelConfig>(res);
+        if (data) return data;
       }
     } catch {
       // ignore
@@ -231,11 +246,15 @@ class NativeDesktopBridge {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        return { success: true, currentModel: data.currentModel };
+      const data = await parseJsonIfJsonResponse<{ success?: boolean; currentModel?: string; error?: string }>(res);
+      if (res.ok && data?.success) {
+        return { success: true, currentModel: data.currentModel || model };
       }
-      return { success: false, currentModel: data.currentModel || 'gemini-flash-latest', error: data.error };
+      return {
+        success: false,
+        currentModel: data?.currentModel || 'gemini-flash-latest',
+        error: data?.error || 'تعذر حفظ إعداد النموذج عبر الخادم المحلي.'
+      };
     } catch (err: any) {
       return { success: false, currentModel: 'gemini-flash-latest', error: err?.message };
     }
@@ -289,8 +308,8 @@ class NativeDesktopBridge {
     try {
       const res = await fetch('/api/health');
       if (res.ok) {
-        const data = await res.json();
-        if (data.hasGeminiKey) {
+        const data = await parseJsonIfJsonResponse<{ hasGeminiKey?: boolean }>(res);
+        if (data?.hasGeminiKey) {
           return { success: true, message: 'مفتاح الخادم متصل بنجاح بالنموذج' };
         }
       }

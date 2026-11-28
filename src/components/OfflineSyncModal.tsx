@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Wifi,
   WifiOff,
@@ -8,15 +8,14 @@ import {
   HardDrive,
   RefreshCw,
   X,
-  FileCode,
-  ShieldCheck,
   Sparkles,
-  Layers
+  CloudUpload
 } from 'lucide-react';
 import { offlineStorage } from '../services/offlineStorage';
 import { initialCurriculumUnits, initialMonthlyExams } from '../data/fullCurriculumData';
 import { OFFICIAL_BOOKLET_PAGES } from '../data/conceptBookletPages';
 import { getReviewedUnitsForStudent, getReviewedExamsForStudent } from '../services/contentGate';
+import { hybridSyncService } from '../services/hybridSyncService';
 
 interface OfflineSyncModalProps {
   isOpen: boolean;
@@ -31,14 +30,80 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [exportedJsonUrl, setExportedJsonUrl] = useState<string | null>(null);
+  const [outboxPendingCount, setOutboxPendingCount] = useState<number>(0);
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [manualSyncMessage, setManualSyncMessage] = useState<string>('');
+
+  const refreshOutboxCount = useCallback(async () => {
+    try {
+      const electronDb =
+        typeof window !== 'undefined' ? window.electronAPI?.studyDb : undefined;
+      if (electronDb?.getOutbox) {
+        const res = await electronDb.getOutbox(50);
+        if (res?.ok && res.stats) {
+          setOutboxPendingCount(res.stats.pendingCount);
+          return;
+        }
+      }
+      if (
+        typeof fetch === 'function' &&
+        typeof window !== 'undefined' &&
+        window.location?.protocol?.startsWith('http')
+      ) {
+        const res = await fetch('/api/study/sync-outbox?limit=50');
+        const ct = res.headers?.get?.('content-type') || '';
+        if (res.ok && ct.toLowerCase().includes('application/json')) {
+          const data = await res.json();
+          if (data?.ok && data.stats) {
+            setOutboxPendingCount(Number(data.stats.pendingCount || 0));
+            return;
+          }
+        }
+      }
+    } catch {
+      // Fallback safely to browser pending queue count
+    }
+    setOutboxPendingCount(0);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setManualSyncMessage('');
+    void refreshOutboxCount();
+  }, [isOpen, refreshOutboxCount]);
 
   if (!isOpen) return null;
 
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-  const pendingSyncCount = offlineStorage.getPendingSyncCount();
+  const pendingSyncCount = Math.max(outboxPendingCount, offlineStorage.getPendingSyncCount());
   const reviewedUnits = getReviewedUnitsForStudent(initialCurriculumUnits);
   const reviewedExams = getReviewedExamsForStudent(initialMonthlyExams);
+
+  const handleManualSyncNow = async () => {
+    setIsManualSyncing(true);
+    setManualSyncMessage('');
+    try {
+      const report = await hybridSyncService.syncNow();
+      setOutboxPendingCount(report.pendingCount);
+      if (report.offline) {
+        setManualSyncMessage('لا يوجد اتصال بالإنترنت حالياً — محفوظة بأمان في صندوق الصادر المحلي.');
+      } else if (report.unauthenticated) {
+        setManualSyncMessage(
+          `الحفظ المحلي مكتمل (${report.pendingCount} بانتظار تسجيل الدخول للمزامنة السحابية).`
+        );
+      } else if (report.ok) {
+        setManualSyncMessage(`اكتملت المزامنة بنجاح (${report.syncedCount} عنصر).`);
+      } else {
+        setManualSyncMessage(
+          `تمت مزامنة ${report.syncedCount} عنصر وتعذر ${report.failedCount} (ستُعاد المحاولة تلقائياً).`
+        );
+      }
+    } catch {
+      setManualSyncMessage('تعذر إتمام دورة المزامنة الآن — ستتم إعادة المحاولة تلقائياً.');
+    } finally {
+      setIsManualSyncing(false);
+    }
+  };
 
   const handleDownloadFullOfflinePack = async () => {
     setIsSyncing(true);
@@ -64,11 +129,26 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
   };
 
   const handleExportBackup = () => {
+    const readJson = (key: string) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    };
+
     const backupData = {
       app: 'Thanaweya Amma Math Copilot',
-      version: '2.0',
+      version: '2.1',
       exportedAt: new Date().toISOString(),
-      studentSchedule: localStorage.getItem('daily_schedule_slots') || 'default',
+      studentSchedule: readJson('thanaweya_schedule_v1') || [],
+      curriculumUnitsState: readJson('thanaweya_units_state_v1') || [],
+      monthlyExamsState: readJson('thanaweya_exams_state_v1') || [],
+      subjectProgress: readJson('thanaweya_subject_progress_v1') || [],
+      studyAttempts: readJson('thanaweya_study_attempts_v1') || [],
+      mistakeNotebook: readJson('thanaweya_mistake_notebook_v1') || [],
+      spacedIntervals: readJson('thanaweya_spaced_intervals_v1') || [1, 3, 7, 14],
       indexedDBCacheStatus: 'active'
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -77,7 +157,7 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
     a.href = url;
     a.download = `thanaweya_math_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -90,12 +170,12 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">إدارة التخزين المحلي والعمل دون اتصال (PWA & IndexedDB)</h3>
+              <h3 className="text-base font-bold text-white">إدارة التخزين المحلي والعمل دون اتصال (SQLite & PWA)</h3>
               <div className="flex items-center gap-2 text-xs mt-0.5">
                 {isOnline ? (
                   <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                     <Wifi className="w-3.5 h-3.5" />
-                    <span>متصل بالإنترنت والمزامنة فورية</span>
+                    <span>متصل بالإنترنت والمزامنة التلقائية مفعّلة</span>
                   </span>
                 ) : (
                   <span className="text-amber-400 flex items-center gap-1 font-semibold">
@@ -124,14 +204,31 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
             <span className="text-[10px] text-slate-500">مذكرات A4 وكتيب المفاهيم والوحدات المراجعة</span>
           </div>
 
-          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
-            <span className="text-slate-400">العمليات بانتظار المزامنة:</span>
+          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400">في صندوق الصادر (Outbox):</span>
+              <button
+                type="button"
+                onClick={handleManualSyncNow}
+                disabled={isManualSyncing}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <CloudUpload className="w-3.5 h-3.5" />
+                <span>{isManualSyncing ? 'جاري...' : 'مزامنة الآن'}</span>
+              </button>
+            </div>
             <div className="text-xl font-black text-emerald-400 font-mono">
               {pendingSyncCount} مهام
             </div>
-            <span className="text-[10px] text-slate-500">تتم المزامنة فور عودة الاتصال</span>
+            <span className="text-[10px] text-slate-500">تتم المزامنة مع التراجع الأسي فور الاتصال</span>
           </div>
         </div>
+
+        {manualSyncMessage && (
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-cyan-200 font-medium">
+            {manualSyncMessage}
+          </div>
+        )}
 
         {/* Offline Pack Action */}
         <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-800/40 text-xs space-y-2">
@@ -189,3 +286,4 @@ export const OfflineSyncModal: React.FC<OfflineSyncModalProps> = ({
     </div>
   );
 };
+

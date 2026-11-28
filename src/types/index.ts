@@ -122,8 +122,22 @@ export interface ScoutedOfficialResource {
 export type UnitStudyStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped_by_exam';
 
 export type QuestionReviewStatus = 'unreviewed' | 'reviewed';
-export type MistakeErrorType = 'rule' | 'algebra' | 'sign_unit' | 'unjustified_step';
+export type MistakeErrorType =
+  | 'CONCEPTUAL'
+  | 'FORMULA_SELECTION'
+  | 'ALGEBRAIC_CALC'
+  | 'MISREAD_GIVENS';
+export type LegacyMistakeErrorType = 'rule' | 'algebra' | 'sign_unit' | 'unjustified_step';
+export type AnyMistakeErrorType = MistakeErrorType | LegacyMistakeErrorType;
 export type SpacedReviewIntervalDays = 1 | 3 | 7 | 14;
+export type InterleavingBucket = 'current_unit' | 'spaced_mistake' | 'cumulative_high_weight';
+
+export interface InterleavedQuestionItem {
+  unit: CurriculumUnit;
+  question: PracticeQuestion;
+  interleavingBucket: InterleavingBucket;
+  dueMistakeId?: string;
+}
 
 export interface PracticeQuestion {
   id: string;
@@ -170,6 +184,7 @@ export interface MistakeEntry {
   explanation: string;
   solutionSteps?: string[];
   errorType: MistakeErrorType;
+  conceptualHint?: string;
   studentNote?: string;
   reviewIntervalDays: SpacedReviewIntervalDays;
   reviewCount: number;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   BookOpen,
   CheckCircle2,
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type {
   CurriculumUnit,
+  InterleavedQuestionItem,
+  InterleavingBucket,
   MistakeEntry,
   MistakeErrorType,
   PracticeQuestion,
@@ -30,6 +32,7 @@ import {
 import {
   DEFAULT_SPACED_INTERVALS,
   MISTAKE_ERROR_LABELS,
+  generateInterleavedSession,
   studyPersistenceService
 } from '../services/studyPersistenceService';
 
@@ -38,7 +41,25 @@ interface PracticeAndMistakesViewProps {
   onDataChanged?: () => void;
 }
 
-type HubTab = 'practice' | 'mistakes' | 'spaced' | 'test';
+type HubTab = 'practice' | 'interleaved' | 'mistakes' | 'spaced' | 'test';
+
+const INTERLEAVING_BUCKET_META: Record<
+  InterleavingBucket,
+  { label: string; badgeClass: string }
+> = {
+  current_unit: {
+    label: 'الوحدة الحالية (50%)',
+    badgeClass: 'bg-blue-50 text-blue-800 border-blue-200'
+  },
+  spaced_mistake: {
+    label: 'مراجعة خطأ مستحق (30%)',
+    badgeClass: 'bg-amber-50 text-amber-900 border-amber-300'
+  },
+  cumulative_high_weight: {
+    label: 'مراجعة تراكمية عالية الوزن (20%)',
+    badgeClass: 'bg-emerald-50 text-emerald-900 border-emerald-200'
+  }
+};
 
 interface ReviewedQuestionItem {
   unit: CurriculumUnit;
@@ -84,11 +105,23 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
   const [practiceSubmitted, setPracticeSubmitted] = useState<boolean>(false);
   const [hintTier, setHintTier] = useState<0 | 1 | 2 | 3>(0);
   const [showSolution, setShowSolution] = useState<boolean>(false);
-  const [selectedErrorType, setSelectedErrorType] = useState<MistakeErrorType>('rule');
+  const [selectedErrorType, setSelectedErrorType] = useState<MistakeErrorType>('FORMULA_SELECTION');
   const [mistakeNoteInput, setMistakeNoteInput] = useState<string>('');
   const [saveBadgeState, setSaveBadgeState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [saveErrorText, setSaveErrorText] = useState<string>('');
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
+
+  // ============================
+  // TAB 1.5: INTERLEAVED (50/30/20) SESSION STATE
+  // ============================
+  const [interleavedUnitId, setInterleavedUnitId] = useState<string>(
+    reviewedUnits[0]?.id || ''
+  );
+  const [interleavedSeedVersion, setInterleavedSeedVersion] = useState<number>(0);
+  const [interleavedIndex, setInterleavedIndex] = useState<number>(0);
+  const [interleavedSelectedMap, setInterleavedSelectedMap] = useState<Record<string, string>>({});
+  const [interleavedSubmittedMap, setInterleavedSubmittedMap] = useState<Record<string, boolean>>({});
+  const [interleavedStatusMsg, setInterleavedStatusMsg] = useState<string>('');
 
   // ============================
   // TAB 2: MISTAKE NOTEBOOK STATE
@@ -100,7 +133,7 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
   const [filterErrorType, setFilterErrorType] = useState<string>('ALL');
   const [showResolvedMistakes, setShowResolvedMistakes] = useState<boolean>(false);
   const [editingMistakeId, setEditingMistakeId] = useState<string | null>(null);
-  const [editErrorType, setEditErrorType] = useState<MistakeErrorType>('rule');
+  const [editErrorType, setEditErrorType] = useState<MistakeErrorType>('FORMULA_SELECTION');
   const [editNoteText, setEditNoteText] = useState<string>('');
   const [notebookSaveMessage, setNotebookSaveMessage] = useState<string>('');
 
@@ -158,7 +191,9 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
   const activeUnit =
     reviewedUnits.find((u) => u.id === selectedUnitId) || reviewedUnits[0];
   const unitQuestions = activeUnit?.practiceQuestions || [];
-  const currentQuestion = unitQuestions[questionIndex] || unitQuestions[0];
+  const safeQuestionIndex =
+    unitQuestions.length > 0 ? Math.min(questionIndex, unitQuestions.length - 1) : 0;
+  const currentQuestion = unitQuestions[safeQuestionIndex];
 
   const resetPracticeQuestionState = () => {
     setSelectedOption(null);
@@ -332,41 +367,11 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
     }
   };
 
-  // Test Mode timer + critical minute announcements ONLY (10, 5, 1)
-  useEffect(() => {
-    if (!testStarted || testSubmitted) return;
-    const timer = setInterval(() => {
-      setTestSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          finalizeTestSubmission();
-          return 0;
-        }
-        const next = prev - 1;
-        if (next === 10 * 60) {
-          setTimerAnnouncement('تبقى 10 دقائق على انتهاء وقت الاختبار.');
-        } else if (next === 5 * 60) {
-          setTimerAnnouncement('تبقى 5 دقائق على انتهاء وقت الاختبار.');
-        } else if (next === 60) {
-          setTimerAnnouncement('تبقى دقيقة واحدة على انتهاء وقت الاختبار.');
-        }
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [testStarted, testSubmitted]);
+  const testSubmittedRef = useRef<boolean>(false);
 
-  const startTestMode = () => {
-    setTestAnswers({});
-    setTestSubmitted(false);
-    setConfirmSubmitOpen(false);
-    setTestSecondsLeft(15 * 60);
-    setTimerAnnouncement('بدأ وضع الاختبار. الإجابات والحلول مخفية حتى التسليم.');
-    setTestSavedStatus('');
-    setTestStarted(true);
-  };
-
-  const finalizeTestSubmission = () => {
+  const finalizeTestSubmission = useCallback(() => {
+    if (testSubmittedRef.current) return;
+    testSubmittedRef.current = true;
     setConfirmSubmitOpen(false);
     setTestSubmitted(true);
 
@@ -387,6 +392,44 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
 
     setTestSavedStatus(allSavedOk ? 'تم الحفظ' : 'تعذر التحقق من حفظ بعض المحاولات محلياً');
     onDataChanged?.();
+  }, [allReviewedQuestions, testAnswers, onDataChanged]);
+
+  const finalizeTestRef = useRef(finalizeTestSubmission);
+  finalizeTestRef.current = finalizeTestSubmission;
+
+  // Test Mode timer + critical minute announcements ONLY (10, 5, 1)
+  useEffect(() => {
+    if (!testStarted || testSubmitted) return;
+    const timer = setInterval(() => {
+      setTestSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          finalizeTestRef.current();
+          return 0;
+        }
+        const next = prev - 1;
+        if (next === 10 * 60) {
+          setTimerAnnouncement('تبقى 10 دقائق على انتهاء وقت الاختبار.');
+        } else if (next === 5 * 60) {
+          setTimerAnnouncement('تبقى 5 دقائق على انتهاء وقت الاختبار.');
+        } else if (next === 60) {
+          setTimerAnnouncement('تبقى دقيقة واحدة على انتهاء وقت الاختبار.');
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [testStarted, testSubmitted]);
+
+  const startTestMode = () => {
+    testSubmittedRef.current = false;
+    setTestAnswers({});
+    setTestSubmitted(false);
+    setConfirmSubmitOpen(false);
+    setTestSecondsLeft(15 * 60);
+    setTimerAnnouncement('بدأ وضع الاختبار. الإجابات والحلول مخفية حتى التسليم.');
+    setTestSavedStatus('');
+    setTestStarted(true);
   };
 
   const handleAddWrongTestQuestionsToNotebook = () => {
@@ -400,7 +443,7 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
           subjectCode: unit.subjectCode,
           subjectNameAr: unit.subjectNameAr,
           selectedKey: chosen || 'غير مجاب',
-          errorType: 'rule',
+          errorType: 'FORMULA_SELECTION',
           studentNote: 'أُضيف تلقائياً بعد تسليم وضع الاختبار'
         });
         if (!res.ok) savedAll = false;
@@ -408,6 +451,80 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
     });
     refreshMistakes();
     setTestSavedStatus(savedAll ? 'تم حفظ الأخطاء في دفتر الأخطاء' : 'تعذر حفظ بعض الأخطاء');
+  };
+
+  const interleavedSession: InterleavedQuestionItem[] = useMemo(() => {
+    const now = new Date();
+    const due = mistakes.filter((m) => !m.resolved && new Date(m.nextReviewAt) <= now);
+    return generateInterleavedSession({
+      reviewedUnits,
+      activeUnitId: interleavedUnitId || selectedUnitId,
+      dueMistakes: due,
+      totalQuestions: 10
+    });
+    // Regenerate explicitly on unit change or refresh click so mid-session checks do not shift cards
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewedUnits, interleavedUnitId, selectedUnitId, interleavedSeedVersion]);
+
+  const safeInterleavedIndex =
+    interleavedSession.length > 0
+      ? Math.min(interleavedIndex, interleavedSession.length - 1)
+      : 0;
+  const activeInterleavedItem = interleavedSession[safeInterleavedIndex];
+
+  const handleRestartInterleavedSession = (nextUnitId?: string) => {
+    if (nextUnitId !== undefined) {
+      setInterleavedUnitId(nextUnitId);
+    }
+    setInterleavedIndex(0);
+    setInterleavedSelectedMap({});
+    setInterleavedSubmittedMap({});
+    setInterleavedStatusMsg('');
+    setInterleavedSeedVersion((v) => v + 1);
+  };
+
+  const handleCheckInterleavedAnswer = () => {
+    if (!activeInterleavedItem) return;
+    const { unit, question, interleavingBucket, dueMistakeId } = activeInterleavedItem;
+    const chosen = interleavedSelectedMap[question.id];
+    if (!chosen) return;
+
+    setInterleavedSubmittedMap((prev) => ({ ...prev, [question.id]: true }));
+    const isCorrect = chosen === question.correctKey;
+
+    const attemptRes = studyPersistenceService.recordAttempt({
+      question,
+      unitId: unit.id,
+      subjectCode: unit.subjectCode,
+      mode: interleavingBucket === 'spaced_mistake' ? 'spaced_review' : 'practice',
+      selectedKey: chosen,
+      hintTierUsed: 0
+    });
+
+    if (interleavingBucket === 'spaced_mistake' && dueMistakeId) {
+      studyPersistenceService.recordSpacedReviewOutcome(dueMistakeId, isCorrect);
+      setMistakes(studyPersistenceService.getMistakes());
+    } else if (!isCorrect) {
+      studyPersistenceService.captureMistake({
+        question,
+        unitId: unit.id,
+        subjectCode: unit.subjectCode,
+        subjectNameAr: unit.subjectNameAr,
+        selectedKey: chosen,
+        errorType: 'CONCEPTUAL',
+        studentNote: 'سُجّل من جلسة التداخل المعرفي (50/30/20)'
+      });
+      setMistakes(studyPersistenceService.getMistakes());
+    }
+
+    setInterleavedStatusMsg(
+      isCorrect
+        ? attemptRes.ok
+          ? 'إجابة صحيحة — تم تسجيل التقدم في الجلسة المتداخلة.'
+          : 'إجابة صحيحة، لكن تعذر تأكيد الحفظ المحلي.'
+        : 'إجابة غير صحيحة — أُضيف/جُدول السؤال للمراجعة بعد 24 ساعة مع توجيه مفاهيمي.'
+    );
+    onDataChanged?.();
   };
 
   const filteredMistakes = useMemo(() => {
@@ -473,6 +590,7 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
         <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-100">
           {[
             { id: 'practice' as HubTab, label: 'التدريب الموجّه', icon: BookOpen },
+            { id: 'interleaved' as HubTab, label: 'جلسة تداخل معرفي (50/30/20)', icon: Layers },
             {
               id: 'mistakes' as HubTab,
               label: `دفتر الأخطاء (${mistakes.filter((m) => !m.resolved).length})`,
@@ -779,6 +897,11 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
                           />
                         </div>
                       </div>
+                      {selectedErrorType === 'CONCEPTUAL' && (
+                        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+                          الأخطاء المفاهيمية تُجدول تلقائياً للمراجعة الأولى بعد 24 ساعة مع توليد توجيه مفاهيمي.
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={handleCapturePracticeMistake}
@@ -811,6 +934,179 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
                   )}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 1.5: INTERLEAVED PRACTICE (50% / 30% / 20%) */}
+      {/* ======================================================== */}
+      {activeTab === 'interleaved' && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-900">
+                جلسة التداخل المعرفي الموزونة (50% حالي • 30% أخطاء مستحقة • 20% تراكمي عالي الوزن)
+              </h3>
+              <p className="text-xs text-slate-600">
+                تدمج الجلسة مسائل الوحدة النشطة مع أخطائك المستحقة للمراجعة وأسئلة عالية الوزن من وحدات أخرى لمنع النسيان.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="الوحدة النشطة للجلسة المتداخلة"
+                value={interleavedUnitId || activeUnit?.id || ''}
+                onChange={(e) => handleRestartInterleavedSession(e.target.value)}
+                className="min-h-[40px] bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
+              >
+                {reviewedUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.subjectNameAr} — {u.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleRestartInterleavedSession()}
+                className="min-h-[40px] px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>تحديث الجلسة</span>
+              </button>
+            </div>
+          </div>
+
+          {interleavedSession.length === 0 || !activeInterleavedItem ? (
+            <div className="py-8 text-center text-sm text-slate-600">
+              لا توجد أسئلة مراجَعة كافية لبناء جلسة التداخل المعرفي حالياً.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Session Distribution Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['current_unit', 'spaced_mistake', 'cumulative_high_weight'] as InterleavingBucket[]).map(
+                    (bucket) => {
+                      const count = interleavedSession.filter((i) => i.interleavingBucket === bucket).length;
+                      const meta = INTERLEAVING_BUCKET_META[bucket];
+                      return (
+                        <span
+                          key={bucket}
+                          className={`px-3 py-1.5 rounded-lg border font-bold tabular-nums ${meta.badgeClass}`}
+                        >
+                          {meta.label}: {count}
+                        </span>
+                      );
+                    }
+                  )}
+                </div>
+                <span className="font-bold text-slate-700 tabular-nums">
+                  بطاقة {safeInterleavedIndex + 1} من {interleavedSession.length}
+                </span>
+              </div>
+
+              {/* Active Interleaved Card */}
+              {(() => {
+                const { unit, question, interleavingBucket } = activeInterleavedItem;
+                const bucketMeta = INTERLEAVING_BUCKET_META[interleavingBucket];
+                const chosen = interleavedSelectedMap[question.id];
+                const isSubmitted = Boolean(interleavedSubmittedMap[question.id]);
+
+                return (
+                  <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-bold text-slate-800">
+                        {unit.subjectNameAr} • {unit.title}
+                      </span>
+                      <span className={`px-2.5 py-1 rounded-lg border font-bold ${bucketMeta.badgeClass}`}>
+                        {bucketMeta.label}
+                      </span>
+                    </div>
+
+                    <div className="text-base font-bold text-slate-900">
+                      <MixedTextRenderer text={question.questionText} />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {question.options.map((opt) => {
+                        const isOptChosen = chosen === opt.key;
+                        const isOptCorrect = opt.key === question.correctKey;
+                        let style = 'bg-white border-slate-300 text-slate-800 hover:border-blue-500';
+                        if (isSubmitted) {
+                          if (isOptCorrect) style = 'bg-emerald-50 border-emerald-600 text-emerald-950 font-bold';
+                          else if (isOptChosen && !isOptCorrect) style = 'bg-rose-50 border-rose-600 text-rose-950 font-bold';
+                        } else if (isOptChosen) {
+                          style = 'bg-blue-50 border-blue-600 text-blue-950 font-bold ring-2 ring-blue-600/20';
+                        }
+
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            disabled={isSubmitted}
+                            onClick={() =>
+                              setInterleavedSelectedMap((prev) => ({ ...prev, [question.id]: opt.key }))
+                            }
+                            className={`min-h-[44px] p-3.5 rounded-xl border text-right flex items-center gap-3 cursor-pointer ${style}`}
+                          >
+                            <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-300 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                              {opt.key}
+                            </span>
+                            <div className="text-sm">
+                              <MixedTextRenderer text={opt.text} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <button
+                        type="button"
+                        disabled={!chosen || isSubmitted}
+                        onClick={handleCheckInterleavedAnswer}
+                        className="min-h-[40px] px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
+                      >
+                        تحقق من الإجابة
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={safeInterleavedIndex === 0}
+                          onClick={() => {
+                            setInterleavedIndex((i) => Math.max(0, i - 1));
+                            setInterleavedStatusMsg('');
+                          }}
+                          className="min-h-[40px] px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 disabled:opacity-40 text-xs font-bold cursor-pointer"
+                        >
+                          السابق
+                        </button>
+                        <button
+                          type="button"
+                          disabled={safeInterleavedIndex >= interleavedSession.length - 1}
+                          onClick={() => {
+                            setInterleavedIndex((i) => Math.min(interleavedSession.length - 1, i + 1));
+                            setInterleavedStatusMsg('');
+                          }}
+                          className="min-h-[40px] px-4 py-2 rounded-xl bg-slate-900 text-white disabled:opacity-40 text-xs font-bold cursor-pointer"
+                        >
+                          البطاقة التالية
+                        </button>
+                      </div>
+                    </div>
+
+                    {isSubmitted && (
+                      <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 space-y-1.5">
+                        {interleavedStatusMsg && (
+                          <div className="font-bold text-blue-900">{interleavedStatusMsg}</div>
+                        )}
+                        <MixedTextRenderer text={question.explanation} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -922,6 +1218,16 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
                       إجابتك المسجلة: <strong className="font-mono">{entry.selectedKey}</strong> • الإجابة الصحيحة:{' '}
                       <strong className="font-mono text-emerald-800">{entry.correctKey}</strong>
                     </div>
+
+                    {entry.conceptualHint && !isEditing && (
+                      <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-amber-950 flex items-start gap-2">
+                        <Lightbulb className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold">توجيه مفاهيمي (مراجعة 24 ساعة): </span>
+                          <span>{entry.conceptualHint}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {entry.studentNote && !isEditing && (
                       <div className="text-xs bg-white border border-slate-200 rounded-lg p-2.5 text-slate-700">
@@ -1060,12 +1366,23 @@ export const PracticeAndMistakesView: React.FC<PracticeAndMistakesViewProps> = (
                     key={card.id}
                     className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3"
                   >
-                    <div className="flex items-center justify-between text-xs text-slate-700">
-                      <span className="font-bold">{card.subjectNameAr}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{card.subjectNameAr}</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-700">
+                          {MISTAKE_ERROR_LABELS[card.errorType]}
+                        </span>
+                      </div>
                       <span className="tabular-nums">
                         المرحلة الحالية: {card.reviewIntervalDays} يوم • مراجعات سابقة: {card.reviewCount}
                       </span>
                     </div>
+                    {card.conceptualHint && (
+                      <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-start gap-2">
+                        <Lightbulb className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <span>{card.conceptualHint}</span>
+                      </div>
+                    )}
                     <div className="text-sm font-bold text-slate-900">
                       <MixedTextRenderer text={card.questionText} />
                     </div>

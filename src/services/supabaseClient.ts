@@ -31,8 +31,8 @@ export function getSupabaseConfigStatus(): SupabaseConfigStatus {
     return cachedStatus;
   }
 
-  const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-  const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const rawUrl = (typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_URL || '' : '').trim();
+  const rawKey = (typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_ANON_KEY || '' : '').trim();
 
   const isUrlValid = Boolean(rawUrl && rawUrl.startsWith('https://'));
   const isKeyValid = Boolean(rawKey && rawKey.length > 10);
@@ -68,8 +68,8 @@ export function getSupabase(): SupabaseClient | null {
     return null;
   }
 
-  const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-  const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const rawUrl = (typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_URL || '' : '').trim();
+  const rawKey = (typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_ANON_KEY || '' : '').trim();
 
   try {
     cachedClient = createClient(rawUrl, rawKey, {

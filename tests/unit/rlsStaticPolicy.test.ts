@@ -7,13 +7,15 @@ test('canonical Supabase migrations enforce RLS, owner checks, zero USING(true),
   const rootDir = path.resolve(process.cwd());
   const mig1Path = path.join(rootDir, 'supabase/migrations/001_student_auth.sql');
   const mig2Path = path.join(rootDir, 'supabase/migrations/002_learning_attempts_and_mistakes.sql');
+  const mig3Path = path.join(rootDir, 'supabase/migrations/003_hybrid_sync_and_taxonomy.sql');
 
   const mig1 = fs.readFileSync(mig1Path, 'utf8');
   const mig2 = fs.readFileSync(mig2Path, 'utf8');
-  const combined = mig1 + '\n' + mig2;
+  const mig3 = fs.readFileSync(mig3Path, 'utf8');
+  const combined = mig1 + '\n' + mig2 + '\n' + mig3;
 
-  // All 4 personal tables enable RLS
-  for (const table of ['student_profiles', 'student_subjects', 'study_attempts', 'mistake_notebook']) {
+  // All 5 personal tables enable RLS
+  for (const table of ['student_profiles', 'student_subjects', 'study_attempts', 'mistake_notebook', 'student_schedules']) {
     assert.ok(
       combined.includes(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;`),
       `RLS not enabled for ${table}`
@@ -36,6 +38,7 @@ test('canonical Supabase migrations enforce RLS, owner checks, zero USING(true),
   assert.ok(mig1.includes('trg_enforce_student_security'));
   assert.ok(mig1.includes('enforce_student_security'));
 
-  // Attempts & mistakes enforce auth.uid() = user_id
+  // Attempts, mistakes, and schedules enforce auth.uid() = user_id
   assert.ok(mig2.includes('WITH CHECK (auth.uid() = user_id)'));
+  assert.ok(mig3.includes('WITH CHECK (auth.uid() = user_id)'));
 });

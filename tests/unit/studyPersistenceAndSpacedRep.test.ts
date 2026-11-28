@@ -74,7 +74,7 @@ test('StudyPersistenceService records versioned attempts and spaced-repetition m
   assert.equal(intervalSave.ok, true);
 
   const reloaded = new StudyPersistenceService(storage);
-  assert.equal(reloaded.getMistakes()[0].errorType, 'rule');
+  assert.equal(reloaded.getMistakes()[0].errorType, 'FORMULA_SELECTION');
   assert.equal(reloaded.getMistakes()[0].studentNote, 'مراجعة قاعدة القوة');
   assert.deepEqual(reloaded.getSpacedIntervals(), [14, 7, 3, 1]);
   svc.saveSpacedIntervals([1, 3, 7, 14]);

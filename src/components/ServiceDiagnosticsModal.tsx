@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Activity,
@@ -70,6 +70,7 @@ const ServiceDiagnosticsModalContent: React.FC<{
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [audioResult, setAudioResult] = useState<AudioDiagnosticResult | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const isMountedRef = useRef(true);
 
   const [tests, setTests] = useState<SubsystemTestResult[]>([
     {
@@ -145,50 +146,69 @@ const ServiceDiagnosticsModalContent: React.FC<{
   ]);
 
   const updateTestStatus = (id: string, update: Partial<SubsystemTestResult>) => {
+    if (!isMountedRef.current) return;
     setTests((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...update } : t))
     );
   };
 
-  // Run Audio Tests
-  const runAudioTest = async () => {
-    updateTestStatus('test_audio_synth', { status: 'running', details: 'جاري تشغيل نغمة اختبارية عبر مذبذب الصوت...' });
-    const synthOk = await resilientAudio.playTone(587.33, 0.25, 'sine');
-    await resilientAudio.playTone(880, 0.25, 'sine');
+  // Run Audio Tests (interactive playback only when triggered by user click)
+  const runAudioTest = async (interactive: boolean) => {
+    if (interactive) {
+      updateTestStatus('test_audio_synth', { status: 'running', details: 'جاري تشغيل نغمة اختبارية عبر مذبذب الصوت...' });
+      const synthOk = await resilientAudio.playTone(587.33, 0.25, 'sine');
+      await resilientAudio.playTone(880, 0.25, 'sine');
 
-    if (synthOk) {
-      updateTestStatus('test_audio_synth', {
-        status: 'success',
-        details: 'يعمل بكفاءة فائقة (Web Audio API جاهز لتوليد الأصوات دون انترنت)'
-      });
+      if (synthOk) {
+        updateTestStatus('test_audio_synth', {
+          status: 'success',
+          details: 'يعمل بكفاءة فائقة (Web Audio API جاهز لتوليد الأصوات دون انترنت)'
+        });
+      } else {
+        updateTestStatus('test_audio_synth', {
+          status: 'warning',
+          details: 'محرك الترددات معلق في وضع السكون (يلزم نقرة من المستخدم لتفعيله)',
+          remedyAction: 'تفعيل إذن الصوت في المتصفح'
+        });
+      }
     } else {
+      const hasWebAudio = typeof window !== 'undefined' && Boolean(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
       updateTestStatus('test_audio_synth', {
-        status: 'warning',
-        details: 'محرك الترددات معلق في وضع السكون (يلزم نقرة من المستخدم لتفعيله)',
-        remedyAction: 'تفعيل إذن الصوت في المتصفح'
+        status: hasWebAudio ? 'success' : 'warning',
+        details: hasWebAudio
+          ? 'محرك Web Audio API جاهز (اضغط "سماع نغمة" للاختبار الفعلي)'
+          : 'Web Audio API غير متاح في هذه البيئة'
       });
     }
 
     updateTestStatus('test_audio_speech', { status: 'running', details: 'جاري فحص الحزم الصوتية العربية ومحلل LaTeX...' });
     const diag = await resilientAudio.runDiagnostics();
+    if (!isMountedRef.current) return;
     setAudioResult(diag);
 
     if (diag.speechSynthesisSupported) {
-      resilientAudio.speak('نظام الصوت ومعادلات الرياضيات يعمل بكفاءة تامة', {
-        rate: 1.0,
-        onEnd: () => {
-          updateTestStatus('test_audio_speech', {
-            status: 'success',
-            details: `النظام مدعوم بالكامل مع محلل اللاتكس. ${diag.arabicVoiceFound ? `الصوت المستخدم: ${diag.arabicVoiceName}` : 'يعتمد على الصوت الافتراضي مع بديل النغمات التوافقية'}`
-          });
-        },
-        onError: () => {
-          updateTestStatus('test_audio_speech', {
-            status: 'warning',
-            details: 'تم تفعيل نغمات التردد التوافقية كبديل للنطق الصوتي.'
-          });
-        }
-      });
+      if (interactive) {
+        resilientAudio.speak('نظام الصوت ومعادلات الرياضيات يعمل بكفاءة تامة', {
+          rate: 1.0,
+          onEnd: () => {
+            updateTestStatus('test_audio_speech', {
+              status: 'success',
+              details: `النظام مدعوم بالكامل مع محلل اللاتكس. ${diag.arabicVoiceFound ? `الصوت المستخدم: ${diag.arabicVoiceName}` : 'يعتمد على الصوت الافتراضي مع بديل النغمات التوافقية'}`
+            });
+          },
+          onError: () => {
+            updateTestStatus('test_audio_speech', {
+              status: 'warning',
+              details: 'تم تفعيل نغمات التردد التوافقية كبديل للنطق الصوتي.'
+            });
+          }
+        });
+      } else {
+        updateTestStatus('test_audio_speech', {
+          status: 'success',
+          details: `النظام مدعوم بالكامل مع محلل اللاتكس. ${diag.arabicVoiceFound ? `الصوت المتاح: ${diag.arabicVoiceName}` : 'متاح مع بديل النغمات التوافقية'}`
+        });
+      }
     } else {
       updateTestStatus('test_audio_speech', {
         status: 'warning',
@@ -348,11 +368,14 @@ const ServiceDiagnosticsModalContent: React.FC<{
     }
   };
 
-  const handleRunAllTests = async () => {
+  const handleRunAllTests = async (interactive: boolean = true) => {
+    if (!isMountedRef.current) return;
     setIsRunningAll(true);
-    resilientAudio.playClickSound();
+    if (interactive) {
+      resilientAudio.playClickSound();
+    }
 
-    await runAudioTest();
+    await runAudioTest(interactive);
     await runWindowsBridgeTest();
     await runWaPollingTest();
     await runVideoTest();
@@ -360,12 +383,16 @@ const ServiceDiagnosticsModalContent: React.FC<{
     await runServerTest();
     runStorageTest();
 
+    if (!isMountedRef.current) return;
     setIsRunningAll(false);
-    resilientAudio.playSuccessChime();
+    if (interactive) {
+      resilientAudio.playSuccessChime();
+    }
   };
 
   useEffect(() => {
-    handleRunAllTests();
+    isMountedRef.current = true;
+    void handleRunAllTests(false);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -373,7 +400,10 @@ const ServiceDiagnosticsModalContent: React.FC<{
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      isMountedRef.current = false;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const filteredTests = activeCategory === 'all'
@@ -439,7 +469,7 @@ const ServiceDiagnosticsModalContent: React.FC<{
           <div className="flex items-center gap-2">
             <button
               disabled={isRunningAll}
-              onClick={handleRunAllTests}
+              onClick={() => void handleRunAllTests(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRunningAll ? 'animate-spin' : ''}`} />
